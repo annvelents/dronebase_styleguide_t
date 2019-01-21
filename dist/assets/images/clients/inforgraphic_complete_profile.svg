@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6768 1012.429 492.86 175.635">
+  <defs>
+    <style>
+      .cls-1, .cls-4 {
+        fill: #f8b1a3;
+      }
+
+      .cls-2 {
+        fill: #3fc0c2;
+      }
+
+      .cls-2, .cls-3 {
+        opacity: 0.5;
+      }
+
+      .cls-3 {
+        fill: #8d95a2;
+      }
+
+      .cls-4 {
+        font-size: 15px;
+        font-family: Roboto-Medium, Roboto;
+        font-weight: 500;
+      }
+
+      .cls-5 {
+        fill: none;
+        stroke: #e2e4e7;
+        stroke-width: 3px;
+      }
+    </style>
+  </defs>
+  <g id="Group_60073" data-name="Group 60073" transform="translate(6048 -6)">
+    <g id="Group_60072" data-name="Group 60072">
+      <path id="Path_98340" data-name="Path 98340" class="cls-1" d="M7278.128,1183.478h99.129l-48.491-83.989Z" transform="translate(-6359.888 8.475)"/>
+      <path id="Path_98343" data-name="Path 98343" class="cls-1" d="M7278.128,1224.452h147.49L7353.47,1099.49Z" transform="translate(-6531.444 -32.499)"/>
+      <path id="Path_98344" data-name="Path 98344" class="cls-1" d="M7278.129,1161.971h73.744L7315.8,1099.49Z" transform="translate(-6169.813 29.982)"/>
+      <path id="Path_98341" data-name="Path 98341" class="cls-2" d="M7278.129,1251.944h179.937l-88.021-152.454Z" transform="translate(-6313.883 -60.436)"/>
+      <path id="Path_98342" data-name="Path 98342" class="cls-3" d="M7278.129,1211.726H7410.6l-64.8-112.236Z" transform="translate(-6435.063 -20.393)"/>
+      <text id="_600" data-name="$600" class="cls-4" transform="translate(1056.417 1032.429)"><tspan x="-17.051" y="0">$600</tspan></text>
+      <text id="_150" data-name="$150" class="cls-4" transform="translate(967.019 1097.615)"><tspan x="-17.051" y="0">$150</tspan></text>
+      <text id="_370" data-name="$370" class="cls-4" transform="translate(908.352 1070.61)"><tspan x="-17.051" y="0">$370</tspan></text>
+      <text id="_400" data-name="$400" class="cls-4" transform="translate(819.886 1058.504)"><tspan x="-17.051" y="0">$400</tspan></text>
+      <text id="_70" data-name="$70" class="cls-4" transform="translate(1144.952 1120.583)"><tspan x="-12.788" y="0">$70</tspan></text>
+      <path id="Path_97966" data-name="Path 97966" class="cls-5" d="M652.953-5082.6h492.86" transform="translate(67.047 6275.166)"/>
+    </g>
+  </g>
+</svg>
