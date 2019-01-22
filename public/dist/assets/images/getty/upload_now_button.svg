@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-232.5 -2885 183 48.5">
+  <defs>
+    <style type="text/css">@import url(https://fonts.googleapis.com/css?family=Roboto:300,400);</style>
+    <style>
+      .cls-1 {
+        fill: #3fc0c2;
+      }
+
+      .cls-2 {
+        fill: #fff;
+        font-size: 15px;
+        font-family: Roboto-Medium, Roboto;
+        font-weight: 500;
+        letter-spacing: 0.125em;
+      }
+
+      .cls-3 {
+        filter: url(#button);
+      }
+    </style>
+    <filter id="button" x="-232.5" y="-2885" width="183" height="48.5" filterUnits="userSpaceOnUse">
+      <feOffset dy="2" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="0.5" result="blur"/>
+      <feFlood flood-opacity="0.239"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Group_9036" data-name="Group 9036" transform="translate(-295 -3168)">
+    <g id="ui_raised_btn_light" transform="translate(64 283)">
+      <g class="cls-3" transform="matrix(1, 0, 0, 1, 231, 2885)">
+        <path id="button-2" data-name="button" class="cls-1" d="M-69.6,0H106.56a1.96,1.96,0,0,1,1.921,2V43a1.96,1.96,0,0,1-1.921,2H-69.6a1.96,1.96,0,0,1-1.921-2V2A1.96,1.96,0,0,1-69.6,0Z" transform="translate(-159.48 -2885)"/>
+      </g>
+    </g>
+    <text id="Normal" class="cls-2" transform="translate(154 311)"><tspan x="-55.906" y="0">UPLOAD NOW</tspan></text>
+  </g>
+</svg>

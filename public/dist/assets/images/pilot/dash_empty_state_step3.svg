@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 226 100">
+  <defs>
+    <style>
+      .cls-1, .cls-3, .cls-9 {
+        fill: none;
+      }
+
+      .cls-1 {
+        stroke: #707070;
+      }
+
+      .cls-2 {
+        clip-path: url(#clip-path);
+      }
+
+      .cls-3, .cls-4, .cls-5 {
+        stroke: #8d95a2;
+      }
+
+      .cls-3, .cls-5 {
+        stroke-width: 2.5px;
+      }
+
+      .cls-3 {
+        opacity: 0.938;
+      }
+
+      .cls-4, .cls-6 {
+        fill: #8d95a2;
+      }
+
+      .cls-4 {
+        stroke-width: 0.5px;
+      }
+
+      .cls-5 {
+        fill: #fff;
+      }
+
+      .cls-6 {
+        font-size: 20px;
+        font-family: Roboto-Medium, Roboto;
+        font-weight: 500;
+      }
+
+      .cls-7 {
+        fill: #c5c9d0;
+      }
+
+      .cls-8 {
+        stroke: none;
+      }
+    </style>
+    <clipPath id="clip-path">
+      <rect id="Rectangle_8769" data-name="Rectangle 8769" class="cls-1" width="226" height="100" transform="translate(1071 629)"/>
+    </clipPath>
+  </defs>
+  <g id="Mask_Group_1147" data-name="Mask Group 1147" class="cls-2" transform="translate(-1071 -629)">
+    <g id="Group_65792" data-name="Group 65792">
+      <g id="Group_65766" data-name="Group 65766" transform="translate(9)">
+        <g id="Group_65681" data-name="Group 65681" transform="translate(-4 -40)">
+          <g id="Ellipse_2634" data-name="Ellipse 2634" class="cls-3" transform="translate(1134 674)">
+            <circle class="cls-8" cx="45.102" cy="45.102" r="45.102"/>
+            <circle class="cls-9" cx="45.102" cy="45.102" r="43.852"/>
+          </g>
+          <g id="Group_65680" data-name="Group 65680" transform="translate(402.558 696.104)">
+            <path id="Path_98346" data-name="Path 98346" class="cls-4" d="M796.945,47.37a14.756,14.756,0,0,0-.738-1.476c-.872-1.744-2.147-4.294-3.355-7.045-1.812-3.891-4.965-3.824-7.112-3.757h-.671a1.006,1.006,0,1,0,0,2.013h.738c2.08-.067,4.026-.067,5.233,2.617s2.55,5.368,3.355,7.045l.738,1.476a2.516,2.516,0,0,1,.134,2.08,1.956,1.956,0,0,1-1.677.6H759.372a1.955,1.955,0,0,1-1.677-.6,2.516,2.516,0,0,1,.134-2.08,14.838,14.838,0,0,1,.738-1.476c.872-1.744,2.147-4.361,3.355-7.045s2.684-2.684,5.032-2.617h.872a1.006,1.006,0,0,0,0-2.013h-.872c-2.415-.067-5.166-.134-6.911,3.757-1.208,2.684-2.482,5.3-3.355,7.045-.335.6-.537,1.141-.738,1.476a4.277,4.277,0,0,0,0,4.026,3.694,3.694,0,0,0,3.355,1.543h34.218a3.607,3.607,0,0,0,3.355-1.543A4.1,4.1,0,0,0,796.945,47.37Z" transform="translate(0 -11.576)"/>
+            <path id="Path_98347" data-name="Path 98347" class="cls-4" d="M780.6,30.091,781.4,31.3l.872-1.208c.336-.537.805-1.141,1.275-1.812,3.355-4.629,8.856-12.345,8.856-17.646a11.007,11.007,0,0,0-22.007,0c0,4.629,5.5,12.681,8.789,17.444Q779.994,29.286,780.6,30.091ZM781.4,1.71a8.991,8.991,0,0,1,8.991,8.991c0,4.629-5.5,12.345-8.521,16.438l-.47.6-.537-.805c-2.952-4.294-8.454-12.278-8.454-16.3A8.977,8.977,0,0,1,781.4,1.71Z" transform="translate(-4.922 0)"/>
+            <path id="Path_98348" data-name="Path 98348" class="cls-4" d="M789.637,13.569a5.569,5.569,0,1,0-5.569,5.569A5.555,5.555,0,0,0,789.637,13.569Zm-9.125,0a3.556,3.556,0,1,1,3.556,3.556,3.58,3.58,0,0,1-3.556-3.556Z" transform="translate(-7.587 -2.667)"/>
+          </g>
+        </g>
+        <g id="Group_65695" data-name="Group 65695" transform="translate(1190.465 688)">
+          <path id="Path_98350" data-name="Path 98350" class="cls-5" d="M17.723,35.446A17.723,17.723,0,1,1,35.446,17.723h0A17.69,17.69,0,0,1,17.723,35.446Z" transform="translate(0 0)"/>
+        </g>
+        <text id="_3" data-name="3" class="cls-6" transform="translate(1208 713)"><tspan x="-5.684" y="0">3</tspan></text>
+      </g>
+      <circle id="Ellipse_2720" data-name="Ellipse 2720" class="cls-7" cx="4" cy="4" r="4" transform="translate(1091 673)"/>
+      <circle id="Ellipse_2724" data-name="Ellipse 2724" class="cls-7" cx="4" cy="4" r="4" transform="translate(1067 673)"/>
+      <circle id="Ellipse_2720-2" data-name="Ellipse 2720" class="cls-7" cx="4" cy="4" r="4" transform="translate(1115 673)"/>
+    </g>
+  </g>
+</svg>

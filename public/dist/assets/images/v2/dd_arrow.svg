@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="14.28" viewBox="0 0 22 14.28">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #999;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <path id="Drag_and_drop_Icon" data-name="Drag and drop Icon" class="cls-1" d="M231.525,1421.15l-7.612,5.86-1.91-9.49,2.8,2.03c4.755-11.06,19.471-7.87,19.2,3.45-1.254-8.65-13.109-9.07-15.9-2.19l3.423,0.34h0Z" transform="translate(-222 -1412.72)"/>
+</svg>
