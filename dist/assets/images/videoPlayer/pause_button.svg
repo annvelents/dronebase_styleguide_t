@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-5625 647 81.118 81.118">
+  <defs>
+    <style>
+      .cls-1 {
+        opacity: 0.3;
+      }
+
+      .cls-2, .cls-3 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        opacity: 0.8;
+      }
+
+      .cls-4 {
+        filter: url(#Path_32459-2);
+      }
+
+      .cls-5 {
+        filter: url(#Path_32459);
+      }
+    </style>
+    <filter id="Path_32459" x="-5625" y="647" width="81.118" height="81.118" filterUnits="userSpaceOnUse">
+      <feOffset dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-opacity="0.161"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+    <filter id="Path_32459-2" x="-5625" y="647" width="81.118" height="81.118" filterUnits="userSpaceOnUse">
+      <feOffset dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="3" result="blur-2"/>
+      <feFlood flood-opacity="0.161"/>
+      <feComposite operator="in" in2="blur-2"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Group_47269" data-name="Group 47269" transform="translate(-6435)">
+    <g id="Group_47268" data-name="Group 47268" transform="translate(-109)">
+      <g class="cls-5" transform="matrix(1, 0, 0, 1, 6544, 0)">
+        <path id="Path_32459-3" data-name="Path 32459" class="cls-1" d="M31.559,0A31.559,31.559,0,1,0,63.118,31.559,31.531,31.531,0,0,0,31.559,0Z" transform="translate(-5616 653)"/>
+      </g>
+      <g id="Symbol_299" data-name="Symbol 299" transform="translate(277 246)">
+        <g class="cls-4" transform="matrix(1, 0, 0, 1, 6267, -246)">
+          <path id="Path_32459-4" data-name="Path 32459" class="cls-2" d="M31.559,0A31.559,31.559,0,1,0,63.118,31.559,31.531,31.531,0,0,0,31.559,0Zm0,59.983A28.424,28.424,0,1,1,59.983,31.559h0A28.387,28.387,0,0,1,31.559,59.983Z" transform="translate(-5616 653)"/>
+        </g>
+      </g>
+    </g>
+    <g id="Group_47267" data-name="Group 47267" transform="translate(-625.028 70.969)">
+      <rect id="Rectangle_7512" data-name="Rectangle 7512" class="cls-3" width="7.832" height="22.556" transform="translate(1465 602)"/>
+      <rect id="Rectangle_7513" data-name="Rectangle 7513" class="cls-3" width="7.832" height="22.556" transform="translate(1477.651 602)"/>
+    </g>
+  </g>
+</svg>
