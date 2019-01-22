@@ -11970,20 +11970,20 @@ ol.pilot-instructions {
     background-color: #ddd; }
   .client-mission-uploader .draggable-object-target.accepts-drag .background {
     background-color: grey; }
-  .client-mission-uploader .assets {
+  .client-mission-uploader .public/assets {
     flex-basis: 80%;
     padding-left: 15px; }
-    .client-mission-uploader .assets .asset-list {
+    .client-mission-uploader .public/assets .asset-list {
       background-color: white;
       display: flex;
       flex-wrap: wrap;
       justify-content: flex-start;
       min-height: 280px;
       padding: 4px; }
-    .client-mission-uploader .assets .draggable-object {
+    .client-mission-uploader .public/assets .draggable-object {
       border: 1px solid transparent;
       padding: 0; }
-    .client-mission-uploader .assets .button {
+    .client-mission-uploader .public/assets .button {
       margin: 0;
       height: 30px; }
   .client-mission-uploader .uploaded-content {
@@ -11993,15 +11993,15 @@ ol.pilot-instructions {
   .client-mission-uploader .thumbnail-view {
     display: flex;
     flex-wrap: wrap; }
-  .client-mission-uploader .list-view-assets .shot-asset {
+  .client-mission-uploader .list-view-public/assets .shot-asset {
     width: calc(100% - 40px) !important;
     margin-right: 20px;
     margin-left: 13px;
     border-bottom: 1px solid #DDDDDD; }
-  .client-mission-uploader .list-view-assets .shot-asset:last-of-type {
+  .client-mission-uploader .list-view-public/assets .shot-asset:last-of-type {
     border-bottom: none;
     margin-bottom: 40px; }
-  .client-mission-uploader .list-view-assets .delete-asset {
+  .client-mission-uploader .list-view-public/assets .delete-asset {
     padding-bottom: 10px; }
   .client-mission-uploader .uploader-header {
     width: 100%;
@@ -12221,7 +12221,7 @@ ol.pilot-instructions {
   .client-uploader-top-row .next-button .icon-DB-icon_Arrow-right-3 {
     padding-left: 8px;
     padding-top: 2px; }
-  .client-uploader-top-row .delete-assets-button {
+  .client-uploader-top-row .delete-public/assets-button {
     margin: 0 20px 0 0 !important;
     width: 140px !important; }
   .client-uploader-top-row .form-control::-webkit-input-placeholder,
@@ -13226,7 +13226,7 @@ ol.pilot-instructions {
   position: relative;
   background-color: white; }
   .dashboard-infographic-wrapper.show-ar-image {
-    background-image: url("/assets/images/getty/ar_background_image_desktop.png");
+    background-image: url("/public/assets/images/getty/ar_background_image_desktop.png");
     background-size: cover;
     background-position: center; }
     .dashboard-infographic-wrapper.show-ar-image .dashboard-infographic .left-arrow,
@@ -13237,9 +13237,9 @@ ol.pilot-instructions {
       color: #999; }
     @media (max-width: 767px) {
       .dashboard-infographic-wrapper.show-ar-image {
-        background-image: url("/assets/images/getty/ar_background_image_mobile.png"); } }
+        background-image: url("/public/assets/images/getty/ar_background_image_mobile.png"); } }
   .dashboard-infographic-wrapper.show-getty-image {
-    background-image: url("/assets/images/getty/getty_banner_1280x230.png");
+    background-image: url("/public/assets/images/getty/getty_banner_1280x230.png");
     background-size: cover;
     background-position: center; }
     .dashboard-infographic-wrapper.show-getty-image .dashboard-infographic .left-arrow,
@@ -13250,7 +13250,7 @@ ol.pilot-instructions {
       color: #999; }
     @media (max-width: 767px) {
       .dashboard-infographic-wrapper.show-getty-image {
-        background-image: url("/assets/images/getty/getty_banner_mobile_dashboard@2x.png"); } }
+        background-image: url("/public/assets/images/getty/getty_banner_mobile_dashboard@2x.png"); } }
   .dashboard-infographic-wrapper .dashboard-infographic.collapsed {
     height: 0px;
     background: #eee; }
@@ -13945,7 +13945,7 @@ ol.pilot-instructions {
   .active-missions-container .getty-mission-panel {
     float: right;
     width: 350px;
-    background-image: url("/assets/images/getty/Getty_MissionCard.png");
+    background-image: url("/public/assets/images/getty/Getty_MissionCard.png");
     background-size: 195px;
     background-position: right 60px;
     background-repeat: no-repeat;
@@ -14038,7 +14038,7 @@ ol.pilot-instructions {
   transition: top 0.5s ease; }
 
 .login-form {
-  background: url("/assets/images/v2/Login_Background.jpeg") no-repeat center center fixed;
+  background: url("/public/assets/images/v2/Login_Background.jpeg") no-repeat center center fixed;
   background-size: cover;
   top: 0;
   bottom: 0;
@@ -14390,7 +14390,7 @@ ol.pilot-instructions {
     margin-left: 10px;
     cursor: pointer; }
   .top-navbar .profile-icon:hover, .top-navbar .profile-icon-active {
-    content: url("/assets/images/pilot_profile_icon_rollover.svg"); }
+    content: url("/public/assets/images/pilot_profile_icon_rollover.svg"); }
   .top-navbar .up-arrow {
     width: 0;
     height: 0;
@@ -14509,7 +14509,7 @@ ol.pilot-instructions {
       margin-left: 5px;
       width: 26px; }
     .top-navbar .notifications-nav-container .notifications-nav-button:hover, .top-navbar .notifications-nav-container .notification-active {
-      content: url("/assets/images/notification_icon_rollover.svg"); }
+      content: url("/public/assets/images/notification_icon_rollover.svg"); }
     .top-navbar .notifications-nav-container .notifications-nav-counter {
       position: absolute;
       z-index: 2;
@@ -14785,7 +14785,7 @@ ol.pilot-instructions {
   .profile .header {
     color: white;
     height: 300px;
-    background-image: url("/assets/images/v2/profile_background.png");
+    background-image: url("/public/assets/images/v2/profile_background.png");
     background-repeat: repeat;
     text-align: center;
     padding-top: 65px; }
@@ -15582,7 +15582,7 @@ ol.pilot-instructions {
     background-color: grey; }
 
 .pilot-registration {
-  background: url("/assets/images/v2/RegisterPage_Background.jpeg") no-repeat center center fixed;
+  background: url("/public/assets/images/v2/RegisterPage_Background.jpeg") no-repeat center center fixed;
   background-size: cover;
   top: 0;
   bottom: 0;
@@ -15671,7 +15671,7 @@ ol.pilot-instructions {
             align-items: stretch; }
 
 .request-password-reset-form {
-  background: url("/assets/images/v2/ResetPassword_Background.jpeg") no-repeat center center fixed;
+  background: url("/public/assets/images/v2/ResetPassword_Background.jpeg") no-repeat center center fixed;
   background-size: cover;
   top: 0;
   bottom: 0;
@@ -15738,7 +15738,7 @@ ol.pilot-instructions {
             text-decoration: none; }
 
 .reset-password-form {
-  background: url("/assets/images/v2/ResetPassword_Background.jpeg") no-repeat center center fixed;
+  background: url("/public/assets/images/v2/ResetPassword_Background.jpeg") no-repeat center center fixed;
   background-size: cover;
   top: 0;
   bottom: 0;
@@ -16301,7 +16301,7 @@ ol.pilot-instructions {
           flex-direction: column;
           align-items: center; } }
   .getty-mission .infog {
-    background-image: url("/assets/images/getty/Infographic_Steps_bg.png");
+    background-image: url("/public/assets/images/getty/Infographic_Steps_bg.png");
     background-repeat: no-repeat;
     background-position: top left;
     background-size: cover;
@@ -16456,7 +16456,7 @@ ol.pilot-instructions {
     flex-direction: column;
     align-items: center;
     background-color: #f6f6f6;
-    background-image: url("/assets/images/getty/Upload_background_updated.png");
+    background-image: url("/public/assets/images/getty/Upload_background_updated.png");
     background-repeat: repeat-x;
     background-position: left center;
     overflow: hidden; }
@@ -16513,7 +16513,7 @@ ol.pilot-instructions {
       .getty-mission .upload {
         background-repeat: repeat-x;
         background-position: left 20px;
-        background-image: url("/assets/images/getty/Upload_Background_header_mobile_1.png"); } }
+        background-image: url("/public/assets/images/getty/Upload_Background_header_mobile_1.png"); } }
     .getty-mission .upload .headline {
       margin-top: 50px;
       margin-bottom: 20px; }
@@ -16903,7 +16903,7 @@ ol.pilot-instructions {
   bottom: 0;
   left: 0;
   right: 0;
-  background-image: url("/assets/images/getty/play_button.png"); }
+  background-image: url("/public/assets/images/getty/play_button.png"); }
 
 .pac-container {
   min-width: 342px; }
@@ -17257,7 +17257,7 @@ ol.pilot-instructions {
   box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.3); }
 
 .explore-card {
-  background-image: url("/assets/images/pilot/explore_background_image.jpg");
+  background-image: url("/public/assets/images/pilot/explore_background_image.jpg");
   padding: 70px;
   display: flex;
   flex-direction: column;
@@ -17498,7 +17498,7 @@ ol.pilot-instructions {
   font-family: roboto;
   color: #1F2B45; }
   .clients-page .header-image {
-    background-image: url("/assets/images/clients/client_mission_header_image.jpg");
+    background-image: url("/public/assets/images/clients/client_mission_header_image.jpg");
     background-position: center;
     color: white;
     display: flex;
@@ -17508,7 +17508,7 @@ ol.pilot-instructions {
     padding: 150px; }
     @media (max-width: 767px) {
       .clients-page .header-image {
-        background-image: url("/assets/images/clients/client_mission_header_image_mobile.jpg");
+        background-image: url("/public/assets/images/clients/client_mission_header_image_mobile.jpg");
         height: 250px;
         padding: 60px; } }
     .clients-page .header-image h2 {
@@ -17898,16 +17898,16 @@ ol.pilot-instructions {
           margin-right: 15px;
           height: 30px; } }
     .info-window-panel .second-row .available-mission-pin {
-      background: url("/assets/images/pilot/available_solid_pin.svg");
+      background: url("/public/assets/images/pilot/available_solid_pin.svg");
       background-repeat: no-repeat; }
       @media (max-width: 767px) {
         .info-window-panel .second-row .available-mission-pin {
           background-size: contain; } }
     .info-window-panel .second-row .client-mission-pin {
-      background: url("/assets/images/pilot/client_solid_pin.svg");
+      background: url("/public/assets/images/pilot/client_solid_pin.svg");
       background-repeat: no-repeat; }
     .info-window-panel .second-row .getty-mission-pin {
-      background: url("/assets/images/pilot/getty_solid_pin.svg");
+      background: url("/public/assets/images/pilot/getty_solid_pin.svg");
       background-repeat: no-repeat; }
     .info-window-panel .second-row .address {
       width: 200px;
@@ -18148,7 +18148,7 @@ ol.pilot-instructions {
       text-decoration: none; }
 
 .reschedule-icon {
-  background: url("/assets/images/reschedule_icon.png") no-repeat center center;
+  background: url("/public/assets/images/reschedule_icon.png") no-repeat center center;
   width: 160px;
   height: 160px; }
 
@@ -18161,7 +18161,7 @@ ol.pilot-instructions {
     color: #1d2d47;
     font-size: 18px; }
 
-.upload-assets-other-app {
+.upload-public/assets-other-app {
   background-color: white;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
   display: flex;
@@ -18170,44 +18170,44 @@ ol.pilot-instructions {
   align-items: center;
   padding: 60px;
   margin-bottom: 150px; }
-  .upload-assets-other-app .other-app-pic {
+  .upload-public/assets-other-app .other-app-pic {
     width: 100%;
     text-align: center;
     margin-bottom: 35px; }
-    .upload-assets-other-app .other-app-pic img {
+    .upload-public/assets-other-app .other-app-pic img {
       margin: auto;
       width: 340px;
       height: auto; }
-    .upload-assets-other-app .other-app-pic .third-party-app {
+    .upload-public/assets-other-app .other-app-pic .third-party-app {
       height: 220px; }
-  .upload-assets-other-app .title {
+  .upload-public/assets-other-app .title {
     font-size: 24px;
     color: #F26649;
     margin-bottom: 10px; }
-  .upload-assets-other-app .description {
+  .upload-public/assets-other-app .description {
     margin-bottom: 20px;
     max-width: 620px;
     text-align: center;
     font-size: 16px;
     line-height: 24px; }
-    .upload-assets-other-app .description a {
+    .upload-public/assets-other-app .description a {
       text-transform: underline;
       color: #3FC0C2;
       cursor: pointer; }
-    .upload-assets-other-app .description ol, .upload-assets-other-app .description ul {
+    .upload-public/assets-other-app .description ol, .upload-public/assets-other-app .description ul {
       text-align: left; }
-    .upload-assets-other-app .description li {
+    .upload-public/assets-other-app .description li {
       margin-bottom: 5px; }
-  .upload-assets-other-app .small-description {
+  .upload-public/assets-other-app .small-description {
     margin-top: 20px;
     font-size: 14px;
     color: #8D95A2; }
-  .upload-assets-other-app .generating-key {
+  .upload-public/assets-other-app .generating-key {
     margin-top: 15px;
     color: #1D2D47;
     font-size: 14px;
     font-weight: 200; }
-  .upload-assets-other-app .duck-file {
+  .upload-public/assets-other-app .duck-file {
     display: flex;
     color: #149B9E;
     font-size: 16px;
@@ -18216,18 +18216,18 @@ ol.pilot-instructions {
     cursor: pointer;
     margin-bottom: 10px;
     width: 265px; }
-    .upload-assets-other-app .duck-file:hover {
+    .upload-public/assets-other-app .duck-file:hover {
       text-decoration: underline; }
-    .upload-assets-other-app .duck-file .credential-icon {
+    .upload-public/assets-other-app .duck-file .credential-icon {
       width: auto;
       height: 35px; }
-  .upload-assets-other-app .cyberduck-access .cyberduck-title {
+  .upload-public/assets-other-app .cyberduck-access .cyberduck-title {
     color: #8D95A2;
     font-size: 13px;
     font-weight: 400; }
-  .upload-assets-other-app .cyberduck-access .copy-text {
+  .upload-public/assets-other-app .cyberduck-access .copy-text {
     margin-top: 5px; }
-    .upload-assets-other-app .cyberduck-access .copy-text input {
+    .upload-public/assets-other-app .cyberduck-access .copy-text input {
       height: 40px;
       width: 316px;
       background: rgba(197, 201, 208, 0.2);
@@ -18236,30 +18236,30 @@ ol.pilot-instructions {
       font-size: 16px;
       font-weight: 200;
       padding-left: 20px; }
-      .upload-assets-other-app .cyberduck-access .copy-text input:focus {
+      .upload-public/assets-other-app .cyberduck-access .copy-text input:focus {
         outline: 0px; }
-    .upload-assets-other-app .cyberduck-access .copy-text button {
+    .upload-public/assets-other-app .cyberduck-access .copy-text button {
       height: 40px;
       width: 60px;
       margin-left: -3px;
       padding: 0;
       background: white;
       border: 2px #F3F4F5 solid; }
-      .upload-assets-other-app .cyberduck-access .copy-text button:focus {
+      .upload-public/assets-other-app .cyberduck-access .copy-text button:focus {
         outline: 0px; }
-      .upload-assets-other-app .cyberduck-access .copy-text button p {
+      .upload-public/assets-other-app .cyberduck-access .copy-text button p {
         color: #149B9E;
         font-size: 14px;
         font-weight: 400;
         margin: 0;
         margin-left: 5px;
         margin-right: 5px; }
-      .upload-assets-other-app .cyberduck-access .copy-text button .copy-link {
+      .upload-public/assets-other-app .cyberduck-access .copy-text button .copy-link {
         height: 40px;
         width: 28px;
         margin-left: 2px;
         margin-right: 2px; }
-  .upload-assets-other-app .done-uploading-text {
+  .upload-public/assets-other-app .done-uploading-text {
     margin-top: 20px;
     margin-bottom: 20px;
     color: #1D2D47;

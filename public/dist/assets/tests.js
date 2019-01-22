@@ -27,13 +27,13 @@ define('pilots/tests/data/mission_type.jshint.lint-test', ['exports'], function 
     assert.ok(true, 'data/mission_type.js should pass jshint.');
   });
 });
-define('pilots/tests/data/travel_distance.jshint.lint-test', ['exports'], function (exports) {
+define('pilots/tests/data/travel_public/distance.jshint.lint-test', ['exports'], function (exports) {
   'use strict';
 
-  QUnit.module('JSHint | data/travel_distance.js');
+  QUnit.module('JSHint | data/travel_public/distance.js');
   QUnit.test('should pass jshint', function (assert) {
     assert.expect(1);
-    assert.ok(true, 'data/travel_distance.js should pass jshint.');
+    assert.ok(true, 'data/travel_public/distance.js should pass jshint.');
   });
 });
 define('pilots/tests/helpers/destroy-app', ['exports', 'ember'], function (exports, _ember) {

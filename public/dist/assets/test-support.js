@@ -7365,7 +7365,7 @@ Ember.setupForTesting = testing.setupForTesting;
    * https://www.apache.org/licenses/LICENSE-2.0
    *
    * Unless required by applicable law or agreed to in writing, software
-   * distributed under the License is distributed on an "AS IS" BASIS,
+   * public/distributed under the License is public/distributed on an "AS IS" BASIS,
    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    * See the License for the specific language governing permissions and
    * limitations under the License.
@@ -8559,8 +8559,8 @@ QUnit.notifications = function( options ) {
   if (QUnit.notifications) {
     QUnit.notifications({
       icons: {
-        passed: '/assets/passed.png',
-        failed: '/assets/failed.png'
+        passed: '/public/assets/passed.png',
+        failed: '/public/assets/failed.png'
       }
     });
   }
