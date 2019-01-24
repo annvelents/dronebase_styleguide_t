@@ -54,25 +54,45 @@
 	</head>
 
 	<body>					<link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet">
-<style>
-  .btn { margin: 5px 10px;}
-</style>
-<button class="btn btn-primary btn-lg">Large</button>
 
-<button class="btn btn-secondary btn-md ">Base With Borders</button>
-<button class="btn btn-primary btn-md ">Base</button>
-<button class="btn btn-primary btn-sm">Small</button>
-<button class="btn btn-primary btn-xs">Extra Small</button>
+<div class='row'>
+  <div class='col-md-12'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+</div>
+<div class='row'>
+  <div class='col-md-6'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+  <div class='col-md-4'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+  <div class='col-md-2'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+</div>
+
+
 			<script type="text/x-stylemark" data-language="html"><link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet">
-<style>
-  .btn { margin: 5px 10px;}
-</style>
-<button class="btn btn-primary btn-lg">Large</button>
 
-<button class="btn btn-secondary btn-md ">Base With Borders</button>
-<button class="btn btn-primary btn-md ">Base</button>
-<button class="btn btn-primary btn-sm">Small</button>
-<button class="btn btn-primary btn-xs">Extra Small</button></script>
+<div class='row'>
+  <div class='col-md-12'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+</div>
+<div class='row'>
+  <div class='col-md-6'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+  <div class='col-md-4'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+  <div class='col-md-2'>
+    <input class='form-control' placeholder="have you smiled today?"/>
+  </div>
+</div>
+
+</script>
 
 		<!--
 			Vanilla JS
@@ -105,10 +125,10 @@
 					}
 					else {
 						// Creates a new module
-						module = angular.module('stylemark-button-button-size-types', []);
+						module = angular.module('stylemark-sizes-size-examples', []);
 					}
 
-					module.controller('stylemark-button-button-size-types-' + index, function($scope) {
+					module.controller('stylemark-sizes-size-examples-' + index, function($scope) {
 						$scope.$eval(block);
 					});
 				});
