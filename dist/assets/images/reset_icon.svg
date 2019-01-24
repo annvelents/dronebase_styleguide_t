@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22">
+  <defs>
+    <style>
+      .cls-1, .cls-3 {
+        fill: none;
+      }
+
+      .cls-2 {
+        fill: #f26649;
+      }
+
+      .cls-3 {
+        stroke: #f26649;
+      }
+    </style>
+  </defs>
+  <g id="Group_65990" data-name="Group 65990" transform="translate(-395 -447)">
+    <rect id="Rectangle_9763" data-name="Rectangle 9763" class="cls-1" width="22" height="22" transform="translate(395 447)"/>
+    <g id="Group_65989" data-name="Group 65989" transform="translate(8.51)">
+      <g id="Group_59966" data-name="Group 59966" transform="translate(405.066 468.302) rotate(90)">
+        <g id="Group_59965" data-name="Group 59965">
+          <g id="Group_59964" data-name="Group 59964">
+            <path id="Path_99432" data-name="Path 99432" class="cls-2" d="M22.753,24.483c-.5,0-.685.5-.391.913.587.86,1.053,1.562,1.687,2.324a.562.562,0,0,0,.792,0c.634-.762,1.09-1.512,1.668-2.324.345-.514.071-.913-.4-.913Z" transform="translate(-42.221 -17.826)"/>
+          </g>
+        </g>
+      </g>
+      <path id="Path_99436" data-name="Path 99436" class="cls-3" d="M3806,470.523a7.457,7.457,0,0,1,7.511,7.348l0,.131a7.51,7.51,0,1,1-11.452-6.444" transform="translate(-3409 -20)"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1591 2139 44.274 42.192">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #ccc;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        fill: none;
+        stroke: #fff;
+      }
+    </style>
+  </defs>
+  <g id="Group_59854" data-name="Group 59854" transform="translate(1507 1968)">
+    <g id="Group_59848" data-name="Group 59848" transform="translate(-467 -155)">
+      <path id="Path_80226" data-name="Path 80226" class="cls-1" d="M43.008,15.123,29.64,13.894a1.277,1.277,0,0,1-1.076-.768L23.263.757a1.282,1.282,0,0,0-2.382,0l-5.3,12.292a1.155,1.155,0,0,1-1.076.768L1.137,15.123a1.327,1.327,0,0,0-.768,2.3l10.064,8.835a1.094,1.094,0,0,1,.384,1.229L7.9,40.552a1.271,1.271,0,0,0,1.921,1.383L21.343,35.1a1.32,1.32,0,0,1,1.306,0l11.524,6.838a1.275,1.275,0,0,0,1.921-1.383l-2.919-13.06a1.417,1.417,0,0,1,.384-1.229l10.218-8.912A1.278,1.278,0,0,0,43.008,15.123Z" transform="translate(551.065 326.05)"/>
+      <g id="Group_32" data-name="Group 32" transform="translate(-3021 33)">
+        <g id="Group_22" data-name="Group 22" transform="translate(0 2)">
+          <circle id="Ellipse_1" data-name="Ellipse 1" class="cls-2" cx="1.5" cy="1.5" r="1.5" transform="translate(3588 311)"/>
+          <circle id="Ellipse_2" data-name="Ellipse 2" class="cls-2" cx="1.5" cy="1.5" r="1.5" transform="translate(3596 311)"/>
+        </g>
+        <path id="Path_80204" data-name="Path 80204" class="cls-3" d="M3588,320.3c2.512-3.4,8.05-3.359,10.233,0" transform="translate(0.5 2)"/>
+        <path id="Path_80205" data-name="Path 80205" class="cls-3" d="M3588,311.4l4,3.338"/>
+        <path id="Path_80208" data-name="Path 80208" class="cls-3" d="M3592,311.4l-4,3.338" transform="translate(7.385)"/>
+      </g>
+    </g>
+  </g>
+</svg>

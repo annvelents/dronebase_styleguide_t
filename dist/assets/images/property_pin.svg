@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-15487.5 -7447.383 44.456 56.154">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+        stroke: #95989a;
+      }
+
+      .cls-2 {
+        fill: #3fc0c2;
+      }
+
+      .cls-2, .cls-3 {
+        stroke: #fff;
+      }
+
+      .cls-3, .cls-5 {
+        fill: none;
+      }
+
+      .cls-3 {
+        stroke-width: 3px;
+      }
+
+      .cls-4 {
+        stroke: none;
+      }
+
+      .cls-6 {
+        filter: url(#DB_Pin);
+      }
+    </style>
+    <filter id="DB_Pin" x="-15487.5" y="-7447.383" width="44.456" height="56.154" filterUnits="userSpaceOnUse">
+      <feOffset dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-opacity="0.161"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Group_34209" data-name="Group 34209" transform="translate(-16199 -8181)">
+    <g id="Group_34207" data-name="Group 34207" transform="translate(80.795 251.758)">
+      <path id="Path_99394" data-name="Path 99394" class="cls-1" d="M0,10.327Z" transform="translate(642.205 491.251)"/>
+      <g class="cls-6" transform="matrix(1, 0, 0, 1, 16118.21, 7929.24)">
+        <path id="DB_Pin-2" data-name="DB_Pin" class="cls-2" d="M22.958,1.47A12.728,12.728,0,0,0,10.23,14.2c0,.026,0,.052.011.385.064,6.149,9.395,18.659,12.718,23.653,1.477-2.123,3.958-5.422,6.469-9.269,3.161-4.843,6.26-10.555,6.26-14.769A12.729,12.729,0,0,0,22.958,1.47Z" transform="translate(-15488.23 -7442.35)"/>
+      </g>
+    </g>
+    <g id="Ellipse_2777" data-name="Ellipse 2777" class="cls-3" transform="translate(727 746)">
+      <circle class="cls-4" cx="7" cy="7" r="7"/>
+      <circle class="cls-5" cx="7" cy="7" r="5.5"/>
+    </g>
+  </g>
+</svg>
