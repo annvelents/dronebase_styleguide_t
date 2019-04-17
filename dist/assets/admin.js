@@ -403,31 +403,24 @@ define('admin/adapters/mission-reschedule', ['exports', 'admin/adapters/applicat
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-
-  var MissionRescheduleAdapter;
-
-  MissionRescheduleAdapter = _application.default.extend(_emberDataUrlTemplates.default, {
-    namespace: _environment.default.api.host + "/" + _environment.default.api.namespace + "/admin",
+  exports.default = _application.default.extend(_emberDataUrlTemplates.default, {
+    namespace: `${_environment.default.api.host}/${_environment.default.api.namespace}/admin`,
     urlTemplate: '{+namespace}/missions/{missionId}/schedule{/id}',
     urlSegments: {
-      missionId: function (type, id, snapshot, query) {
+      missionId(type, id, snapshot, query) {
         if (snapshot.modelName) {
-          return snapshot.belongsTo('mission', {
-            id: true
-          });
+          return snapshot.belongsTo('mission', { id: true });
         } else {
           return snapshot.get('mission.id');
         }
       }
     },
-    "delete": function (model) {
-      var url;
-      url = this.buildURL('mission-reschedule', '', model);
+
+    delete(model) {
+      const url = this.buildURL('mission-reschedule', '', model);
       return this.ajax(url, 'DELETE');
     }
   });
-
-  exports.default = MissionRescheduleAdapter;
 });
 define('admin/adapters/mission', ['exports', 'admin/adapters/application', 'admin/config/environment'], function (exports, _application, _environment) {
   'use strict';
@@ -439,7 +432,48 @@ define('admin/adapters/mission', ['exports', 'admin/adapters/application', 'admi
   var MissionAdapter;
 
   MissionAdapter = _application.default.extend({
-    namespace: _environment.default.api.namespace + '/admin'
+    namespace: _environment.default.api.namespace + '/admin',
+    store: Ember.inject.service(),
+    sessionAccount: Ember.inject.service(),
+    download: function (data, options) {
+      var base, url, xhrOptions;
+      base = this.get('store').adapterFor('mission').urlForQuery(null, 'mission');
+      url = base + ".csv";
+      xhrOptions = {
+        url: url,
+        data: data,
+        method: 'GET',
+        headers: this.get('sessionAccount.headers')
+      };
+      if (options['onProgress']) {
+        xhrOptions['xhr'] = function (_this) {
+          return function () {
+            var xhr;
+            xhr = Ember.$.ajaxSettings.xhr();
+            xhr.onprogress = options['onProgress'];
+            return xhr;
+          };
+        }(this);
+      }
+      return Ember.$.ajax(xhrOptions).done(function (data, status, xhr) {
+        var a, blob, filename;
+        blob = new Blob([data], {
+          type: 'text/csv'
+        });
+        a = document.createElement("a");
+        a.style = "display: none";
+        document.body.appendChild(a);
+        url = window.URL.createObjectURL(blob);
+        a.href = url;
+        filename = xhr.getResponseHeader('Content-Disposition').match(/attachment; filename="([^"]+)"/)[1];
+        a.download = filename != null ? filename : {
+          filename: 'mission-report.csv'
+        };
+        a.click();
+        window.URL.revokeObjectURL(url);
+        return a.remove();
+      });
+    }
   });
 
   exports.default = MissionAdapter;
@@ -458,6 +492,29 @@ define('admin/adapters/mission_hold_reason', ['exports', 'admin/adapters/applica
   });
 
   exports.default = MissionHoldReasonAdapter;
+});
+define('admin/adapters/mission_payment', ['exports', 'admin/adapters/application', 'admin/config/environment', 'ember-data-url-templates'], function (exports, _application, _environment, _emberDataUrlTemplates) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _application.default.extend(_emberDataUrlTemplates.default, {
+    namespace: _environment.default.api.host + '/' + _environment.default.api.namespace + '/admin/missions',
+    urlTemplate: '{+namespace}/{missionId}/mission_payments{/id}',
+    queryUrlTemplate: '{+namespace}/{missionId}/mission_payments',
+    urlSegments: {
+      missionId: function (type, id, snapshot, query) {
+        if (query == undefined) {
+          return snapshot.belongsTo('mission', {
+            id: true
+          });
+        } else {
+          return query.missionId;
+        }
+      }
+    }
+  });
 });
 define('admin/adapters/mission_rejection_reason', ['exports', 'admin/adapters/application', 'admin/config/environment'], function (exports, _application, _environment) {
   'use strict';
@@ -852,6 +909,22 @@ define('admin/adapters/training-package', ['exports', 'admin/adapters/applicatio
 		urlTemplate: '{+namespace}/' + _environment.default.test_user + '/training_packages'
 	});
 });
+define('admin/adapters/vertical', ['exports', 'admin/adapters/application', 'admin/config/environment', 'ember-data-url-templates'], function (exports, _application, _environment, _emberDataUrlTemplates) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var Vertical;
+
+  Vertical = _application.default.extend(_emberDataUrlTemplates.default, {
+    namespace: _environment.default.api.host + "/" + _environment.default.api.namespace + "/public",
+    urlTemplate: '{+namespace}/verticals'
+  });
+
+  exports.default = Vertical;
+});
 define('admin/adapters/video', ['exports', 'admin/adapters/application', 'admin/config/environment', 'ember-data-url-templates'], function (exports, _application, _environment, _emberDataUrlTemplates) {
    'use strict';
 
@@ -874,6 +947,18 @@ define('admin/adapters/video', ['exports', 'admin/adapters/application', 'admin/
          }
       }
    });
+});
+define('admin/adapters/waiver', ['exports', 'admin/adapters/application', 'admin/config/environment', 'ember-data-url-templates'], function (exports, _application, _environment, _emberDataUrlTemplates) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _application.default.extend(_emberDataUrlTemplates.default, {
+    namespace: _environment.default.api.host + '/' + _environment.default.api.namespace + '/admin',
+    urlTemplate: '{+namespace}/airport_waivers{/id}',
+    queryUrlTemplate: '{+namespace}/airport_waivers'
+  });
 });
 define('admin/app', ['exports', 'admin/resolver', 'ember-load-initializers', 'admin/config/environment'], function (exports, _resolver, _emberLoadInitializers, _environment) {
   'use strict';
@@ -1062,6 +1147,11 @@ define('admin/components/add-drone-modal', ['exports'], function (exports) {
       close: function () {
         return this.get('close')();
       },
+      selectManufacturer: function (selection) {
+        console.log(selection.get('name'));
+        this.set('currentRecord.drone_manufacturer', selection);
+        return console.log(this.get('currentRecord.drone_manufacturer.name'));
+      },
       submit: function () {
         var record;
         record = this.get('currentRecord');
@@ -1115,6 +1205,19 @@ define('admin/components/add-pilot-equipment-modal', ['exports'], function (expo
   });
 
   exports.default = AddPilotEquipmentModalComponent;
+});
+define('admin/components/aria-checkbox', ['exports', 'ember-aria-checkbox/components/aria-checkbox'], function (exports, _ariaCheckbox) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  Object.defineProperty(exports, 'default', {
+    enumerable: true,
+    get: function () {
+      return _ariaCheckbox.default;
+    }
+  });
 });
 define('admin/components/asset-share', ['exports'], function (exports) {
   'use strict';
@@ -1260,6 +1363,178 @@ define('admin/components/asset-uploader', ['exports', 'admin/utils/w'], function
 
   exports.default = AssetUploaderComponent;
 });
+define('admin/components/available-timeslot-selector', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+    currPage: 1,
+    schedulingTimeslotSpan: Ember.computed(function () {
+      return this.get('model.mission.durationInHours') || this.get('model.mission.package.missionDurationInHours') || 1;
+    }),
+    dateToday: Ember.computed(function () {
+      return moment.tz(moment(), this.get('model.mission.location.timezone_id'));
+    }),
+    timezone: Ember.computed(function () {
+      return this.get('dateToday').format('z ZZ');
+    }),
+    didInsertElement: function () {
+      return this.addHoverListeners();
+    },
+    addHoverListeners: function () {
+      return Ember.run.schedule('afterRender', this, function () {
+        this.$().find('.capacity-details').on('mouseenter mouseover', function (e) {
+          return $(e.currentTarget).find('.popup').removeClass('hidden');
+        });
+        this.$().find('.capacity-details').on('mouseout', function (e) {
+          return $(e.currentTarget).find('.popup').addClass('hidden');
+        });
+      });
+    },
+    updatePagedDays: function (newPage) {
+      this.set('currPage', newPage);
+      var dayRanges = [[0, 3], [3, 7]];
+      var dayRange = dayRanges[newPage - 1];
+      this.set('model.currDays', this.get('model.upcomingDays').slice(dayRange[0], dayRange[1]));
+      this.addHoverListeners();
+    },
+    actions: {
+      prevPage: function (currPage) {
+        if (currPage > 1) {
+          var newPage = currPage - 1;
+          this.updatePagedDays(newPage);
+        }
+      },
+      nextPage: function (currPage) {
+        if (currPage < 2) {
+          var newPage = currPage + 1;
+          this.updatePagedDays(newPage);
+        }
+      },
+      selectSlots: function (timeslot_data, slotIndex, date, numberOfSlots) {
+        Em.$('.capacity').removeClass('selected');
+        if (slotIndex + numberOfSlots > 12) {
+          return;
+        }
+        for (let i = 0; i < numberOfSlots; i++) {
+          Em.$('.capacity.' + date + '-' + (slotIndex + i)).addClass('selected');
+        }
+        this.sendAction('selectAction', timeslot_data[slotIndex]);
+      }
+    }
+  });
+});
+define('admin/components/badge-dispatch-requirement-modal', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+
+    store: Ember.inject.service(),
+    equipments: [],
+    devices: [],
+    drones: [],
+    numLocations: 0,
+    model: null,
+    show: false,
+
+    droneSelectionCount: Ember.computed('model.required_drones.length', 'model.required_drone_cameras.length', function () {
+      return this.get('model.required_drones.length') + this.get('model.required_drone_cameras.length');
+    }),
+
+    droneLength: Ember.computed('drones.length', function () {
+      return this.get('drones.length');
+    }),
+
+    dronesHalf: Ember.computed('drones.length', function () {
+      return Math.floor(this.get('droneLength') / 2) - 1;
+    }),
+
+    dronesOne: Ember.computed('drones.length', function () {
+      return this.get('drones').toArray().slice(0, +this.get('dronesHalf') + 1 || 9e9);
+    }),
+
+    dronesTwo: Ember.computed('drones.length', function () {
+      return this.get('drones').toArray().slice(this.get('dronesHalf') + 1, +(this.get('droneLength') - 1) + 1 || 9e9);
+    }),
+
+    cameras: Ember.computed('drones.length', function () {
+      var cameras = [];
+      var seen = {};
+      var availableCameraIds = [];
+
+      this.get('drones').toArray().forEach(function (drone) {
+        drone.get('optional_cameras').forEach(function (camera) {
+          if (!seen[camera.get('id')]) {
+            seen[camera.get('id')] = true;
+            cameras.push(camera);
+            availableCameraIds.push(camera.get('id'));
+          }
+        });
+      });
+      return cameras;
+    }),
+
+    phones: Ember.computed('devices.length', function () {
+      return this.get('devices').toArray().filter(function (device) {
+        return device.get('device_type') == 'phone';
+      });
+    }),
+
+    tablets: Ember.computed('devices.length', function () {
+      return this.get('devices').toArray().filter(function (device) {
+        return device.get('device_type') == 'tablet';
+      });
+    }),
+
+    runValidation: function () {
+      return this.get('validate')();
+    },
+
+    actions: {
+
+      addBadgeRequiredLocation: function () {
+        var dz = this.get('store').createRecord('dispatch-zone');
+        this.get('model.badge_dispatch_zones').addObject(dz);
+        dz.set('distance', 20);
+      },
+
+      removeBadgeRequiredLocation: function (dispatch_zone) {
+        this.get('model.badge_dispatch_zones').removeObject(dispatch_zone);
+      },
+
+      close: function () {
+        if (this.runValidation()) {
+          this.sendAction('close');
+        } else {
+          var confirmDisable = confirm("You need to have at least one dispatch zone to enable auto-dispatch. Do you want to disable auto-dispatch?");
+          if (confirmDisable) {
+            this.sendAction('close', true);
+          }
+        }
+      },
+
+      toggleDroneList(event) {
+        $($('#drone-header-toggle').data('target')).toggle();
+        this.set('droneCameraOpen', !this.get('droneCameraOpen'));
+      },
+
+      toggleDeviceList(event) {
+        $($('#drone-header-toggle').data('target')).toggle();
+        this.set('devicesOpen', !this.get('devicesOpen'));
+      },
+
+      toggleEquipmentList(event) {
+        $($('#other-equipment-header-toggle').data('target')).toggle();
+        this.set('equipmentOpen', !this.get('equipmentOpen'));
+      }
+    }
+  });
+});
 define('admin/components/bread-crumb', ['exports', 'ember-crumbly/components/bread-crumb'], function (exports, _breadCrumb) {
   'use strict';
 
@@ -1285,6 +1560,14 @@ define('admin/components/bread-crumbs', ['exports', 'ember-crumbly/components/br
       return _breadCrumbs.default;
     }
   });
+});
+define('admin/components/busy-modal', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({});
 });
 define('admin/components/button-to-circle', ['exports', 'admin/config/environment'], function (exports, _environment) {
   'use strict';
@@ -1385,69 +1668,110 @@ define('admin/components/capacity-modal', ['exports', 'admin/config/environment'
     value: true
   });
   exports.default = Ember.Component.extend({
-    currPage: 1,
-    dateToday: Ember.computed(function () {
-      return moment.tz(moment(), this.get('model.mission.location.timezone_id'));
-    }),
-    timezone: Ember.computed(function () {
-      return this.get('dateToday').format('z ZZ');
-    }),
-    didInsertElement: function () {
-      return this.addHoverListeners();
-    },
-    addHoverListeners: function () {
-      return Ember.run.schedule('afterRender', this, function () {
-        this.$().find('.capacity-details').on('mouseenter mouseover', function (e) {
-          return $(e.currentTarget).find('.popup').removeClass('hidden');
-        });
-        this.$().find('.capacity-details').on('mouseout', function (e) {
-          return $(e.currentTarget).find('.popup').addClass('hidden');
-        });
-      });
-    },
-    updatePagedDays: function (newPage) {
-      this.set('currPage', newPage);
-      var dayRanges = [[0, 3], [3, 7], [7, 11]];
-      var dayRange = dayRanges[newPage - 1];
-      this.set('model.currDays', this.get('model.upcomingDays').slice(dayRange[0], dayRange[1]));
-      this.addHoverListeners();
-    },
     actions: {
-      resetPage: function () {
-        this.updatePagedDays(1);
-      },
-      prevPage: function (currPage) {
-        if (currPage > 1) {
-          var newPage = currPage - 1;
-          this.updatePagedDays(newPage);
-        }
-      },
-      nextPage: function (currPage) {
-        if (currPage < 3) {
-          var newPage = currPage + 1;
-          this.updatePagedDays(newPage);
-        }
-      },
       close: function () {
         return this.get('close')();
       },
-      selectSlot: function (start, end) {
-        Em.$('.capacity').removeClass('selected');
-        Em.$(event.target).parents('td').addClass('selected');
-        this.set('selectedStart', start);
-        this.set('selectedEnd', end);
-        this.set('selected', true);
+      setSelected: function (data) {
+        this.set('selectedTimeslotData', data);
       },
       saveSchedule: function () {
-        var data = {
-          'mission_scheduled_at_start': this.get('selectedStart'),
-          'mission_scheduled_at_end': this.get('selectedEnd')
+        let data = {
+          'mission_scheduled_at_start': this.get('selectedTimeslotData')['scheduled_at_start'],
+          'mission_scheduled_at_end': this.get('selectedTimeslotData')['scheduled_at_end'],
+          'capacity_data': this.get('selectedTimeslotData'),
+          'reason_id': this.get('model.mission.store').peekAll('reschedule-reason').filterBy('slug', 'initial_schedule')[0].id
         };
         this.get('close')();
         return this.sendAction('confirmAction', data);
       }
     }
   });
+});
+define('admin/components/checkbox-aria', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var CheckboxAriaComponent;
+
+  CheckboxAriaComponent = Ember.Component.extend({
+    init: function () {
+      this._super();
+      if (this.get('includeManufacturer')) {
+        return this.send("checkPresenceInSelection", "full_name");
+      } else if (this.get('byAttribute')) {
+        return this.send("checkIfInSelection", this.get('byAttribute'));
+      } else {
+        return this.send("checkPresenceInSelection", "name");
+      }
+    },
+    selectionsObserver: Ember.observer('selections', 'selections.length', function () {
+      if (this.get('includeManufacturer')) {
+        return this.send("checkPresenceInSelection", "full_name");
+      } else if (this.get('byAttribute')) {
+        return this.send("checkIfInSelection", this.get('byAttribute'));
+      } else {
+        return this.send("checkPresenceInSelection", "name");
+      }
+    }),
+    label: Ember.computed('model', 'includeManufacturer', function () {
+      if (this.get('includeManufacturer')) {
+        return this.get('model.full_name');
+      } else {
+        return this.get('model.name');
+      }
+    }),
+    formattedLabel: Ember.computed('label', function () {
+      if (this.get('label') == null) {
+        return 'untitled';
+      }
+      return this.get('label').toLowerCase().replace(/[^a-z0-9\s]/gi, '').replace(/[_\s]/g, '-');
+    }),
+    valueChanged: Ember.observer('checked', function () {
+      var checked, selections;
+      checked = this.get('checked');
+      selections = this.get('selections');
+      if (!selections) {
+        selections = [];
+      }
+      if (checked) {
+        if (typeof selections.then === 'function') {
+          selections.pushObject(this.get('model'));
+        } else {
+          selections = selections.without('a b c d').toArray();
+          selections.push(this.get('model'));
+        }
+      } else {
+        if (typeof selections.then === 'function') {
+          selections.removeObject(this.get('model'));
+        } else {
+          if (this.get('model.id') === void 0) {
+            selections = selections.without(this.get('model'));
+          } else {
+            selections = selections.rejectBy('id', this.get('model.id'));
+          }
+        }
+      }
+      return this.set('selections', selections);
+    }),
+    actions: {
+      checkIfInSelection: function (byAttribute) {
+        if (this.get("selections").compact().getEach(byAttribute).indexOf(this.get('model').get(byAttribute)) >= 0) {
+          return this.set("checked", true);
+        }
+      },
+      checkPresenceInSelection: function (byAttribute) {
+        if (this.get("selections").compact().getEach(byAttribute).indexOf(this.get("label")) >= 0) {
+          return this.set("checked", true);
+        }
+      }
+    }
+  });
+
+  exports.default = CheckboxAriaComponent;
 });
 define('admin/components/checkbox-item', ['exports', 'admin/config/environment'], function (exports, _environment) {
   'use strict';
@@ -1696,7 +2020,7 @@ define('admin/components/clients/client-profile-edit', ['exports'], function (ex
 
   exports.default = ClientProfileEditComponent;
 });
-define('admin/components/clients/package-form', ['exports'], function (exports) {
+define('admin/components/clients/package-form', ['exports', 'admin/data/cloud-options', 'admin/data/duration-options', 'admin/data/sla-options'], function (exports, _cloudOptions, _durationOptions, _slaOptions) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -1707,6 +2031,9 @@ define('admin/components/clients/package-form', ['exports'], function (exports) 
 
   PackageFormComponent = Ember.Component.extend({
     tagName: "form",
+    cloudOptions: _cloudOptions.default,
+    durationOptions: _durationOptions.default,
+    slaOptions: _slaOptions.default,
     disableOnEdit: Ember.computed('model.package.isNew', function () {
       return !this.get('model.package.isNew');
     }),
@@ -1855,6 +2182,28 @@ define('admin/components/collaborator-list', ['exports', 'admin/config/environme
 
   exports.default = CollaboratorListComponent;
 });
+define('admin/components/collapsible-panel', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+
+    open: true,
+
+    didInsertElement: function () {
+      this._super(...arguments);
+      Ember.$(this.element);
+    },
+
+    actions: {
+      toggle: function () {
+        this.toggleProperty('open');
+      }
+    }
+  });
+});
 define('admin/components/collapsible-sidebar-item', ['exports'], function (exports) {
   'use strict';
 
@@ -1996,6 +2345,42 @@ define('admin/components/device-index-list', ['exports', 'admin/components/equip
 
   exports.default = DeviceIndexListComponent;
 });
+define('admin/components/dispatch-zone-autocomplete', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+
+    errorState: false,
+
+    inputClass: Ember.computed('error', function () {
+      var output = 'place-autocomplete--input form-control';
+      if (this.get('error')) {
+        output = output + ' error';
+      }
+      return output;
+    }),
+
+    actions: {
+
+      placeChanged(data) {
+        try {
+          var location = data['geometry']['location'];
+          this.get('model').set('latitude', location.lat());
+          this.get('model').set('longitude', location.lng());
+          console.log(location.lat(), location.lng());
+          this.set('error', this.get('model.latitude') == null || this.get('model.longitude') == null);
+        } catch (err) {
+          this.set('error', true);
+        }
+      }
+
+    }
+
+  });
+});
 define('admin/components/drone-index-list', ['exports', 'admin/components/equipment-index-list'], function (exports, _equipmentIndexList) {
   'use strict';
 
@@ -2012,6 +2397,11 @@ define('admin/components/drone-index-list', ['exports', 'admin/components/equipm
     cachedRecords: [],
     recordType: null,
     actions: {
+      addRecord: function () {
+        this.set('currentRecord', this.get('store').createRecord(this.get('recordType')));
+        this.get('currentRecord').set('drone_manufacturer', this.get('droneManufacturers.firstObject'));
+        return this.set('showModal', true);
+      },
       cloneRecord: function (record) {
         var camera, i, len, ref;
         this.set('currentRecord', this.get('store').createRecord(this.get('recordType')));
@@ -2481,6 +2871,7 @@ define('admin/components/filter-missions', ['exports', 'admin/config/environment
       }
     },
     requestClients: function (client) {
+      this.set('clientEmailSearch', client.includes('@'));
       return Ember.$.ajax({
         url: _environment.default.api.host + "/v1/admin/clients?quick_search=true&q=" + client,
         headers: this.get('sessionAccount.headers'),
@@ -2513,14 +2904,21 @@ define('admin/components/filter-missions', ['exports', 'admin/config/environment
           requestFunc = function () {
             return this.requestClients(this.get('client')).then(function (_this) {
               return function (response) {
-                var client, formedClient, i, len, list, ref;
+                var client, companyOrFullName, formedClient, i, len, list, option, ref;
                 list = [];
                 ref = response.data;
                 for (i = 0, len = ref.length; i < len; i++) {
                   client = ref[i];
+                  companyOrFullName = client.attributes.company_name || client.attributes.first_name + " " + client.attributes.last_name;
+                  if (_this.get('clientEmailSearch')) {
+                    option = client.attributes.email;
+                  } else {
+                    option = companyOrFullName;
+                  }
                   formedClient = {
                     id: client.id,
-                    companyOrFullName: client.attributes.company_name || client.attributes.first_name + " " + client.attributes.last_name
+                    selectableOption: option,
+                    companyOrFullName: companyOrFullName
                   };
                   list.push(formedClient);
                 }
@@ -2823,7 +3221,7 @@ define('admin/components/main-navigation', ['exports'], function (exports) {
       return this.get('router.currentPath').includes('pilots');
     }),
     highlightedAdminTools: Ember.computed('router.currentPath', function () {
-      return this.get('router.currentPath').includes('global_assets') || this.get('router.currentPath').includes('templates') || this.get('router.currentPath').includes('partner_integration') || this.get('router.currentPath').includes('equipment') || this.get('router.currentPath').includes('badges');
+      return this.get('router.currentPath').includes('global_assets') || this.get('router.currentPath').includes('waivers') || this.get('router.currentPath').includes('templates') || this.get('router.currentPath').includes('partner_integration') || this.get('router.currentPath').includes('equipment') || this.get('router.currentPath').includes('badges');
     }),
     click: function (e) {
       var el;
@@ -2840,177 +3238,6 @@ define('admin/components/main-navigation', ['exports'], function (exports) {
   });
 
   exports.default = MainNavigationComponent;
-});
-define('admin/components/mapbox-map', ['exports'], function (exports) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-
-  var MapboxMapComponent,
-      indexOf = [].indexOf || function (item) {
-    for (var i = 0, l = this.length; i < l; i++) {
-      if (i in this && this[i] === item) return i;
-    }return -1;
-  };
-
-  MapboxMapComponent = Ember.Component.extend({
-    session: Ember.inject.service(),
-    needActionStatus: ['created', 'confirmed', 'pilots_notified', 'unfulfilled'],
-    map: null,
-    missionLayer: null,
-    didInsertElement: function () {
-      return Ember.run.scheduleOnce('afterRender', this, function () {
-        return this.initMap();
-      });
-    },
-    didReceiveAttrs: function () {
-      return this.setupGeojson();
-    },
-    setupGeojson: function () {
-      var geojson;
-      if (this.map) {
-        geojson = this.get('geoJsonArrayForMissions');
-        this.missionLayer.setGeoJSON(geojson);
-        if (geojson.length) {
-          return this.map.fitBounds(this.missionLayer.getBounds());
-        }
-      }
-    },
-    generateFeatureContent: function (properties) {
-      var addressFirstLine, addressSecondLine, content, link, missionPrice, missionShortName, scheduled_date, scheduled_time;
-      addressFirstLine = properties.address.get('address');
-      addressSecondLine = this.getAddressSecondLine(properties.address);
-      link = this.getMissionLink(properties.missionId);
-      missionShortName = properties.mission_type.get('vertical.short_name');
-      missionPrice = properties.mission_type.get('price') / 100;
-      scheduled_date = properties.scheduled_date;
-      scheduled_time = properties.scheduled_time;
-      content = "<div class='info-window-panel'> <div class='left-panel'> <div class='addresses'> <div class='addressFirstLine'> " + addressFirstLine + " </div> <div class='addressSecondLine'> " + addressSecondLine + " </div> </div> <div class='mission-details'> " + missionShortName + " $" + missionPrice + " <br /> <b>Payout: </b> " + properties.payout + " <br /> <b>Status: </b> " + properties.status + " <br /> </div> </div> <div class='right-panel'> " + scheduled_date + " <br /> " + scheduled_time + " <a href='" + link + "' target='_blank' class='turquoise-button'>View</a> </div> </div>";
-      return content;
-    },
-    initMap: function () {
-      var _this, geojson;
-      L.mapbox.accessToken = 'pk.eyJ1IjoiZHJvbmViYXNlLWVuZyIsImEiOiJjamd6ZmcxNWowMWFzMnFycGFmdHhyN2Y3In0.1esJJNW-X93nqHOwdZnJug';
-      this.map = L.mapbox.map('map').setView([37.8, -96], 4);
-      L.mapbox.styleLayer('mapbox://styles/dronebase-eng/cjl2nhmob6spv2rs8w4sp1iu1').addTo(this.map);
-      this.missionLayer = L.mapbox.featureLayer().addTo(this.map);
-      geojson = this.get('geoJsonArrayForMissions');
-      _this = this;
-      this.missionLayer.on('layeradd', function (e) {
-        var content, feature, marker, properties;
-        marker = e.layer;
-        if (marker.feature.type === 'Feature') {
-          feature = marker.feature;
-          properties = feature.properties;
-          marker.setIcon(L.divIcon(properties.icon));
-          content = _this.generateFeatureContent(properties);
-          return marker.bindPopup(content);
-        }
-      });
-      this.missionLayer.setGeoJSON(geojson);
-      this.map.featureLayer.on('click', function (e) {
-        return this.map.panTo(e.layer.getLatLng());
-      });
-      return this.missionLayer.on('ready', function (e) {
-        if (geojson.length) {
-          return this.map.fitBounds(this.missionLayer.getBounds());
-        }
-      });
-    },
-    geoJsonArrayForMissions: Ember.computed('missions.[]', function () {
-      var _this, geojson;
-      geojson = [];
-      _this = this;
-      this.get('missions').forEach(function (mission) {
-        var added_comma, iconClass, missionJson, payout, ref, scheduled_date, scheduled_time;
-        iconClass = 'blue-pin';
-        if (ref = mission.get('status'), indexOf.call(_this.needActionStatus, ref) >= 0) {
-          iconClass = 'yellow-pin';
-        }
-        if (mission.get('scheduled_at_start')) {
-          scheduled_date = moment.tz(mission.get('scheduled_at_start'), mission.get('location.timezone_id')).format('MM/DD/YYYY');
-          scheduled_time = moment.tz(mission.get('scheduled_at_start'), mission.get('location.timezone_id')).format('hh:mmA') + " - " + moment.tz(mission.get('scheduled_at_end'), mission.get('location.timezone_id')).format('hh:mmA');
-          if (scheduled_time) {
-            added_comma = ",";
-          }
-        } else {
-          scheduled_date = "1 - 3 Days";
-          scheduled_time = "";
-        }
-        payout = "Not set";
-        if (mission.get('estimated_pilot_payout') && !(mission.get('estimated_pilot_payout') === "0")) {
-          payout = "$" + mission.get('estimated_pilot_payout') / 100;
-        }
-        if (mission.get('location.longitude') && mission.get('location.latitude')) {
-          missionJson = {
-            type: 'Feature',
-            geometry: {
-              type: 'Point',
-              coordinates: [parseFloat(mission.get('location.longitude')), parseFloat(mission.get('location.latitude'))]
-            },
-            properties: {
-              icon: {
-                className: iconClass,
-                iconSize: null,
-                iconAnchor: [16, 37],
-                popupAnchor: [0, -42]
-              },
-              address: mission.get('location'),
-              scheduled_date: scheduled_date,
-              scheduled_time: scheduled_time,
-              mission_type: mission.get('package'),
-              status: mission.get('status'),
-              payout: payout,
-              missionId: mission.get('id')
-            }
-          };
-          return geojson.push(missionJson);
-        }
-      });
-      return geojson;
-    }),
-    geoJsonPolygons: function () {},
-    getMissionLink: function (missionId) {
-      return "missions/" + missionId + "/edit";
-    },
-    getAddressSecondLine: function (location) {
-      var addressParts;
-      addressParts = [location.get('city'), location.get('state'), location.get('postal_code'), location.get('country')];
-      return addressParts = addressParts.filter(function (part) {
-        return part;
-      }).join(', ');
-    }
-  });
-
-  exports.default = MapboxMapComponent;
-});
-define('admin/components/md-dummy', ['exports', 'ember-remarkable/components/md-dummy'], function (exports, _mdDummy) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  Object.defineProperty(exports, 'default', {
-    enumerable: true,
-    get: function () {
-      return _mdDummy.default;
-    }
-  });
-});
-define('admin/components/md-text', ['exports', 'ember-remarkable/components/md-text'], function (exports, _mdText) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  Object.defineProperty(exports, 'default', {
-    enumerable: true,
-    get: function () {
-      return _mdText.default;
-    }
-  });
 });
 define('admin/components/mission-asset-map', ['exports'], function (exports) {
   'use strict';
@@ -3140,7 +3367,7 @@ define('admin/components/mission-asset-map', ['exports'], function (exports) {
       total = this.get('mapImageMarkers.length');
       if (total && total > 0) {
         this.get('mapImageMarkers').forEach(function (image) {
-          if (image.get('gps_latitude') && image.get('gps_longitude')) {
+          if (image.get('gps_latitude') && image.get('gps_longitude') && image.get('gps_latitude') !== '0' && image.get('gps_longitude') !== '0') {
             return markers.push(new google.maps.Marker({
               icon: _this.markerIcon(total),
               map: _this.map,
@@ -3212,6 +3439,49 @@ define('admin/components/mission-asset-map', ['exports'], function (exports) {
   });
 
   exports.default = MissionAssetMapComponent;
+});
+define('admin/components/mission-assets-meta', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+    timeSortedImages: Ember.computed('mission.images.[]', function () {
+      return this.get('mission.images').filterBy('taken_at').sortBy('taken_at');
+    }),
+    totalAssetsCount: Ember.computed('mission.images.[]', 'mission.videos.[]', 'mission.panoramas.[]', function () {
+      return this.get('mission.images.length') + this.get('mission.videos.length') + this.get('mission.panoramas.length');
+    }),
+    firstImageTakenAt: Ember.computed('timeSortedImages', function () {
+      if (this.get('timeSortedImages.firstObject')) {
+        return this.get('timeSortedImages.firstObject').get('formattedTakenAt');
+      }
+    }),
+    lastImageTakenAt: Ember.computed('timeSortedImages', function () {
+      if (this.get('timeSortedImages.lastObject')) {
+        return this.get('timeSortedImages.lastObject').get('formattedTakenAt');
+      }
+    }),
+    cameraMakes: Ember.computed('mission.images.[]', function () {
+      return this.get('mission.images').uniqBy('camera_make').map(function (image) {
+        return image.camera_make;
+      }).compact().join(', ');
+    }),
+    cameraModels: Ember.computed('mission.images.[]', function () {
+      return this.get('mission.images').uniqBy('camera_model').map(function (image) {
+        return image.camera_model;
+      }).compact().join(', ');
+    }),
+    actions: {
+      shareShareable: function (shareable, deferred) {
+        return this.sendAction('shareCreateAction', shareable, deferred);
+      },
+      regenerateZip: function (mission) {
+        return mission.regenerateZip();
+      }
+    }
+  });
 });
 define('admin/components/mission-flight-app', ['exports', 'admin/config/environment', 'ember-cli-file-saver/mixins/file-saver'], function (exports, _environment, _fileSaver) {
   'use strict';
@@ -3454,6 +3724,241 @@ define('admin/components/mission-flight-app', ['exports', 'admin/config/environm
   });
 
   exports.default = MissionFlightAppComponent;
+});
+define('admin/components/mission-list-map', ['exports', 'admin/data/mission_type', 'admin/config/environment', 'admin/data/map_style'], function (exports, _mission_type, _environment, _map_style) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var MissionListMapComponent,
+      indexOf = [].indexOf || function (item) {
+    for (var i = 0, l = this.length; i < l; i++) {
+      if (i in this && this[i] === item) return i;
+    }return -1;
+  };
+
+  MissionListMapComponent = Ember.Component.extend({
+    session: Ember.inject.service(),
+    needActionStatus: ['created', 'confirmed', 'pilots_notified', 'unfulfilled'],
+    missionMarkers: Ember.A([]),
+    missionFilters: Ember.A([]),
+    missionTypeData: _mission_type.default,
+    mapStyles: _map_style.default,
+    didInsertElement: function () {
+      return Ember.run.scheduleOnce('afterRender', this, function () {
+        this.setupFilters();
+        return this.initMap();
+      });
+    },
+    setupFilters: function () {
+      var MissionType;
+      MissionType = Em.Object.extend({
+        type: null,
+        color: null,
+        fontIcon: null,
+        png: null,
+        name: null,
+        selected: true,
+        selected_png: null
+      });
+      return this.missionTypeData.forEach(function (_this) {
+        return function (mission_type) {
+          var icon_png, icon_png_array, missionType;
+          missionType = MissionType.create(mission_type);
+          icon_png_array = missionType.png.split('.');
+          icon_png_array[0] = icon_png_array[0] + '_selected';
+          icon_png = icon_png_array.join('.');
+          return _this.get('missionFilters').pushObject(missionType);
+        };
+      }(this));
+    },
+    initMap: function () {
+      var mapOptions, zoom;
+      zoom = this.smallDevice ? 13 : 15;
+      mapOptions = {
+        zoom: zoom,
+        tilt: 0,
+        streetViewControl: false,
+        scaleControl: true,
+        panControl: true,
+        zoomControl: true,
+        draggable: true,
+        scrollwheel: !this.get('publicsearch'),
+        styles: this.mapStyles,
+        zoomControlOptions: {
+          style: google.maps.ZoomControlStyle.SMALL,
+          position: google.maps.ControlPosition.LEFT_BOTTOM
+        }
+      };
+      if (!this.map) {
+        this.map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+      }
+      this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(document.getElementById('map-filter-container'));
+      this.infoWindow = new google.maps.InfoWindow();
+      this.loadMissions(true);
+      this.setupInfoWindow();
+      return google.maps.event.addListener(this.map, 'click', function (_this) {
+        return function () {
+          return _this.infoWindow.close();
+        };
+      }(this));
+    },
+    loadMissions: function (set_bounds) {
+      var bounds;
+      if (set_bounds == null) {
+        set_bounds = false;
+      }
+      bounds = new google.maps.LatLngBounds();
+      this.clearMissionMarkers();
+      this.get('missions').forEach(function (_this) {
+        return function (mission) {
+          var marker;
+          marker = _this.createMarker(mission);
+          if (!marker) {
+            return;
+          }
+          bounds.extend(marker.getPosition());
+          return _this.missionMarkers.pushObject(marker);
+        };
+      }(this));
+      if (set_bounds) {
+        return this.map.fitBounds(bounds);
+      }
+    },
+    setupInfoWindow: function () {
+      var _this;
+      _this = this;
+      this.infoWindow = new google.maps.InfoWindow();
+      this.infoWindowNode = Ember.$('#info-window-node');
+      return this.infoWindow.addListener('domready', function (event) {
+        var iwBackground, iwCloseBtn, iwOuter;
+        iwOuter = Ember.$('.gm-style-iw');
+        iwOuter.children().first().css({
+          'display': 'block'
+        });
+        iwOuter.addClass('mission-list');
+        iwBackground = iwOuter.prev();
+        iwBackground.children(':nth-child(2)').css({
+          'display': 'none'
+        });
+        iwBackground.children(':nth-child(4)').css({
+          'display': 'none'
+        });
+        iwBackground.children(':nth-child(3)').find('div').children().css({
+          'z-index': 1,
+          'box-shadow': '0 1px 6px rgba(178, 178, 178, 0.6)'
+        });
+        iwCloseBtn = iwOuter.next();
+        return iwCloseBtn.css({
+          'display': 'none'
+        });
+      });
+    },
+    clearMissionMarkers: function () {
+      this.missionMarkers.forEach(function (marker) {
+        return marker.setMap(null);
+      });
+      return this.missionMarkers.clear();
+    },
+    createMarker: function (mission) {
+      var _this, marker;
+      marker = new google.maps.Marker({
+        position: new google.maps.LatLng(mission.get('location.latitude'), mission.get('location.longitude')),
+        map: this.map,
+        icon: this.getIcon(mission)
+      });
+      _this = this;
+      mission.set('map_marker', marker);
+      google.maps.event.addListener(marker, 'click', function (_this) {
+        return function () {
+          var content;
+          _this.selectMission(mission);
+          _this.infoWindow.setPosition(marker.position);
+          content = _this.generateInfoNodeContent(mission);
+          _this.infoWindow.setOptions({
+            content: content,
+            pixelOffset: new google.maps.Size(0, -37),
+            disableAutoPan: false
+          });
+          _this.infoWindowNode = Ember.$('#info-window-node');
+          return _this.infoWindow.open(_this.map);
+        };
+      }(this));
+      return marker;
+    },
+    getIcon: function (mission, selected) {
+      var anchor, icon, icon_png, ref;
+      if (selected == null) {
+        selected = false;
+      }
+      icon_png = '/assets/images/client_pin_32x42px.png';
+      if (ref = mission.get('status'), indexOf.call(this.needActionStatus, ref) >= 0) {
+        icon_png = '/assets/images/available_pin_32x42px.png';
+      }
+      anchor = new google.maps.Point(16, 37);
+      icon = {
+        url: icon_png,
+        anchor: anchor,
+        type: mission.get('missionStatusType')
+      };
+      return icon;
+    },
+    selectMission: function (mission, pan_to) {
+      var selected_missions;
+      if (pan_to == null) {
+        pan_to = false;
+      }
+      selected_missions = this.get('missions').filterBy('selected_on_dashboard', true);
+      if (selected_missions) {
+        selected_missions.forEach(function (_this) {
+          return function (selected_mission) {
+            selected_mission.get('map_marker').setIcon(_this.getIcon(selected_mission));
+            return selected_mission.set('selected_on_dashboard', false);
+          };
+        }(this));
+      }
+      mission.set('selected_on_dashboard', true);
+      mission.get('map_marker').setIcon(this.getIcon(mission, true));
+      if (pan_to) {
+        return this.map.panTo(mission.get('map_marker').getPosition());
+      }
+    },
+    generateInfoNodeContent: function (mission) {
+      var addressFirstLine, addressSecondLine, content, link, missionPrice, missionShortName, payout, scheduled_date, scheduled_time, status;
+      addressFirstLine = mission.get('location.address');
+      addressSecondLine = this.getAddressSecondLine(mission.get('location'));
+      link = this.getMissionLink(mission.get('id'));
+      missionShortName = mission.get('package').get('vertical.short_name');
+      missionPrice = mission.get('package').get('price') / 100;
+      scheduled_date = "Unscheduled";
+      scheduled_time = "";
+      if (mission.get('scheduled_at_start')) {
+        scheduled_date = moment.tz(mission.get('scheduled_at_start'), mission.get('location.timezone_id')).format('MM/DD/YYYY');
+        scheduled_time = moment.tz(mission.get('scheduled_at_start'), mission.get('location.timezone_id')).format('hh:mmA') + " - " + moment.tz(mission.get('scheduled_at_end'), mission.get('location.timezone_id')).format('hh:mmA');
+      }
+      payout = "Not set";
+      if (mission.get('estimated_pilot_payout') && !(mission.get('estimated_pilot_payout') === "0")) {
+        payout = "$" + mission.get('estimated_pilot_payout') / 100;
+      }
+      status = mission.get('status');
+      content = "<div class='info-window-panel'> <div class='left-panel'> <div class='addresses'> <div class='addressFirstLine'> " + addressFirstLine + " </div> <div class='addressSecondLine'> " + addressSecondLine + " </div> </div> <div class='mission-details'> " + missionShortName + " $" + missionPrice + " <br /> <b>Payout: </b> " + payout + " <br /> <b>Status: </b> " + status + " <br /> </div> </div> <div class='right-panel'> " + scheduled_date + " <br /> " + scheduled_time + " <a href='" + link + "' target='_blank' class='btn btn-primary btn-sm'>View</a> </div> </div>";
+      return content;
+    },
+    getMissionLink: function (missionId) {
+      return "missions/" + missionId + "/edit";
+    },
+    getAddressSecondLine: function (location) {
+      var addressParts;
+      addressParts = [location.get('city'), location.get('state'), location.get('postal_code'), location.get('country')];
+      return addressParts = addressParts.filter(function (part) {
+        return part;
+      }).join(', ');
+    }
+  });
+
+  exports.default = MissionListMapComponent;
 });
 define('admin/components/mission-map', ['exports'], function (exports) {
   'use strict';
@@ -4373,7 +4878,7 @@ define('admin/components/mission-plan-map', ['exports', 'admin/config/environmen
       var _this, contentArr;
       _this = this;
       contentArr = target.content.split('||');
-      this.infoWindowNode.html("<strong>" + contentArr[1] + "</strong><br> <textarea id=" + contentArr[0] + " placeholder='Details' rows='3'>" + contentArr[2] + "</textarea><br> <p class='small pull-left'>" + contentArr[3] + "</p> <p class='shots small pull-left'>" + contentArr[4] + "</p> <button id=" + contentArr[0] + " class='btn btn-xs btn-danger pull-right'>delete</button>");
+      this.infoWindowNode.html("<strong>" + contentArr[1] + "</strong><br> <textarea id=" + contentArr[0] + " placeholder='Details' rows='3'>" + contentArr[2] + "</textarea><br> <p class='small pull-left'>" + contentArr[3] + "</p> <p class='shots small pull-left'>" + contentArr[4] + "</p> <button id=" + contentArr[0] + " class='btn btn-primary btn-xs pull-right'>delete</button>");
       this.infoWindowNode.contents('button').click(function (event) {
         var f;
         f = _this.get('model.features').findBy('id', Number(event.target.id));
@@ -4622,7 +5127,8 @@ define('admin/components/mission-schedule', ['exports', 'admin/config/environmen
       saveSchedule: function () {
         var data = {
           'mission_scheduled_at_start': this.get('selectedStart'),
-          'mission_scheduled_at_end': this.get('selectedEnd')
+          'mission_scheduled_at_end': this.get('selectedEnd'),
+          'reason_id': this.get('model.mission.store').peekAll('reschedule-reason').filterBy('slug', 'initial_schedule')[0].id
         };
         return this.sendAction('saveAction', data);
       },
@@ -4630,6 +5136,7 @@ define('admin/components/mission-schedule', ['exports', 'admin/config/environmen
         this.set('model.mission.admin_scheduled', false);
         this.set('model.mission.scheduled_at_start', null);
         this.set('model.mission.scheduled_at_end', null);
+        this.set('model.mission.isScheduled', false);
         return this.get('model.mission').save();
       },
       rescheduleFlight: function () {
@@ -4641,7 +5148,8 @@ define('admin/components/mission-schedule', ['exports', 'admin/config/environmen
           url: _environment.default.api.host + "/v1/admin/missions/" + this.get('model.mission').id + "/capacity_estimations",
           type: 'POST',
           dataType: 'json',
-          headers: this.get('sessionAccount.headers')
+          headers: this.get('sessionAccount.headers'),
+          data: { timeslot_duration: this.get('model.mission.duration') }
         }).then(function (response) {
           return _this.sendAction('showCapacityModal', response.data.attributes.availability_slots);
         }, function (error) {
@@ -4655,7 +5163,7 @@ define('admin/components/mission-schedule', ['exports', 'admin/config/environmen
     }
   });
 });
-define('admin/components/mission-shotlist-assets', ['exports'], function (exports) {
+define('admin/components/mission-shotlist-assets', ['exports', 'admin/config/environment'], function (exports, _environment) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -4665,6 +5173,7 @@ define('admin/components/mission-shotlist-assets', ['exports'], function (export
   var MissionShotlistAssetsComponent;
 
   MissionShotlistAssetsComponent = Ember.Component.extend({
+    sessionAccount: Ember.inject.service(),
     actions: {
       addAsset: function (file, shot_id) {
         return this.sendAction('onfileadd', file, shot_id);
@@ -4681,8 +5190,16 @@ define('admin/components/mission-shotlist-assets', ['exports'], function (export
       viewAsset: function (asset) {
         return asset.set('viewing', true);
       },
-      regenerateZip: function (mission) {
-        return mission.regenerateZip();
+      reprocessShot: function (shot) {
+        if (!confirm('Delete pano and restitch?')) {
+          return;
+        }
+        return Ember.$.ajax({
+          url: _environment.default.api.host + "/v1/admin/missions/" + shot.get('mission.id') + "/panoramas/" + shot.get('firstPano.id') + "/restart",
+          method: 'POST',
+          dataType: 'json',
+          headers: this.get('sessionAccount.headers')
+        });
       }
     }
   });
@@ -4699,7 +5216,9 @@ define('admin/components/mission-shotlist-shot-assets', ['exports', 'admin/confi
   var MissionShotlistShotAssetsComponent;
 
   MissionShotlistShotAssetsComponent = Ember.Component.extend({
+    sessionAccount: Ember.inject.service(),
     classNames: ['panel panel-default'],
+    showUploader: false,
     galleryImages: Ember.computed('shot.images.@each.source_type', function () {
       var _this;
       _this = this;
@@ -4719,29 +5238,72 @@ define('admin/components/mission-shotlist-shot-assets', ['exports', 'admin/confi
         record: image
       };
     },
-    galleryOptions: {
-      hideShare: true
-    },
     imagesProcessing: Ember.computed('shot.images.@each.processing', function () {
       return this.get('shot.images').filterBy('processing');
     }),
     actions: {
       promoteAll: function () {
-        return this.get('shot').promoteAssets().then(function (_this) {
+        var request;
+        request = this.get('shot').promoteAssets().then(function (_this) {
           return function (response) {
             _this.get('shot.mission').loadImages();
             _this.get('shot.mission').loadVideos();
             return _this.get('shot.mission').loadPanoramas();
           };
         }(this));
+        if (this.get('onBusy')) {
+          this.get('onBusy')(request);
+        }
+        return request;
       },
       downloadShotArchive: function () {
         return this.get('shot').downloadImages().then(function (response) {
           return alert("The zip file is now generating, and will be sent to your email");
         });
       },
+      resetPano: function (id) {
+        if (!confirm('Delete pano and restitch?')) {
+          return;
+        }
+        return Ember.$.ajax({
+          url: _environment.default.api.host + "/v1/admin/missions/" + this.get('shot.mission.id') + "/panoramas/" + id + "/restart",
+          method: 'POST',
+          dataType: 'json',
+          headers: this.get('sessionAccount.headers')
+        }).then(function (_this) {
+          return function (response) {
+            return location.reload();
+          };
+        }(this), function (_this) {
+          return function (error) {
+            return alert('Could not send request');
+          };
+        }(this));
+      },
+      processPano: function (id) {
+        if (!confirm('Stitch pano?')) {
+          return;
+        }
+        return Ember.$.ajax({
+          url: _environment.default.api.host + "/v1/admin/missions/" + this.get('shot.mission.id') + "/panoramas/stitch",
+          method: 'POST',
+          dataType: 'json',
+          headers: this.get('sessionAccount.headers')
+        }).then(function (_this) {
+          return function (response) {
+            return location.reload();
+          };
+        }(this), function (_this) {
+          return function (error) {
+            return alert('Could not send request');
+          };
+        }(this));
+      },
       addAsset: function (file) {
         return this.sendAction('onfileadd', file, this.get('shot.id'));
+      },
+      toggleShowUploader: function () {
+        return this.set('showUploader', !this.get('showUploader'));
       },
       startUpload: function (uploader) {
         return this.sendAction('onstartupload', uploader);
@@ -4756,25 +5318,30 @@ define('admin/components/mission-shotlist-shot-assets', ['exports', 'admin/confi
         return window.open(_environment.default.panoEditor.host + "/p/" + panorama.get('accessKey') + "/edit");
       },
       deleteAsset: function (asset, proxyAsset) {
-        var _this;
+        var _this, request;
         if (asset && window.confirm('Are you sure? This will permanently remove this asset.')) {
           _this = this;
-          return asset.destroyRecord().then(function (response) {
+          request = asset.destroyRecord().then(function (response) {
             if (proxyAsset) {
               return _this.get('galleryImages').removeObject(proxyAsset);
             }
           }, function (response) {
             return alert('There was an issue deleting this asset');
           });
+          if (this.get('onBusy')) {
+            this.get('onBusy')(request);
+          }
+          return request;
         }
       },
       toggleSourceType: function (asset) {
+        var request;
         if (asset.get('source_type') === 'raw') {
           asset.set('source_type', 'edit');
         } else {
           asset.set('source_type', 'raw');
         }
-        return asset.save().then(function (response) {}, function (response) {
+        request = asset.save().then(function (response) {}, function (response) {
           if (asset.get('source_type') === 'raw') {
             asset.set('source_type', 'edit');
           } else {
@@ -4782,6 +5349,10 @@ define('admin/components/mission-shotlist-shot-assets', ['exports', 'admin/confi
           }
           return alert("There was an error updating asset " + asset.get('id'));
         });
+        if (this.get('onBusy')) {
+          this.get('onBusy')(request);
+        }
+        return request;
       },
       viewAsset: function (asset) {
         return asset.set('viewing', true);
@@ -4935,6 +5506,9 @@ define('admin/components/mission-status-filter', ['exports'], function (exports)
       value: 'assets_uploaded',
       name: 'Assets Uploaded'
     }, {
+      value: 'processing_shots',
+      name: 'Processing Shots'
+    }, {
       value: 'assets_classified',
       name: 'Assets Classified'
     }, {
@@ -5035,7 +5609,7 @@ define('admin/components/mission-status-rewind-button', ['exports', 'admin/confi
       });
     },
     click: function (e) {
-      var _model, _this, confirm, headers;
+      var _model, _this, confirm, headers, request;
       e.preventDefault();
       e.stopPropagation();
       if (this.get('model').get('isOnHold')) {
@@ -5047,17 +5621,22 @@ define('admin/components/mission-status-rewind-button', ['exports', 'admin/confi
         _model = this.get('model');
         headers = this.get('headers');
         _this.set('isSendingRequest', true);
-        return Ember.$.ajax({
+        request = Ember.$.ajax({
           url: _environment.default.api.host + "/v1/admin/missions/" + _model.id + "/status?rewind=true",
           type: 'PATCH',
           dataType: 'json',
           headers: headers
-        }).then(function (response) {
+        });
+        request.then(function (response) {
           _model.reload();
           return _this.set('isSendingRequest', false);
         }, function (response) {
           return _this.set('isSendingRequest', false);
         });
+        if (this.get('onBusy')) {
+          this.get('onBusy')(request);
+        }
+        return request;
       }
     }
   });
@@ -5097,6 +5676,7 @@ define('admin/components/mission-status-update-button', ['exports', 'admin/confi
         case 'pilot_accepted':
         case 'flight_complete':
         case 'assets_uploaded':
+        case 'processing_shots':
         case 'assets_classified':
         case 'in_production':
         case 'awaiting_payment':
@@ -5112,9 +5692,9 @@ define('admin/components/mission-status-update-button', ['exports', 'admin/confi
       switch (this.get('model.status')) {
         case 'created':
           if (this.get('confirmAndAutoDispatchButton')) {
-            return 'confirm and auto-dispatch';
+            return 'Confirm and auto-dispatch';
           } else {
-            return 'confirmed';
+            return 'Confirmed';
           }
           break;
         case 'pilot_accepted':
@@ -5122,7 +5702,7 @@ define('admin/components/mission-status-update-button', ['exports', 'admin/confi
         case 'flight_complete':
           return 'Assets Uploaded';
         case 'assets_uploaded':
-          return 'Assets Classified';
+          return 'Processing Shots';
         case 'assets_classified':
           return 'In Production';
         case 'in_production':
@@ -5156,7 +5736,7 @@ define('admin/components/mission-status-update-button', ['exports', 'admin/confi
       });
     },
     click: function (e) {
-      var _model, _this, confirm, headers;
+      var _model, _this, confirm, headers, request;
       e.preventDefault();
       e.stopPropagation();
       if (this.get('model').get('isOnHold') || this.get('statusDisabledTooltip')) {
@@ -5168,7 +5748,7 @@ define('admin/components/mission-status-update-button', ['exports', 'admin/confi
         _model = this.get('model');
         headers = this.get('headers');
         _this.set('isSendingRequest', true);
-        return Ember.$.ajax({
+        request = Ember.$.ajax({
           url: _environment.default.api.host + "/v1/admin/missions/" + _model.id + "/status",
           type: 'PATCH',
           dataType: 'json',
@@ -5187,6 +5767,10 @@ define('admin/components/mission-status-update-button', ['exports', 'admin/confi
           alert(errors);
           return _this.set('isSendingRequest', false);
         });
+        if (this.get('onBusy')) {
+          this.get('onBusy')(request);
+        }
+        return request;
       }
     }
   });
@@ -5270,6 +5854,108 @@ define('admin/components/mission-weather', ['exports', 'admin/config/environment
   });
 
   exports.default = MissionWeatherComponent;
+});
+define('admin/components/missions/asset-processes', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var AssetProcessesComponent;
+
+  AssetProcessesComponent = Ember.Component.extend({
+    actions: {
+      reprocess: function (shot) {
+        return this.sendAction('reprocessShot', shot);
+      }
+    }
+  });
+
+  exports.default = AssetProcessesComponent;
+});
+define('admin/components/missions/mission-payment-view', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+    hasCard: Ember.computed('mission', 'mission.credit_card', 'mission.credit_card.brand', function () {
+      return this.get('mission.credit_card.brand') != null;
+    }),
+    hasHistory: Ember.computed('mission_payments.[]', function () {
+      return this.get('mission_payments').length > 0;
+    }),
+    stripeLink: _environment.default.stripeChargeUrl
+  });
+});
+define('admin/components/missions/payment-reminder-modal', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+    sessionAccount: Ember.inject.service(),
+    actions: {
+      close: function () {
+        this.get('close')();
+      },
+      processReminder: function () {
+        const _this = this;
+        this.set('loading', true);
+        Ember.$.ajax({
+          url: `${_environment.default.api.host}/v1/admin/missions/${this.get('mission.id')}/mission_payments/reminder`,
+          dataType: 'json',
+          headers: this.get('sessionAccount.headers'),
+          type: 'POST'
+        }).then(function (response) {
+          _this.get('close')();
+          _this.get('mission').reload();
+        }); // ajax
+      } // processReminder
+      // actions
+
+    } });
+});
+define('admin/components/missions/process-payment-modal', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+    status: null,
+    actions: {
+      close: function () {
+        this.get('close')();
+      },
+      processPayment: function () {
+        const _this = this;
+        this.set('status', 'processing');
+        const data = {
+          credit_card: this.get('mission.credit_card'),
+          status: 'not paid',
+          price: this.get('mission.price')
+        };
+        const payment = this.get('mission.mission_payments').createRecord(data);
+        payment.save().then(function (response) {
+          if (_this.get('mission.isFree')) {
+            _this.get('close')();
+          } else {
+            _this.set('status', 'success');
+          }
+
+          _this.get('mission').reload();
+        }).catch(function (response) {
+          payment.set('status', 'failed');
+          _this.set('errors', response.errors);
+          _this.set('status', 'error');
+        });
+      } // processPayment
+      // actions
+    } });
 });
 define('admin/components/modal-dialog-custom', ['exports'], function (exports) {
   'use strict';
@@ -5419,6 +6105,7 @@ define('admin/components/onboarding/filter-pilots', ['exports'], function (expor
     selectedCameras: null,
     selectedDevices: null,
     selectedLicenses: null,
+    selectedPilotEquipment: null,
     selectedBadges: null,
     selectPilotBadgeStatuses: null,
     statuses: null,
@@ -5427,6 +6114,9 @@ define('admin/components/onboarding/filter-pilots', ['exports'], function (expor
     }),
     licenseTitle: Ember.computed('selectedLicenses.[]', function () {
       return 'Licenses (' + this.get('selectedLicenses.length') + ')';
+    }),
+    pilotEquipmentTitle: Ember.computed('selectedPilotEquipment.[]', function () {
+      return 'Pilot Equipment (' + this.get('selectedPilotEquipment.length') + ')';
     }),
     setPanel(mode, title) {
       this.set('panelMode', mode);
@@ -5596,6 +6286,43 @@ define('admin/components/onboarding/pilot-drone-filter', ['exports'], function (
         this.set('droneIds', []);
         this.set('selectedCameras', []);
         this.set('cameraIds', []);
+      },
+      setPanel() {
+        this.sendAction('setPanel', null, null);
+      }
+    }
+  });
+});
+define('admin/components/onboarding/pilot-equipment-filter', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+    store: Ember.inject.service(),
+    totalSelectedCount: Ember.computed('selectedPilotEquipment.[]', function () {
+      return this.get('selectedPilotEquipment.length');
+    }),
+    didInsertElement() {
+      const _this = this;
+      if (this.get('pilotEquipment.length') === undefined) {
+        this.store.query('pilot-equipment', {}).then(function (data) {
+          _this.set('pilotEquipment', data.toArray());
+          _this.sendAction('cacheObjects', 'pilotEquipment', data.toArray());
+
+          _this.get('pilotEquipment').forEach(function (item) {
+            if (_this.get('pilotEquipmentIds').includes(item.get('id'))) {
+              _this.get('selectedPilotEquipment').pushObject(item);
+            }
+          });
+        });
+      }
+    },
+    actions: {
+      clear() {
+        this.set('selectedPilotEquipment', []);
+        this.set('pilotEquipmentIds', []);
       },
       setPanel() {
         this.sendAction('setPanel', null, null);
@@ -5785,13 +6512,84 @@ define('admin/components/organization-package-checkbox', ['exports', 'admin/comp
 
   exports.default = OrganizationPackageCheckboxComponent;
 });
-define('admin/components/photo-swipe', ['exports', 'ember-cli-photoswipe/components/photo-swipe'], function (exports, _photoSwipe) {
+define('admin/components/organizations/client-list', ['exports'], function (exports) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = _photoSwipe.default;
+  exports.default = Ember.Component.extend({
+    classNames: 'table-responsive organization-clients',
+    actions: {
+      goToClient: function (clientId) {
+        this.sendAction('goToClientPage', clientId);
+      },
+      toggleOrgOwner: function (client) {
+        client.set('is_organization_owner', !client.get('is_organization_owner'));
+        const _this = this;
+        client.save().then(function (success) {}, function (failure) {
+          client.set('is_organization_owner', !client.get('is_organization_owner'));
+          window.alert(failure);
+        });
+      }
+    }
+  });
+});
+define('admin/components/photo-swipe-meta', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  ;
+
+  exports.default = Ember.Component.extend({
+    metaRecord: null
+  });
+});
+define('admin/components/photo-swipe', ['exports', 'ember-photoswipe/components/photo-swipe'], function (exports, _photoSwipe) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _photoSwipe.default.extend({
+    // store: Ember.inject.service(),
+    itemProperties: ['src', 'msrc', 'w', 'h', 'title', 'record'],
+    currentRecord: null,
+    onAfterChange: function (pswp) {
+      // Can't seem to get access to ember here
+      // Ember.$.get('currentRecord').record == undefined
+      var currentRecord = pswp.getItemAt(pswp.getCurrentIndex()).record;
+      var metaSection = pswp.template.getElementsByClassName('pswp-meta')[0];
+
+      metaSection.getElementsByClassName('pswp-meta-taken-at')[0].textContent = currentRecord.get('formattedTakenAt') || 'Unknown';
+      metaSection.getElementsByClassName('pswp-meta-make')[0].textContent = currentRecord.get('camera_make') || 'Unknown';
+      metaSection.getElementsByClassName('pswp-meta-model')[0].textContent = currentRecord.get('camera_model') || 'Unknown';
+      metaSection.getElementsByClassName('pswp-meta-exposure-time')[0].textContent = currentRecord.get('exposure_time') || 'Unknown';
+      metaSection.getElementsByClassName('pswp-meta-exposure-bias')[0].textContent = currentRecord.get('exposure_bias') || 'Unknown';
+      metaSection.getElementsByClassName('pswp-meta-auto-white-balance')[0].textContent = currentRecord.get('autoWhiteBalance') || 'Unknown';
+
+      metaSection.getElementsByClassName('pswp-meta-dimensions')[0].textContent = currentRecord.get('dimensions') || 'Unknown';
+
+      // self._showHideWarning(currentRecord, 'missing_gps_info', 'gps', metaSection)
+      if (currentRecord.get('missing_gps_info')) {
+        metaSection.getElementsByClassName('gps')[0].classList.remove('hidden');
+      } else {
+        metaSection.getElementsByClassName('gps')[0].classList.add('hidden');
+      }
+
+      if (currentRecord.get('isLowResolution')) {
+        metaSection.getElementsByClassName('resolution')[0].classList.remove('hidden');
+      } else {
+        metaSection.getElementsByClassName('resolution')[0].classList.add('hidden');
+      }
+    },
+    open(actionOptions) {
+      this._super(actionOptions);
+      return this.onAfterChange(this.get('pswp'));
+    }
+  });
 });
 define('admin/components/pikaday-input', ['exports', 'ember-pikaday/components/pikaday-input'], function (exports, _pikadayInput) {
   'use strict';
@@ -5827,7 +6625,7 @@ define('admin/components/pilot-approval-button', ['exports'], function (exports)
     tagName: 'button',
     type: 'submit',
     name: 'approve',
-    classNames: ['btn', 'btn-success'],
+    classNames: ['btn', 'btn-primary', 'pilot-action-btn', 'btn-sm'],
     classNameBindings: ['isDisabled:hide'],
     isDisabled: Ember.computed('model.status', function () {
       return this.get('model.status') === 'approved';
@@ -5886,7 +6684,7 @@ define('admin/components/pilot-device-view', ['exports'], function (exports) {
     })
   });
 });
-define('admin/components/pilot-dispatch-row', ['exports', 'admin/feature-manager'], function (exports, _featureManager) {
+define('admin/components/pilot-dispatch-row', ['exports'], function (exports) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -5929,9 +6727,6 @@ define('admin/components/pilot-dispatch-row', ['exports', 'admin/feature-manager
           return acc += val.get('name') + ', ';
         }
       }, '');
-    }),
-    showPilotScore: Ember.computed(function () {
-      return _featureManager.default.FeatureManager.showDispatchSorting();
     }),
     actions: {
       toggleIncludePilot: function () {
@@ -6135,7 +6930,7 @@ define('admin/components/pilot-reject-button', ['exports'], function (exports) {
     tagName: 'button',
     type: 'submit',
     name: 'reject',
-    classNames: ['btn', 'btn-danger'],
+    classNames: ['btn', 'btn-danger', 'pilot-action-btn', 'btn-sm'],
     classNameBindings: ['isDisabled:hide'],
     isDisabled: Ember.computed('model.status', function () {
       return this.get('model.status') === 'rejected';
@@ -6158,7 +6953,7 @@ define('admin/components/pilot-reject-button', ['exports'], function (exports) {
 
   exports.default = PilotRejectButtonComponent;
 });
-define('admin/components/pilot-search-autocomplete', ['exports', 'admin/config/environment', 'admin/feature-manager'], function (exports, _environment, _featureManager) {
+define('admin/components/pilot-search-autocomplete', ['exports', 'admin/config/environment'], function (exports, _environment) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -6314,9 +7109,6 @@ define('admin/components/pilot-search-autocomplete', ['exports', 'admin/config/e
         return this.send('search', params, model);
       }
     },
-    showDispatchSorting: Ember.computed(function () {
-      return _featureManager.default.FeatureManager.showDispatchSorting();
-    }),
     clearInviteError: function () {
       this.set('state', null);
       return this.set('message', null);
@@ -6567,6 +7359,29 @@ define('admin/components/pilot-search-autocomplete', ['exports', 'admin/config/e
 
   exports.default = PilotSearchAutocompleteComponent;
 });
+define('admin/components/pl-uploader', ['exports', 'ember-plupload/components/pl-uploader', 'admin/config/environment'], function (exports, _plUploader, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _plUploader.default.extend({
+    BASE_URL: _environment.default.PLUPLOAD_BASE_URL || '/assets/'
+  });
+});
+define('admin/components/place-autocomplete-field', ['exports', 'ember-place-autocomplete/components/place-autocomplete-field'], function (exports, _placeAutocompleteField) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  Object.defineProperty(exports, 'default', {
+    enumerable: true,
+    get: function () {
+      return _placeAutocompleteField.default;
+    }
+  });
+});
 define('admin/components/radio-button', ['exports'], function (exports) {
   'use strict';
 
@@ -6594,6 +7409,19 @@ define('admin/components/radio-button', ['exports'], function (exports) {
   });
 
   exports.default = RadioButtonComponent;
+});
+define('admin/components/radio-group', ['exports', 'ember-radio-group/components/radio-group'], function (exports, _radioGroup) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  Object.defineProperty(exports, 'default', {
+    enumerable: true,
+    get: function () {
+      return _radioGroup.default;
+    }
+  });
 });
 define('admin/components/rating-modal', ['exports'], function (exports) {
   'use strict';
@@ -6650,7 +7478,7 @@ define('admin/components/rating-modal', ['exports'], function (exports) {
 
   exports.default = RatingModalComponent;
 });
-define('admin/components/reschedule-modal', ['exports'], function (exports) {
+define('admin/components/reschedule-modal', ['exports', 'admin/config/environment', 'admin/data/reschedule-options'], function (exports, _environment, _rescheduleOptions) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -6661,6 +7489,9 @@ define('admin/components/reschedule-modal', ['exports'], function (exports) {
 
   RescheduleModalComponent = Ember.Component.extend({
     rescheduleAllowed: true,
+    sessionAccount: Ember.inject.service(),
+    upcomingDays: [],
+    rescheduleOptions: _rescheduleOptions.default,
     init: function () {
       var mission_reschedule, rescheduler;
       this._super();
@@ -6671,7 +7502,30 @@ define('admin/components/reschedule-modal', ['exports'], function (exports) {
         scheduled_at_end: this.get('model.mission.scheduled_at_end'),
         rescheduler: rescheduler
       });
-      return this.set('missionReschedule', mission_reschedule);
+      this.set('missionReschedule', mission_reschedule);
+      return Ember.$.ajax({
+        url: _environment.default.api.host + '/v1/admin/missions/' + this.get('model.mission').id + '/capacity_estimations',
+        type: 'POST',
+        dataType: 'json',
+        headers: this.get('sessionAccount.headers'),
+        data: {
+          timeslot_duration: this.get('model.mission.duration')
+        }
+      }).then(function (_this) {
+        return function (response) {
+          _this.set('model.upcomingDays', response.data.attributes.availability_slots);
+          return _this.set('model.currDays', _this.get('model.upcomingDays').slice(0, 3));
+        };
+      }(this), function (_this) {
+        return function (error) {
+          var message;
+          if (error.errors) {
+            message = error.errors[0].detail;
+            _this.set('scheduleError', message);
+            return alert(message);
+          }
+        };
+      }(this));
     },
     rescheduleChoiceObserver: Ember.observer('rescheduleChoice', function () {
       if (this.get('rescheduleChoice') === 'clear') {
@@ -6680,7 +7534,13 @@ define('admin/components/reschedule-modal', ['exports'], function (exports) {
       }
     }),
     canSave: Ember.computed('rescheduleChoice', 'missionReschedule.reschedule_reason', function () {
-      return this.get('rescheduleChoice') && this.get('missionReschedule.reschedule_reason');
+      if (this.get('rescheduleChoice')) {
+        if (this.get('rescheduleChoice') === 'pilotAvailability') {
+          return this.get('missionReschedule.reschedule_reason') && this.get('selectedTimeslotData');
+        } else {
+          return this.get('missionReschedule.reschedule_reason');
+        }
+      }
     }),
     scheduleErrorObserver: Ember.observer('selectedStart', 'selectedEnd', function () {
       if (this.get('scheduleError')) {
@@ -6702,8 +7562,14 @@ define('admin/components/reschedule-modal', ['exports'], function (exports) {
       setRescheduleChoice: function (choice) {
         return this.set('rescheduleChoice', choice);
       },
+      setSelected: function (data) {
+        this.set('selectedTimeslotData', data);
+        if (this.get('missionReschedule.reschedule_reason').get('id')) {
+          return this.set('canSave', true);
+        }
+      },
       save: function () {
-        var scheduled_end_formatted, scheduled_start_formatted;
+        var data;
         if (this.get('rescheduleChoice') === 'clear') {
           return this.get('missionReschedule')["delete"]().then(function (_this) {
             return function (updatedMission) {
@@ -6712,20 +7578,20 @@ define('admin/components/reschedule-modal', ['exports'], function (exports) {
             };
           }(this));
         } else {
-          scheduled_start_formatted = moment.tz(this.get('selectedStart'), this.get('model.mission.location.timezone_id')).utc().toString();
-          scheduled_end_formatted = moment.tz(this.get('selectedEnd'), this.get('model.mission.location.timezone_id')).utc().toString();
-          this.set('missionReschedule.scheduled_at_start', scheduled_start_formatted);
-          this.set('missionReschedule.scheduled_at_end', scheduled_end_formatted);
-          return this.get('missionReschedule').save().then(function (_this) {
-            return function (updatedMission) {
-              _this.sendAction('reloadMission');
-              return _this.send('close');
-            };
-          }(this), function (_this) {
-            return function (response) {
-              return _this.set('scheduleError', response.errors[0].detail);
-            };
-          }(this));
+          data = {
+            'reason_id': this.get('missionReschedule.reschedule_reason').get('id'),
+            'notes': this.get('missionReschedule.notes')
+          };
+          if (this.get('rescheduleChoice') === 'pilotAvailability') {
+            data['mission_scheduled_at_start'] = this.get('selectedTimeslotData')['scheduled_at_start'];
+            data['mission_scheduled_at_end'] = this.get('selectedTimeslotData')['scheduled_at_end'];
+            data['capacity_data'] = this.get('selectedTimeslotData');
+          } else {
+            data['mission_scheduled_at_start'] = this.get('selectedStart');
+            data['mission_scheduled_at_end'] = this.get('selectedEnd');
+          }
+          this.send('close');
+          return this.sendAction('confirmAction', data);
         }
       },
       close: function () {
@@ -6821,7 +7687,7 @@ define('admin/components/schedule-inputs', ['exports'], function (exports) {
   var ScheduleInputsComponent;
 
   ScheduleInputsComponent = Ember.Component.extend({
-    availableTimes: ['12:00 AM', '12:30 AM', '01:00 AM', '01:30 AM', '02:00 AM', '02:30 AM', '03:00 AM', '03:30 AM', '04:00 AM', '04:30 AM', '05:00 AM', '05:30 AM', '06:00 AM', '06:30 AM', '07:00 AM', '07:30 AM', '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM', '08:30 PM', '09:00 PM', '09:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM'],
+    availableTimes: ['07:00 AM', '07:30 AM', '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM', '08:30 PM', '09:00 PM'],
     picker_icons: {
       up: 'fa fa-angle-up',
       down: 'fa fa-angle-down',
@@ -6857,35 +7723,33 @@ define('admin/components/schedule-inputs', ['exports'], function (exports) {
           close: "icon-Xmark"
         }
       });
+      this.$('.startDatePicker').on('dp.change', function (_this) {
+        return function (e) {
+          $('.endDatePicker').val(e.target.value);
+          return _this.set('scheduledEndDate', e.target.value);
+        };
+      }(this));
       this.send('formDateTimeString', this.get('scheduledStartDate'), this.get('scheduledStartTime'), 'selectedStart');
       return this.send('formDateTimeString', this.get('scheduledEndDate'), this.get('scheduledEndTime'), 'selectedEnd');
     },
     scheduledStartDate: Ember.computed('mission.scheduled_at_start', function () {
-      var startDate;
       if (this.get('mission.scheduled_at_start')) {
-        startDate = moment.tz(this.get('mission.scheduled_at_start'), this.get('mission.location.timezone_id'));
-        return startDate.format('MM/DD/YYYY').toString();
+        return moment.tz(this.get('mission.scheduled_at_start'), this.get('mission.location.timezone_id')).format('MM/DD/YYYY');
       }
     }),
     scheduledEndDate: Ember.computed('mission.scheduled_at_end', function () {
-      var endDate;
       if (this.get('mission.scheduled_at_end')) {
-        endDate = moment.tz(this.get('mission.scheduled_at_end'), this.get('mission.location.timezone_id'));
-        return endDate.format('MM/DD/YYYY').toString();
+        return moment.tz(this.get('mission.scheduled_at_end'), this.get('mission.location.timezone_id')).format('MM/DD/YYYY');
       }
     }),
     scheduledStartTime: Ember.computed('mission.scheduled_at_start', function () {
-      var startTime;
       if (this.get('mission.scheduled_at_start')) {
-        startTime = moment.tz(this.get('mission.scheduled_at_start'), this.get('mission.location.timezone_id'));
-        return startTime.format('hh:mm A').toString();
+        return moment.tz(this.get('mission.scheduled_at_start'), this.get('mission.location.timezone_id')).format('hh:mm A');
       }
     }),
     scheduledEndTime: Ember.computed('mission.scheduled_at_end', function () {
-      var endTime;
       if (this.get('mission.scheduled_at_end')) {
-        endTime = moment.tz(this.get('mission.scheduled_at_end'), this.get('mission.location.timezone_id'));
-        return endTime.format('hh:mm A').toString();
+        return moment.tz(this.get('mission.scheduled_at_end'), this.get('mission.location.timezone_id')).format('hh:mm A');
       }
     }),
     selectedStartObserver: Ember.observer('scheduledStartDate', 'scheduledStartTime', function () {
@@ -6900,7 +7764,14 @@ define('admin/components/schedule-inputs', ['exports'], function (exports) {
     }),
     actions: {
       setStartTime: function (time) {
-        return this.set('scheduledStartTime', time);
+        var date, duration;
+        this.set('scheduledStartTime', time);
+        if (this.get('scheduledEndTime') === void 0) {
+          duration = this.get('mission.durationInHours') || this.get('mission.package.missionDurationInHours');
+          date = moment(this.get('selectedStart')).toDate();
+          date.setHours(date.getHours() + duration);
+          return this.set('scheduledEndTime', moment(date).format('hh:mm A'));
+        }
       },
       setEndTime: function (time) {
         return this.set('scheduledEndTime', time);
@@ -6918,6 +7789,14 @@ define('admin/components/schedule-inputs', ['exports'], function (exports) {
   });
 
   exports.default = ScheduleInputsComponent;
+});
+define('admin/components/scheduler-mission-details', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({});
 });
 define('admin/components/search-input-delayed', ['exports'], function (exports) {
   'use strict';
@@ -7035,7 +7914,7 @@ define('admin/components/select-enum', ['exports'], function (exports) {
 
   exports.default = SelectEnumComponent;
 });
-define('admin/components/shot-type-form', ['exports'], function (exports) {
+define('admin/components/shot-type-form', ['exports', 'admin/data/shot-type-camera-requirements'], function (exports, _shotTypeCameraRequirements) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -7046,7 +7925,28 @@ define('admin/components/shot-type-form', ['exports'], function (exports) {
 
   ShotTypeFormComponent = Ember.Component.extend({
     buttonText: 'Save',
+    cameraRequirementOptions: _shotTypeCameraRequirements.default,
+    assetTypes: [{
+      label: "Image",
+      value: "image"
+    }, {
+      label: "Video",
+      value: "video"
+    }, {
+      label: "Any",
+      value: null
+    }],
+    processTypes: [{
+      name: "Without Processing",
+      value: 'not_set'
+    }, {
+      name: "Panorama Stitching",
+      value: 'panorama_stitching'
+    }],
     actions: {
+      changeAssetType: function (value) {
+        return this.set('model.asset_type', value);
+      },
       save_shot_type: function (model) {
         this.set('buttonText', 'Saving...');
         return model.save().then(function (_this) {
@@ -7252,7 +8152,7 @@ define('admin/components/textarea-trigger-save', ['exports'], function (exports)
   TextareaTriggerSaveComponent = Ember.TextArea.extend({
     classNames: ['form-control'],
     focusOut: function () {
-      return this.get('parentView.controller').send('save');
+      return this.sendAction('save');
     }
   });
 
@@ -7463,6 +8363,39 @@ define('admin/components/video-js', ['exports'], function (exports) {
 
   exports.default = VideoJsComponent;
 });
+define('admin/components/waiver-form', ['exports', 'admin/data/waiver-status-options'], function (exports, _waiverStatusOptions) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Component.extend({
+    waiverStatusOptions: _waiverStatusOptions.default,
+    didInsertElement() {
+      return this.$('.expiresAtDateField').datetimepicker({
+        collapse: true,
+        focusOnShow: false,
+        viewMode: 'days',
+        format: 'MM/DD/YYYY',
+        useCurrent: false,
+        minDate: moment().startOf('day'),
+        icons: {
+          date: "fa fa-calendar",
+          previous: "fa fa-angle-left",
+          next: "fa fa-angle-right",
+          close: "icon-Xmark"
+        }
+      }).on('dp.change', e => {
+        return this.set('waiver.expires_at', new Date(e.target.value));
+      });
+    },
+    actions: {
+      save(model) {
+        this.sendAction('saveAction', model);
+      }
+    }
+  });
+});
 define('admin/components/weather-icon', ['exports'], function (exports) {
   'use strict';
 
@@ -7502,13 +8435,55 @@ define('admin/controllers/badges', ['exports'], function (exports) {
   });
   exports.default = Ember.Controller.extend({});
 });
-define('admin/controllers/badges/edit', ['exports'], function (exports) {
+define('admin/controllers/badges/edit', ['exports', 'admin/config/environment'], function (exports, _environment) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
   exports.default = Ember.Controller.extend({
+
+    showBadgeDispatchModal: false,
+    sessionAccount: Ember.inject.service(),
+
+    validateRecord() {
+      var zones = this.get('model.badge.badge_dispatch_zones');
+      if (this.get('model.badge.auto_dispatch_enabled') && zones.length <= 0) {
+        return false;
+      }
+      return zones.toArray().every(function (zone) {
+        return zone.validate();
+      });
+    },
+
+    loadPilotCount() {
+      var self = this;
+      var badgeId = this.get('model.badge.id');
+      var endPoint = `${_environment.default.api.host}/v1/admin/badges/${badgeId}/estimate_pilot_count`;
+      Ember.$.ajax({
+        url: endPoint,
+        type: 'POST',
+        dataType: 'json',
+        contentType: "application/json; charset=utf-8",
+        headers: this.get('sessionAccount.headers'),
+        data: JSON.stringify(this.get('model.badge').serialize())
+      }).then(response => {
+        self.set('pilotPreview', response['count']);
+      }, response => {});
+    },
+
+    observeFilters: Ember.observer('model.badge.required_drones', 'model.badge.required_drone_cameras', 'model.badge.required_devices', 'model.badge.required_pilot_equipments', 'model.badge.required_pilot_licenses', 'model.badge.badge_dispatch_zones', 'model.badge.required_drones.@each', 'model.badge.required_drone_cameras.@each', 'model.badge.required_devices.@each', 'model.badge.required_pilot_equipments.@each', 'model.badge.required_pilot_licenses.@each', 'model.badge.badge_dispatch_zones.@each', 'model.badge.badge_dispatch_zones.@each.latitude', 'model.badge.badge_dispatch_zones.@each.longitude', 'model.badge.badge_dispatch_zones.@each.distance', function () {
+      this.set('pilotPreview', '...');
+      if (this.validateRecord()) {
+        this.set('countRunner', Ember.run.debounce(this, this.loadPilotCount, 2500));
+      } else {
+        var runner = this.get('countRunner');
+        if (runner) {
+          Ember.run.cancel(runner);
+        }
+      }
+    }),
+
     actions: {
       changedName() {
         Ember.$('input[name="badge-name"]').addClass('changed');
@@ -7519,8 +8494,53 @@ define('admin/controllers/badges/edit', ['exports'], function (exports) {
           return _this.set('mindflashSeries', response);
         });
       },
+
+      validate: function () {
+        return this.validateRecord();
+      },
+
       save(model) {
-        model.badge.save();
+        var _this = this;
+        if (this.get("locked")) {
+          alert("please wait");return;
+        }
+        this.set('locked', true);
+        this.get('model.badge').save().then(() => {
+          this.set('locked', false);
+          model.badge.get('badge_dispatch_zones').forEach(zone => {
+            if (zone && zone.get('id') === null) {
+              Ember.run.later(() => {
+                _this.get('model.badge.badge_dispatch_zones').removeObject(zone);
+              }, 1);
+            }
+          });
+        }).catch(err => {
+          console.log(err);
+          this.set('locked', false);
+          alert("FAILED TO SAVE");
+        });
+      },
+
+      setAutoDispatchBatchSize(event) {
+        this.get('model.badge').set('auto_dispatch_batch_size', Ember.$(event.target).val());
+      },
+
+      toggleModal(disableAutoDispatch) {
+        if (disableAutoDispatch === true) {
+          this.set('model.badge.auto_dispatch_enabled', false);
+        }
+        this.toggleProperty('showBadgeDispatchModal');
+      },
+
+      autoDispatchToggled() {
+        var newValue = !this.get('model.badge.auto_dispatch_enabled');
+        this.set('model.badge.auto_dispatch_enabled', newValue);
+        if (newValue) {
+          if (!this.validateRecord()) {
+            newValue = true;
+            this.toggleProperty('showBadgeDispatchModal');
+          }
+        }
       }
     }
   });
@@ -7590,7 +8610,7 @@ define('admin/controllers/clients/client/missions/edit', ['exports'], function (
 
   exports.default = ClientsClientMissionsEditController;
 });
-define('admin/controllers/clients/client/missions/index', ['exports', 'admin/feature-manager'], function (exports, _featureManager) {
+define('admin/controllers/clients/client/missions/index', ['exports'], function (exports) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -7669,9 +8689,28 @@ define('admin/controllers/clients/organization', ['exports', 'admin/config/envir
     notFoundClients: '',
     saveState: 'initial',
     showSaveButton: false,
+    activeTab: 'packages',
+    sortedClients: Ember.computed('model.organization.clients.@each.is_organization_owner', function () {
+      var notOwners, owners;
+      owners = this.get('model.organization.clients').filter(function (_this) {
+        return function (client) {
+          return client.get('is_organization_owner');
+        };
+      }(this)).sortBy('fullName');
+      notOwners = this.get('model.organization.clients').filter(function (_this) {
+        return function (client) {
+          return !client.get('is_organization_owner');
+        };
+      }(this)).sortBy('fullName');
+      return owners.concat(notOwners);
+    }),
     actions: {
+      setTab: function (newTab) {
+        return this.set('activeTab', newTab);
+      },
       saveNewName: function () {
         this.set('model.organization.name', this.get('newName'));
+        this.set('model.organization.slug', this.get('newSlug'));
         this.get('model.organization').save().then(function (_this) {
           return function () {
             return _this.get('model.organization').reload();
@@ -7689,6 +8728,10 @@ define('admin/controllers/clients/organization', ['exports', 'admin/config/envir
       },
       changedName: function () {
         Ember.$('input[name="org-name"]').addClass('changed');
+        return this.set('showSaveButton', true);
+      },
+      changedSlug: function () {
+        Ember.$('input[name="org-slug"]').addClass('changed');
         return this.set('showSaveButton', true);
       },
       addNewClients: function () {
@@ -7713,12 +8756,9 @@ define('admin/controllers/clients/organization', ['exports', 'admin/config/envir
                     email: client
                   }
                 }).then(function (response) {
-                  client = _this.get('model.organization.store').createRecord('client', response.data.attributes);
-                  client.set('id', response.data.id);
-                  client.set('added', 'added');
-                  clients = _this.get('model.organization.clients').toArray();
-                  clients.unshift(client);
-                  return _this.set('model.organization.clients', clients);
+                  return _this.get('model.organization.store').findRecord('client', response.data.id).then(function (client) {
+                    return client.set('added', true);
+                  });
                 }, function (response) {
                   return _this.send('addClientToListOfMissingClients', client, response);
                 });
@@ -7750,6 +8790,9 @@ define('admin/controllers/clients/organization', ['exports', 'admin/config/envir
         } else {
           return this.set('notFoundClients', client);
         }
+      },
+      goToClientPage: function (clientId) {
+        return this.transitionToRoute('clients.client', clientId);
       }
     }
   });
@@ -7818,9 +8861,6 @@ define('admin/controllers/global-assets', ['exports'], function (exports) {
         record: image
       };
     },
-    galleryOptions: {
-      hideShare: true
-    },
     actions: {
       downloadAsset: function (asset_url) {
         return window.location = asset_url;
@@ -7862,7 +8902,7 @@ define('admin/controllers/missions/creative-missions', ['exports', 'admin/config
     status: null,
     lat: null,
     lon: null,
-    activeCount: Ember.computed('model', function () {
+    activeCount: Ember.computed('model', 'model.missions.length', function () {
       return this.get('model.missions').length;
     }),
     hideRejectedForm: function (id) {
@@ -7906,7 +8946,7 @@ define('admin/controllers/missions/creative-missions', ['exports', 'admin/config
 
   exports.default = CreativeMissionsController;
 });
-define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', 'admin/config/environment'], function (exports, _featureManager, _environment) {
+define('admin/controllers/missions/edit', ['exports', 'admin/config/environment', 'admin/data/cloud-options', 'admin/data/duration-options'], function (exports, _environment, _cloudOptions, _durationOptions) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -7916,6 +8956,10 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
   var MissionsEditController;
 
   MissionsEditController = Ember.Controller.extend({
+    sessionAccount: Ember.inject.service(),
+    showPaymentModal: false,
+    showPaymentErrorModal: false,
+    showReminderModal: false,
     reshootModalVisible: false,
     rescheduleModalVisible: false,
     ratingModalVisible: false,
@@ -7924,6 +8968,9 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
     selectedShot: null,
     queryParams: ['activeTab'],
     activeTab: 'edit',
+    cloudOptions: _cloudOptions.default,
+    durationOptions: _durationOptions.default,
+    busy: false,
     payoutPilot: Ember.computed('model.payout.pilot', function () {
       return this.get('model.payout.pilot');
     }),
@@ -7994,8 +9041,10 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
     pilotNotAssigned: Ember.computed('model.mission.status', function () {
       return this.get('model.mission.status') === 'created' || this.get('model.mission.status') === 'confirmed' || this.get('model.mission.status') === 'reshoot' || this.get('model.mission.status') === 'pilots_notified';
     }),
-    showOnsiteContacts: Ember.computed(function () {
-      return _featureManager.default.FeatureManager.showOnsiteContacts();
+    showPaymentTransition: Ember.computed('model.mission', 'model.mission.status', 'model.mission.client', 'model.mission.client.invoiceable', function () {
+      var mission;
+      mission = this.get('model.mission');
+      return !mission.get('client.invoiceable') && (mission.get('status') === 'in_production' || mission.get('status') === 'awaiting_payment');
     }),
     showContactNameAndPhone: Ember.computed('model.mission.onsite_contact.call_action', function () {
       return !!this.get('model.mission.onsite_contact.call_action') && this.get('model.mission.onsite_contact.call_action') !== 'not_needed';
@@ -8016,7 +9065,25 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
     setTab: function (tab) {
       return this.set('activeTab', tab);
     },
+    showAssetProcesses: Ember.computed('model.mission.status', function () {
+      var status;
+      status = this.get('model.mission.status') === 'assets_classified' || this.get('model.mission.status') === 'processing_shots';
+      return status && this.get('model.mission.shots').filter(function (shot) {
+        return shot.get('hasPostProcess');
+      }).length > 0;
+    }),
     actions: {
+      fireBusy: function (promise) {
+        return this.send('busy', promise);
+      },
+      pay: function (mission) {
+        if (mission.get('credit_card') != null || mission.get('isFree')) {
+          this.set('showPaymentModal', true);
+        } else {
+          this.set('showReminderModal', true);
+        }
+        return false;
+      },
       filterMap: function (shot) {
         if (this.get('selectedShot') === shot) {
           this.set('selectedShot', null);
@@ -8028,6 +9095,18 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
       },
       updateCallAction: function (value) {
         return this.set('model.mission.onsite_contact.call_action', value);
+      },
+      toggleModal: function (attr) {
+        this.set(attr, !this.get(attr));
+        return false;
+      },
+      togglePaymentModal: function () {
+        this.set('showPaymentModal', !this.get('showPaymentModal'));
+        return false;
+      },
+      toggleReminderModal: function () {
+        this.set('showReminderModal', !this.get('showReminderModal'));
+        return false;
       },
       toggleReshootModal: function () {
         this.toggleProperty('reshootModalVisible');
@@ -8060,24 +9139,28 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
         local_time = moment.tz(local_time, this.get('model.mission.location.timezone_id')).toString();
         this.set('model.mission.scheduled_at', local_time);
         this.set('model.mission.admin_scheduled', true);
-        return this.get('model.mission').save();
-      },
-      rescheduleMission: function (model) {
-        return this.send('rescheduleMissionModal', model);
+        return this.send('busy', this.get('model.mission').save());
       },
       saveSchedule: function (data) {
-        var mission_reschedule, reason, scheduled_end_formatted, scheduled_start_formatted;
-        reason = this.get('model.mission.store').peekAll('reschedule-reason').filterBy('slug', 'initial_schedule')[0];
+        var mission, promise, scheduled_end_formatted, scheduled_start_formatted;
         scheduled_start_formatted = moment.tz(data.mission_scheduled_at_start, this.get('model.mission.location.timezone_id')).utc().toString();
         scheduled_end_formatted = moment.tz(data.mission_scheduled_at_end, this.get('model.mission.location.timezone_id')).utc().toString();
-        mission_reschedule = this.get('model.mission.store').createRecord('mission_reschedule', {
-          mission: this.get('model.mission'),
-          scheduled_at_start: scheduled_start_formatted,
-          scheduled_at_end: scheduled_end_formatted,
-          reschedule_reason: reason
-        });
+        mission = this.get('model.mission');
         this.set('model.mission.admin_scheduled', true);
-        return mission_reschedule.save().then(function (_this) {
+        promise = Ember.$.ajax({
+          url: _environment.default.api.host + "/v1/admin/missions/" + mission.id + "/schedule",
+          type: 'POST',
+          dataType: 'json',
+          headers: this.get('sessionAccount.headers'),
+          data: {
+            scheduled_at_start: scheduled_start_formatted,
+            scheduled_at_end: scheduled_end_formatted,
+            reschedule_reason_id: data.reason_id,
+            notes: data.notes,
+            mission_id: mission.id,
+            capacity_data: data.capacity_data
+          }
+        }).then(function (_this) {
           return function (response) {
             _this.get('model.mission').save();
             return _this.set('model.mission.isScheduled', true);
@@ -8087,6 +9170,8 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
             return alert(response.errors[0].detail);
           };
         }(this));
+        this.send('busy', promise);
+        return promise;
       },
       reloadMission: function () {
         return this.get('model.mission').reload();
@@ -8096,13 +9181,18 @@ define('admin/controllers/missions/edit', ['exports', 'admin/feature-manager', '
           this.get('model.mission').loadActivityLogs();
         }
         return this.set('activeTab', tab);
+      },
+      editWeatherReq: function () {
+        return $('html, body').animate({
+          scrollTop: $('#weather-reqs').offset().top
+        }, 500);
       }
     }
   });
 
   exports.default = MissionsEditController;
 });
-define('admin/controllers/missions/index', ['exports', 'admin/feature-manager'], function (exports, _featureManager) {
+define('admin/controllers/missions/index', ['exports'], function (exports) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -8112,8 +9202,10 @@ define('admin/controllers/missions/index', ['exports', 'admin/feature-manager'],
   var MissionsIndexController;
 
   MissionsIndexController = Ember.Controller.extend({
+    commonDictionaries: Ember.inject.service(),
     queryParams: ['status', 'q', 'sort_attribute', 'sort_order', 'lat', 'lon', 'distance', 'assets_late', 'include_client_ids', 'exclude_client_ids', 'reshoot', 'on_hold'],
     sortProperties: ['updated:desc'],
+    router: Ember.inject.service(),
     q: null,
     status: null,
     lat: null,
@@ -8123,14 +9215,59 @@ define('admin/controllers/missions/index', ['exports', 'admin/feature-manager'],
     on_hold: false,
     reshoot: false,
     include_client_ids: null,
+    vertical_id: null,
     exclude_client_ids: null,
     sortAttribute: 'updated',
     sortOrder: 'desc',
     showMap: false,
-    activeCount: Ember.computed('model', function () {
+    busy: false,
+    downloaded: '',
+    activeCount: Ember.computed('model', 'model.missions.length', function () {
       return this.get('model.missions').length;
     }),
+    verticals: Ember.computed('commonDictionaries.verticals.length', function () {
+      var hash;
+      hash = this.get('commonDictionaries.verticals').map(function (item) {
+        return {
+          value: item.get('id'),
+          name: item.get('name')
+        };
+      });
+      return hash;
+    }),
     actions: {
+      download: function () {
+        var query;
+        query = {
+          'mission_types': 'client'
+        };
+        this.get("queryParams").forEach(function (_this) {
+          return function (property, i) {
+            return query[property] = _this.get(property);
+          };
+        }(this));
+        this.set('busy', true);
+        this.set('downloaded', "0 bytes");
+        return this.get('store').adapterFor('mission').download(query, {
+          onProgress: function (_this) {
+            return function (progress) {
+              return _this.set('downloaded', Math.round(progress.loaded / 1024) + "KB");
+            };
+          }(this)
+        })["catch"](function (_this) {
+          return function (xhr, status, msg) {
+            if (xhr.statusText === "Forbidden") {
+              return alert("You do not have permission to export to CSV");
+            } else {
+              return alert(arguments[0].responseText);
+            }
+          };
+        }(this)).always(function (_this) {
+          return function () {
+            return _this.set('busy', false);
+          };
+        }(this));
+      },
       toggleShowMap: function () {
         return this.set('showMap', !this.get('showMap'));
       },
@@ -8176,7 +9313,7 @@ define('admin/controllers/missions/new', ['exports', 'admin/config/environment']
       return "" + _environment.default.test_user;
     }),
     formTitle: Ember.computed("importMode", function () {
-      if (this.get('importMode') === 'standard') {
+      if (this.get('importMode') === 'standard' || this.get('importMode') === null) {
         return 'Create Standard Missions';
       } else {
         return 'Create Training Missions';
@@ -8272,7 +9409,7 @@ define('admin/controllers/missions/pending-panos', ['exports', 'admin/config/env
     sortedMissions: Ember.computed.sort('model', 'sortProperties'),
     q: null,
     status: null,
-    activeCount: Ember.computed('model', function () {
+    activeCount: Ember.computed('model', 'model.length', function () {
       return this.get('model').length;
     }),
     hideRejectedForm: function (id) {
@@ -8332,7 +9469,7 @@ define('admin/controllers/missions/training-missions', ['exports', 'admin/config
     lat: null,
     lon: null,
     distance: null,
-    activeCount: Ember.computed('model', function () {
+    activeCount: Ember.computed('model', 'model.missions.length', function () {
       return this.get('model.missions').length;
     }),
     testUserId: Ember.computed('ENV.test_user', function () {
@@ -8411,7 +9548,7 @@ define('admin/controllers/payouts/index', ['exports'], function (exports) {
     sortedPayouts: Ember.computed.sort('model', 'sortProperties'),
     q: null,
     status: null,
-    activeCount: Ember.computed('model', function () {
+    activeCount: Ember.computed('model', 'model.length', function () {
       return this.get('model').length;
     }),
     actions: {
@@ -8483,9 +9620,10 @@ define('admin/controllers/pilots/onboarding', ['exports'], function (exports) {
     selectedCameras: [],
     selectedDevices: [],
     selectedLicenses: [],
+    selectedPilotEquipment: [],
     selectedBadges: [],
     selectPilotBadgeStatuses: [],
-    queryParams: ['q', 'distance', 'statuses[]', 'lat', 'lon', 'drone_ids[]', 'camera_ids[]', 'device_ids[]', 'license_ids[]', 'pilot_badge_status_ids', 'pilot_badge_badge_ids', 'pilot_badge_include', 'pilot_without_badges'],
+    queryParams: ['q', 'distance', 'statuses[]', 'lat', 'lon', 'drone_ids[]', 'camera_ids[]', 'device_ids[]', 'license_ids[]', 'pilot_equipment_ids[]', 'pilot_badge_status_ids', 'pilot_badge_badge_ids', 'pilot_badge_include', 'pilot_without_badges'],
     sortProperties: ['distance:asc', 'fullName:asc'],
     sortedPilots: Ember.computed.sort('model', 'sortProperties'),
     q: null,
@@ -8497,6 +9635,7 @@ define('admin/controllers/pilots/onboarding', ['exports'], function (exports) {
     'camera_ids[]': [],
     'device_ids[]': [],
     'license_ids[]': [],
+    'pilot_equipment_ids[]': [],
     'pilot_badge_badge_ids': [],
     'pilot_badge_status_ids': [],
     'pilot_badge_include': true,
@@ -8517,6 +9656,9 @@ define('admin/controllers/pilots/onboarding', ['exports'], function (exports) {
     }),
     selectedLicensesObserver: Ember.observer('selectedLicenses', function () {
       this.set('license_ids[]', this.get('selectedLicenses').getEach('id'));
+    }),
+    selectedPilotEquipmentObserver: Ember.observer('selectedPilotEquipment', function () {
+      this.set('pilot_equipment_ids[]', this.get('selectedPilotEquipment').getEach('id'));
     }),
     selectedBadgesObserver: Ember.observer('selectedBadges', function () {
       this.set('pilot_badge_badge_ids', this.get('selectedBadges').getEach('id').uniq());
@@ -8670,6 +9812,119 @@ define('admin/controllers/templates/shots/index', ['exports'], function (exports
 
   exports.default = TemplatesShotsIndexController;
 });
+define('admin/controllers/waivers/edit', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Controller.extend({
+    sessionAccount: Ember.inject.service(),
+    actions: {
+      save(waiver) {
+        waiver.save().then(() => {
+          // noop
+        }).catch(err => {
+          let message = err.errors[0].detail;
+          return alert("FAILED TO SAVE\n" + message);
+        });
+      }
+    }
+  });
+});
+define('admin/controllers/waivers/index', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Controller.extend({
+    sortProperties: ['updated_at:desc'],
+    sortedWaivers: Ember.computed.sort('model.waivers', 'sortProperties'),
+    actions: {
+      sortBy(sortProperties) {
+        return this.set('sortProperties', [sortProperties]);
+      }
+    }
+  });
+});
+define('admin/controllers/waivers/new', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Controller.extend({
+    sessionAccount: Ember.inject.service(),
+    actions: {
+      save(waiver) {
+        waiver.save().then(() => {
+          // noop
+        }).catch(err => {
+          let message = err.errors[0].detail;
+          return alert("FAILED TO SAVE\n" + message);
+        });
+      }
+    }
+  });
+});
+define("admin/data/cloud-options", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = [{ name: "Up to 10% cloudy", value: 'less_than_10' }, { name: "Up to 50% cloudy", value: 'less_than_50' }, { name: "Up to 100% cloudy", value: 'less_than_100' }];
+});
+define('admin/data/duration-options', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = [{ name: '1 hour', value: '60' }, { name: '2 hours', value: '120' }, { name: '4 hours', value: '240' }, { name: '8 hours', value: '480' }];
+});
+define("admin/data/map_style", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = [{ "stylers": [{ "saturation": -100 }, { "gamma": 1 }] }, { "elementType": "labels.text.stroke", "stylers": [{ "visibility": "off" }] }, { "featureType": "road", "elementType": "geometry", "stylers": [{ "visibility": "simplified" }] }, { "featureType": "water", "stylers": [{ "visibility": "on" }, { "saturation": 50 }, { "gamma": 0 }, { "hue": "#50a5d1" }] }, { "featureType": "administrative.neighborhood", "elementType": "labels.text.fill", "stylers": [{ "color": "#333333" }] }, { "featureType": "road.local", "elementType": "labels.text", "stylers": [{ "weight": 0.5 }, { "color": "#333333" }] }, { "featureType": "transit.station", "elementType": "labels.icon", "stylers": [{ "gamma": 1 }, { "saturation": 50 }] }, { "featureType": "administrative", "elementType": "labels", "stylers": [{ "visibility:": "off" }] }, { "featureType": "poi", "elementType": "labels", "stylers": [{ "visibility": "off" }] }, { "featureType": "water", "elementType": "labels", "stylers": [{ "visibility": "off" }] }, { "featureType": "transit", "elementType": "labels", "stylers": [{ "visibility": "off" }] }];
+});
+define("admin/data/mission_type", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = [{ "type": "client_mission", "name": "Client Mission", "color": "client-mission-icon-color", "fontIcon": "icon-ClientPin", "png": "client_mission_assigned.png" }, { "type": "client_mission_available", "name": "Available Mission", "color": "client-mission-available-icon-color", "fontIcon": "icon-ClientPin", "png": "client_mission_available.png" }, { "type": "pano_commercial_available", "name": "Commercial Pano", "color": "pano-icon-color", "fontIcon": "icon-CommercialPin", "png": "pano_commercial_available.png" }, { "type": "pano_commercial_active", "name": "Active Pano", "color": "pano-icon-color", "fontIcon": "icon-DroneBase_Icons_Commercial_Star-Pin", "png": "pano_commercial_active.png" }, { "type": "pano_commercial_completed", "name": "Completed Pano", "color": "pano-icon-color", "fontIcon": "icon-DroneBase_Icons_Commercial_complete_pin", "png": "pano_commercial_completed.png" }, { "type": "pano_residential_available", "name": "Residential Pano", "color": "pano-icon-color", "fontIcon": "icon-ResidentialPin", "png": "pano_residential_available.png" }, { "type": "pano_residential_active", "name": "Active Pano", "color": "pano-icon-color", "fontIcon": " icon-DroneBase_Icons_Residential_Star_pin", "png": "pano_residential_active.png" }, { "type": "pano_residential_completed", "name": "Completed Pano", "color": "pano-icon-color", "fontIcon": "icon-DroneBase_Icons_Residential_complete_pin", "png": "pano_residential_completed.png" }, { "type": "creative_mission", "name": "Creative Mission", "color": "creative-icon-color", "fontIcon": "icon-DroneBase_Icons_Residential_complete_pin", "png": "creative_mission.png" }];
+});
+define("admin/data/reschedule-options", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = [{
+    label: "Clear scheduled date/time",
+    value: 'clear'
+  }, {
+    label: "Set a new date/time",
+    value: 'reschedule'
+  }, {
+    label: "Set a date/time from pilot availability",
+    value: 'pilotAvailability'
+  }];
+});
+define('admin/data/shot-type-camera-requirements', ['exports'], function (exports) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.default = [{ value: "", name: 'None' }, { value: 'phone_camera', name: 'Phone Camera' }, { value: 'dslr', name: 'DSLR' }, { value: 'drone_camera', name: 'Drone Camera' }, { value: 'thermal_camera', name: 'Thermal' }, { value: 'lidar', name: 'LiDAR' }];
+});
 define("admin/data/shot_list", ["exports"], function (exports) {
   "use strict";
 
@@ -8733,59 +9988,30 @@ define("admin/data/shot_list", ["exports"], function (exports) {
     "video": ""
   }];
 });
-define('admin/feature-manager', ['exports', 'admin/config/environment'], function (exports, _environment) {
+define('admin/data/sla-options', ['exports'], function (exports) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
+  exports.default = [{ name: '2 days', value: '48' }, { name: '3 days', value: '72' }];
+});
+define("admin/data/waiver-status-options", ["exports"], function (exports) {
+  "use strict";
 
-  var FEATURE_MODULE,
-      bind = function (fn, me) {
-    return function () {
-      return fn.apply(me, arguments);
-    };
-  };
-
-  FEATURE_MODULE = function () {
-    var FeatureManager;
-    FeatureManager = function () {
-      function FeatureManager(name) {
-        this.showDispatchSorting = bind(this.showDispatchSorting, this);
-        this.showOnsiteContacts = bind(this.showOnsiteContacts, this);
-        var user;
-        user = {
-          'key': 'ALL_USERS'
-        };
-        this.ldclient = LDClient.initialize(_environment.default.launchDarklyClientKey, user);
-        this.ldclient.on('ready', function (_this) {
-          return function () {
-            return console.log('launchdarkly loaded:: ' + 'environment: ' + _environment.default.environment + ' values: ' + JSON.stringify(_this.ldclient.allFlags()));
-          };
-        }(this));
-        this.ldclient.on('change', function (_this) {
-          return function (settings) {
-            return console.log('ld flags changed:' + JSON.stringify(settings));
-          };
-        }(this));
-      }
-
-      FeatureManager.prototype.showOnsiteContacts = function () {
-        return this.ldclient.variation('onsite-contacts-enabled-admin', true);
-      };
-
-      FeatureManager.prototype.showDispatchSorting = function () {
-        return this.ldclient.variation('pilot-score-displayed-admin', true);
-      };
-
-      return FeatureManager;
-    }();
-    return {
-      'FeatureManager': new FeatureManager()
-    };
-  };
-
-  exports.default = FEATURE_MODULE(FEATURE_MODULE || {});
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = [{
+    label: "Approved",
+    value: 'approved'
+  }, {
+    label: "Denied",
+    value: 'denied'
+  }, {
+    label: "Under Review",
+    value: 'under_review'
+  }];
 });
 define('admin/helpers/and', ['exports'], function (exports) {
   'use strict';
@@ -8995,6 +10221,23 @@ define('admin/helpers/empty-or-includes', ['exports'], function (exports) {
 
   exports.default = Ember.Helper.helper(emptyOrIncludes);
 });
+define('admin/helpers/eq', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var EqHelper;
+
+  EqHelper = Ember.Helper.helper(function (arg) {
+    var leftSide, rightSide;
+    leftSide = arg[0], rightSide = arg[1];
+    return leftSide === rightSide;
+  });
+
+  exports.default = EqHelper;
+});
 define("admin/helpers/format-distance", ["exports"], function (exports) {
   "use strict";
 
@@ -9059,6 +10302,19 @@ define('admin/helpers/format-float', ['exports'], function (exports) {
 
   exports.default = Ember.Helper.helper(formatFloat);
 });
+define('admin/helpers/format-hour', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Helper.extend({
+    compute([minutes]) {
+      let hour = parseInt(minutes) / 60;
+      return moment(new Date().setHours(hour)).format('hA');
+    }
+  });
+});
 define('admin/helpers/format-money', ['exports', 'accounting/helpers/format-money'], function (exports, _formatMoney) {
   'use strict';
 
@@ -9097,18 +10353,6 @@ define("admin/helpers/format-percent", ["exports"], function (exports) {
 
   exports.formatPercent = formatPercent;
   exports.default = FormatPercentHelper;
-});
-define('admin/helpers/format-timeslot', ['exports'], function (exports) {
-  'use strict';
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.default = Ember.Helper.extend({
-    compute([start, end, timezone]) {
-      return moment.tz(start, timezone).format('h:mm') + ' - ' + moment.tz(end, timezone).format('h:mm A');
-    }
-  });
 });
 define('admin/helpers/ignore-children', ['exports', 'ember-ignore-children-helper/helpers/ignore-children'], function (exports, _ignoreChildren) {
   'use strict';
@@ -9226,6 +10470,37 @@ define('admin/helpers/is-checked', ['exports'], function (exports) {
   });
 
   exports.default = IsCheckedHelper;
+});
+define('admin/helpers/is-equal-id', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var IsEqualIdHelper;
+
+  IsEqualIdHelper = Ember.Helper.helper(function (arg) {
+    var leftId, leftSide, rightId, rightSide;
+    leftSide = arg[0], rightSide = arg[1];
+    leftId = function () {
+      try {
+        return leftSide.get('id');
+      } catch (error) {}
+    }();
+    rightId = function () {
+      try {
+        return rightSide.get('id');
+      } catch (error) {}
+    }();
+    if (rightId !== void 0 && leftId !== void 0) {
+      return leftId === rightId;
+    } else {
+      return leftSide === rightSide;
+    }
+  });
+
+  exports.default = IsEqualIdHelper;
 });
 define('admin/helpers/is-equal', ['exports'], function (exports) {
   'use strict';
@@ -9594,24 +10869,60 @@ define('admin/helpers/singularize', ['exports', 'ember-inflector/lib/helpers/sin
   });
   exports.default = _singularize.default;
 });
+define('admin/helpers/sun-calculations', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Helper.extend({
+    compute([date, timezone, latitude, longitude]) {
+      if (date == undefined || latitude == undefined || longitude == undefined) {
+        return null;
+      } else {
+        var times = SunCalc.getTimes(new Date(date), latitude, longitude);
+        return 'Solar noon: ' + moment.tz(times.solarNoon, timezone).format('hh:mmA') + ' | Sunset: ' + moment.tz(times.sunset, timezone).format('hh:mmA');
+      }
+    }
+  });
+});
+define('admin/helpers/timeframe-options', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Helper.extend({
+    compute([start_hour, end_hour, duration, isStartOption]) {
+      if (isStartOption) {
+        end_hour = end_hour - duration;
+      } else {
+        start_hour = start_hour + duration;
+      }
+      return new Array(end_hour - start_hour).fill().map((d, i) => this.generateOption(i + start_hour));
+    },
+    generateOption(hour) {
+      return { name: moment(new Date().setHours(hour)).format('h A'), value: (hour * 60).toString() };
+    }
+  });
+});
 define('admin/helpers/titleize', ['exports'], function (exports) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-
-  var TitleizeHelper;
-
-  TitleizeHelper = Ember.Helper.helper(function (arg) {
-    var string;
-    string = arg[0];
+  exports.titleize = titleize;
+  function titleize([string]) {
+    if (string == null || string == undefined) {
+      return '';
+    }
     return string.split('_').map(function (st) {
       return st.charAt(0).toUpperCase() + st.slice(1);
     }).join(' ');
-  });
+  }
 
-  exports.default = TitleizeHelper;
+  exports.default = Ember.Helper.helper(titleize);
 });
 define('admin/helpers/unix', ['exports', 'ember-moment/helpers/unix'], function (exports, _unix) {
   'use strict';
@@ -9827,6 +11138,66 @@ define('admin/initializers/model-locale', ['exports', 'ember-model-validator/ini
     enumerable: true,
     get: function () {
       return _modelLocale.initialize;
+    }
+  });
+});
+define('admin/initializers/pl-uploader-manager', ['exports', 'ember-plupload/system/make-file-filter'], function (exports, _makeFileFilter) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.initialize = initialize;
+
+
+  var keys = Object.keys; /*global requirejs */
+  function initialize(app) {
+    if (arguments[1]) {
+      // Ember < 2.1
+      app = arguments[1];
+    }
+
+    var entries = requirejs.entries;
+    var fileFilterPrefix = app.modulePrefix + '/file-filters';
+    var fileFilters = {};
+    keys(entries).forEach(function (key) {
+
+      if (key.indexOf(fileFilterPrefix) === 0) {
+        var filterName = key.split('/').slice(-1);
+        var module = require(key, null, null, true);
+        if (module) {
+          fileFilters[filterName] = module.default;
+          (0, _makeFileFilter.default)(filterName, module.default);
+          app.register('file-filter:' + filterName, module.default, { instantiate: false });
+        }
+      }
+    });
+
+    app.register('app:file-filters', fileFilters, { instantiate: false });
+    app.inject('component:pl-uploader', 'fileFilters', 'app:file-filters');
+  }
+
+  exports.default = {
+    name: 'pl-uploader',
+    initialize: initialize
+  };
+});
+define('admin/initializers/register-google', ['exports', 'ember-place-autocomplete/initializers/register-google'], function (exports, _registerGoogle) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  Object.defineProperty(exports, 'default', {
+    enumerable: true,
+    get: function () {
+      return _registerGoogle.default;
+    }
+  });
+  Object.defineProperty(exports, 'initialize', {
+    enumerable: true,
+    get: function () {
+      return _registerGoogle.initialize;
     }
   });
 });
@@ -10185,6 +11556,16 @@ define('admin/models/badge', ['exports', 'ember-data'], function (exports, _embe
   exports.default = _emberData.default.Model.extend({
     name: _emberData.default.attr('string'),
     created_at: _emberData.default.attr('date'),
+    auto_dispatch_batch_size: _emberData.default.attr('number'),
+    auto_dispatch_enabled: _emberData.default.attr('boolean'),
+
+    required_drones: _emberData.default.hasMany('drone', { async: false }),
+    required_drone_cameras: _emberData.default.hasMany('drone_camera', { async: false }),
+    required_devices: _emberData.default.hasMany('device', { async: false }),
+    required_pilot_equipments: _emberData.default.hasMany('pilot_equipment', { async: false }),
+    required_pilot_licenses: _emberData.default.hasMany('license', { async: false }),
+    badge_dispatch_zones: _emberData.default.hasMany('dispatch_zone', { async: false, serialize: 'object' }),
+
     required_program: _emberData.default.belongsTo('mindflash_series', { async: false }),
     mindflash_series_name: Ember.computed('required_program', function () {
       return this.get('required_program.name');
@@ -10199,6 +11580,9 @@ define('admin/models/badge', ['exports', 'ember-data'], function (exports, _embe
     }),
     has_requirements: Ember.computed('training_package_name', 'mindflash_series_name', 'checkr_package_name', function () {
       return (this.get('training_package_name') || this.get('mindflash_series_name') || this.get('checkr_package_name')) != null;
+    }),
+    required_drones_and_cameras: Ember.computed('required_drones', 'required_drone_cameras', function () {
+      return this.get('required_drones').toArray().concat(this.get('required_drone_cameras').toArray());
     })
   });
 });
@@ -10318,6 +11702,7 @@ define('admin/models/client', ['exports', 'ember-data'], function (exports, _emb
     password: _emberData.default.attr('string'),
     invoiceable: _emberData.default.attr('boolean'),
     company_name: _emberData.default.attr('string'),
+    is_organization_owner: _emberData.default.attr('boolean'),
     collaborators: _emberData.default.hasMany('collaborators', {
       async: false
     }),
@@ -10417,6 +11802,32 @@ define('admin/models/device', ['exports', 'ember-data', 'ember-model-validator/m
 
   exports.default = Device;
 });
+define('admin/models/dispatch-zone', ['exports', 'ember-data', 'ember-model-validator/mixins/model-validator'], function (exports, _emberData, _modelValidator) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _emberData.default.Model.extend(_modelValidator.default, {
+    name: _emberData.default.attr('string'),
+    latitude: _emberData.default.attr('number'),
+    longitude: _emberData.default.attr('number'),
+    distance: _emberData.default.attr('number'),
+
+    hasLatLng: Ember.computed('latitude', 'longitude', function () {
+      console.log(this.get('latitude'), this.get('longitude'));
+      return this.get('latitude') !== undefined && this.get('longitude') !== undefined;
+    }),
+
+    validations: {
+      name: { presence: true },
+      latitude: { presence: true },
+      longitude: { presence: true },
+      distance: { presence: true }
+    }
+
+  });
+});
 define('admin/models/drone-camera', ['exports', 'ember-data', 'ember-model-validator/mixins/model-validator'], function (exports, _emberData, _modelValidator) {
   'use strict';
 
@@ -10478,7 +11889,7 @@ define('admin/models/drone', ['exports', 'ember-data', 'ember-model-validator/mi
       async: false
     }),
     drone_manufacturer: _emberData.default.belongsTo('drone-manufacturer', {
-      async: false
+      async: true
     }),
     validations: {
       name: {
@@ -10589,17 +12000,50 @@ define('admin/models/imageable', ['exports', 'ember-data', 'admin/models/shareab
   exports.default = _shareable.default.extend({
     url: _emberData.default.attr('string'),
     name: _emberData.default.attr('string'),
+    taken_at: _emberData.default.attr('string'),
+    camera_make: _emberData.default.attr('string'),
+    camera_model: _emberData.default.attr('string'),
+    white_balance: _emberData.default.attr('string'),
+    exposure_time: _emberData.default.attr('string'),
+    exposure_bias: _emberData.default.attr('string'),
     version_urls: _emberData.default.attr(),
     processing: _emberData.default.attr('boolean'),
     missing_gps_info: _emberData.default.attr('boolean'),
-    height: _emberData.default.attr('string'),
-    width: _emberData.default.attr('string'),
+    height: _emberData.default.attr('number'),
+    width: _emberData.default.attr('number'),
+    resolution: _emberData.default.attr('number'),
     source_type: _emberData.default.attr('string'),
     gps_latitude: _emberData.default.attr('number'),
     gps_longitude: _emberData.default.attr('number'),
     gps_altitude: _emberData.default.attr('number'),
     mission: _emberData.default.belongsTo('mission'),
     shot: _emberData.default.belongsTo('shot'),
+    takenAt: Ember.computed('taken_at', function () {
+      if (this.get('taken_at')) {
+        return moment(this.get('taken_at'), "YYYY:MM:DD hh:mm:ss");
+      }
+    }),
+    formattedTakenAt: Ember.computed('takenAt', function () {
+      if (this.get('takenAt')) {
+        return this.get('takenAt').format("MM/DD/YYYY [at] h:mm a");
+      }
+    }),
+    autoWhiteBalance: Ember.computed('white_balance', function () {
+      if (this.get('white_balance')) {
+        return this.get('white_balance') == '0' ? 'Auto white balance' : 'Manual white balance';
+      }
+    }),
+    dimensions: Ember.computed('width', 'height', function () {
+      return 'W: ' + this.get('width') + ', H: ' + this.get('height');
+    }),
+    isLowResolution: Ember.computed('resolution', 'width', 'height', function () {
+      if (this.get('resolution') == null || this.get('resolution') < 72) {
+        return true;
+      } else {
+        var dimensions = [this.get('width'), this.get('height')];
+        return Math.max(...dimensions) < 1280 || Math.min(...dimensions) < 720;
+      }
+    }),
     isRawAndMissingGpsInfo: Ember.computed('missing_gps_info', 'final', function () {
       return this.get('missing_gps_info') && !this.get('final');
     }),
@@ -10783,6 +12227,7 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
     payment_token: _emberData.default.attr('string'),
     internal_notes: _emberData.default.attr('string'),
     internal_production_notes: _emberData.default.attr('string'),
+    pilot_script: _emberData.default.attr('string'),
     scheduled_at: _emberData.default.attr('string'),
     scheduled_at_start: _emberData.default.attr('string'),
     scheduled_at_end: _emberData.default.attr('string'),
@@ -10807,6 +12252,7 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
     salesforce_opportunity_id: _emberData.default.attr('string'),
     archived_at: _emberData.default.attr('string'),
     reference_id: _emberData.default.attr('string'),
+    cloud_reqs: _emberData.default.attr('string'),
     pilot: _emberData.default.belongsTo('pilot', {
       async: true
     }),
@@ -10835,7 +12281,7 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
       async: false
     }),
     credit_card: _emberData.default.belongsTo('credit_card', {
-      async: true
+      async: false
     }),
     point_of_interest: _emberData.default.belongsTo('point_of_interest', {
       async: true
@@ -10898,6 +12344,15 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
     pilot_rating: _emberData.default.belongsTo('rating', {
       async: false
     }),
+    mission_payments: _emberData.default.hasMany('mission_payments', {
+      async: true
+    }),
+    duration: _emberData.default.attr('string'),
+    durationInHours: Ember.computed('duration', function () {
+      if (this.get('duration')) {
+        return parseInt(this.get('duration')) / 60;
+      }
+    }),
     pusherSubscribers: [],
     pilot_zendesk_ticket_url: Ember.computed('zendesk_tickets', function () {
       var ticket;
@@ -10915,19 +12370,6 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
     }),
     hasMissionFlightApp: Ember.computed('mission_flight_app', function () {
       return !!this.get('mission_flight_app.id');
-    }),
-    statusTimeStamp: Ember.computed('activity_logs', 'status', function () {
-      var obj;
-      obj = this.get('activity_logs').find(function (_this) {
-        return function (el) {
-          return el.action === _this.get('status');
-        };
-      }(this));
-      if (obj) {
-        return obj.created_at;
-      } else {
-        return null;
-      }
     }),
     formattedMissionType: Ember.computed('mission_type', function () {
       switch (this.get('mission_type')) {
@@ -11016,11 +12458,19 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
     isReshoot: Ember.computed('parent_id', function () {
       return this.get('parent_id') != null;
     }),
+    isFree: Ember.computed('price', function () {
+      return parseInt(this.get('price')) === 0;
+    }),
     hasReshoot: Ember.computed('status', 'reshoot_mission_id', function () {
       return this.get('status') === 'rejected' && this.get('reshoot_mission_id') != null;
     }),
     needsEstimatedPayout: Ember.computed('estimated_pilot_payout', 'mission_type', function () {
       return this.get('mission_type') !== 'training' && this.get('estimated_pilot_payout') === '0';
+    }),
+    shotsWithProcesses: Ember.computed('shots.length', function () {
+      return this.get('shots').filter(function (shot) {
+        return shot.get('hasPostProcess');
+      });
     }),
     loadActivityLogs: function () {
       return this.get('store').query('activity-log', {
@@ -11032,6 +12482,15 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
       }(this), function (_this) {
         return function (error) {
           return alert(error);
+        };
+      }(this));
+    },
+    loadPayments: function () {
+      return this.get('store').query('mission_payment', {
+        missionId: this.get('id')
+      }).then(function (_this) {
+        return function (response) {
+          return _this.set('mission_payments', response);
         };
       }(this));
     },
@@ -11099,10 +12558,56 @@ define('admin/models/mission', ['exports', 'ember-data', 'admin/models/shareable
           return alert("The zip file is now generating");
         };
       }(this));
-    }
+    },
+    cloud_reqs_verbose: Ember.computed('cloud_reqs', function () {
+      var valueWithDashes;
+      valueWithDashes = this.get('cloud_reqs') || 'less_than_100';
+      return valueWithDashes.replace(/_/g, ' ').replace('less than', 'Up to') + '% cloudy';
+    }),
+    missionStatusType: Ember.computed('status', 'completed', 'point_of_interest', function () {
+      if (this.get('mission_type') === 'creative') {
+        return 'creative_mission';
+      }
+      if (this.get('point_of_interest')) {
+        if (this.get('completed')) {
+          if (this.get('point_of_interest.property_type') === 'commercial') {
+            return 'pano_commercial_completed';
+          } else {
+            return 'pano_residential_completed';
+          }
+        } else {
+          if (this.get('point_of_interest.property_type') === 'commercial') {
+            return 'pano_commercial_active';
+          } else {
+            return 'pano_residential_active';
+          }
+        }
+      } else if (this.get('status') === 'pilots_notified') {
+        return 'client_mission_available';
+      } else {
+        return 'client_mission';
+      }
+    })
   });
 
   exports.default = Mission;
+});
+define('admin/models/mission_payment', ['exports', 'ember-data'], function (exports, _emberData) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _emberData.default.Model.extend({
+    mission: _emberData.default.belongsTo('mission'),
+    credit_card: _emberData.default.belongsTo('credit_card'),
+    payment_processor: _emberData.default.attr('string'),
+    payment_id: _emberData.default.attr('string'),
+    status: _emberData.default.attr('string'),
+    created_at: _emberData.default.attr('string'),
+    price: _emberData.default.attr('number'),
+    paid_at: _emberData.default.attr('date')
+  });
 });
 define('admin/models/mission_rejection_reason', ['exports', 'ember-data'], function (exports, _emberData) {
   'use strict';
@@ -11195,6 +12700,7 @@ define('admin/models/organization', ['exports', 'ember-data'], function (exports
 
   Organization = _emberData.default.Model.extend({
     name: _emberData.default.attr('string'),
+    slug: _emberData.default.attr('string'),
     packages: _emberData.default.hasMany('package', {
       async: false
     }),
@@ -11225,6 +12731,7 @@ define('admin/models/package', ['exports', 'ember-data'], function (exports, _em
     mission_instructions: _emberData.default.attr('string'),
     mission_internal_notes: _emberData.default.attr('string'),
     mission_production_notes: _emberData.default.attr('string'),
+    default_pilot_script: _emberData.default.attr('string'),
     estimated_pilot_payout: _emberData.default.attr('string'),
     salesforce_opportunity_id: _emberData.default.attr('string'),
     vertical: _emberData.default.belongsTo('vertical', {
@@ -11252,6 +12759,32 @@ define('admin/models/package', ['exports', 'ember-data'], function (exports, _em
     badge_required: _emberData.default.attr('boolean'),
     auto_dispatch_enabled: _emberData.default.attr('boolean'),
     camera_mega_pixels: _emberData.default.attr('string'),
+    position: _emberData.default.attr('number'),
+    cloud_reqs: _emberData.default.attr('string', {
+      defaultValue: 'less_than_50'
+    }),
+    timeframe_start: _emberData.default.attr('string', {
+      defaultValue: '660'
+    }),
+    timeframe_end: _emberData.default.attr('string', {
+      defaultValue: '900'
+    }),
+    sla_time_to_schedule: _emberData.default.attr('string', {
+      defaultValue: '72'
+    }),
+    mission_duration: _emberData.default.attr('string', {
+      defaultValue: '60'
+    }),
+    slaDays: Ember.computed('sla_time_to_schedule', function () {
+      if (this.get('sla_time_to_schedule')) {
+        return parseInt(this.get('sla_time_to_schedule')) / 24;
+      }
+    }),
+    missionDurationInHours: Ember.computed('mission_duration', function () {
+      if (this.get('mission_duration')) {
+        return parseInt(this.get('mission_duration')) / 60;
+      }
+    }),
     priceInDollars: Ember.computed('price', function () {
       return this.get('price') / 100;
     }),
@@ -11496,7 +13029,6 @@ define('admin/models/pilot', ['exports', 'ember-data', 'admin/models/rescheduler
     payment_processor_id: _emberData.default.attr('string'),
     payment_processor: _emberData.default.attr('string'),
     enable_autopay: _emberData.default.attr('boolean'),
-    pilot_license: _emberData.default.attr('string'),
     timezone_id: _emberData.default.attr('string'),
     is_available_weekdays: _emberData.default.attr('boolean'),
     is_available_weekends: _emberData.default.attr('boolean'),
@@ -11683,10 +13215,23 @@ define('admin/models/shot-type', ['exports', 'ember-data'], function (exports, _
 
   ShotType = _emberData.default.Model.extend({
     name: _emberData.default.attr('string'),
+    camera_requirement: _emberData.default.attr('string'),
     description: _emberData.default.attr('string'),
     video: _emberData.default.attr('string'),
+    post_process_type: _emberData.default.attr('string', {
+      defaultValue: 'not_set'
+    }),
     shots: _emberData.default.hasMany('shot', {
       async: false
+    }),
+    min: _emberData.default.attr('number'),
+    max: _emberData.default.attr('number'),
+    asset_type: _emberData.default.attr('string'),
+    postProcessName: Ember.computed('post_process_type', function () {
+      return this.get('post_process_type').replace(/_/g, ' ').capitalize();
+    }),
+    isPanoStitching: Ember.computed('post_process_type', function () {
+      return this.get('post_process_type') === 'panorama_stitching';
     })
   });
 
@@ -11726,6 +13271,10 @@ define('admin/models/shot', ['exports', 'ember-data'], function (exports, _ember
       async: false
     }),
     image_archive_url: _emberData.default.attr('string'),
+    post_processing_status: _emberData.default.attr('string'),
+    activity_logs: _emberData.default.hasMany('activity_logs', {
+      async: false
+    }),
     imageCount: Ember.computed('image_markers.length', function () {
       return this.get('image_markers.length');
     }),
@@ -11734,11 +13283,28 @@ define('admin/models/shot', ['exports', 'ember-data'], function (exports, _ember
       ref = this.get('images').toArray();
       for (i = 0, len = ref.length; i < len; i++) {
         image = ref[i];
-        if (image.get('missing_gps_info')) {
+        if (image.get('missing_gps_info') && !image.get('processing')) {
           return true;
         }
       }
       return false;
+    }),
+    hasLowResolution: Ember.computed('images.[]', function () {
+      var i, image, len, ref;
+      ref = this.get('images').toArray();
+      for (i = 0, len = ref.length; i < len; i++) {
+        image = ref[i];
+        if (image.get('isLowResolution') && !image.get('processing')) {
+          return true;
+        }
+      }
+      return false;
+    }),
+    hasPanos: Ember.computed('panoramas.[]', function () {
+      return this.get('panoramas.length') > 0;
+    }),
+    firstPano: Ember.computed('panoramas.[]', function () {
+      return this.get('panoramas').objectAt(0);
     }),
     downloadImages: function () {
       var adapter;
@@ -11749,7 +13315,24 @@ define('admin/models/shot', ['exports', 'ember-data'], function (exports, _ember
       var adapter;
       adapter = this.store.adapterFor(this.constructor.modelName);
       return adapter.promoteAssets(this);
-    }
+    },
+    hasPostProcess: Ember.computed('shot_type', function () {
+      return this.get('shot_type.post_process_type') !== 'not_set';
+    }),
+    processingFailed: Ember.computed('post_processing_status', function () {
+      return this.get('post_processing_status') === 'error';
+    }),
+    isProcessing: Em.computed.equal('post_processing_status', 'processing'),
+    verboseProcessStatus: Ember.computed('post_processing_status', function () {
+      switch (this.get('post_processing_status')) {
+        case 'error':
+          return "Processing Error";
+        case 'processing':
+          return "Processing...";
+        default:
+          return this.get('post_processing_status');
+      }
+    })
   });
 
   exports.default = Shot;
@@ -11772,6 +13355,19 @@ define('admin/models/template', ['exports', 'ember-data'], function (exports, _e
   });
 
   exports.default = Template;
+});
+define('admin/models/timeslot', ['exports', 'ember-data'], function (exports, _emberData) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _emberData.default.Model.extend({
+    mission: _emberData.default.belongsTo('mission'),
+    scheduled_at_start: _emberData.default.attr('string'),
+    scheduled_at_end: _emberData.default.attr('string'),
+    mission_reschedule: _emberData.default.belongsTo('mission_reschedule')
+  });
 });
 define('admin/models/training-package', ['exports', 'ember-data'], function (exports, _emberData) {
   'use strict';
@@ -11838,6 +13434,22 @@ define('admin/models/video', ['exports', 'ember-data', 'admin/models/shareable']
 
   exports.default = Video;
 });
+define('admin/models/waiver', ['exports', 'ember-data'], function (exports, _emberData) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _emberData.default.Model.extend({
+    number: _emberData.default.attr('string'),
+    status: _emberData.default.attr('string'),
+    external_airport_id: _emberData.default.attr('string'),
+    updated_at: _emberData.default.attr('date'),
+    expires_at: _emberData.default.attr('date'),
+    url: _emberData.default.attr('string')
+
+  });
+});
 define('admin/models/zendesk-ticket', ['exports', 'ember-data'], function (exports, _emberData) {
   'use strict';
 
@@ -11903,6 +13515,11 @@ define('admin/router', ['exports', 'admin/config/environment'], function (export
         this.route('clone', { path: '/clone/:shot_type_id' });
         this.route('new');
       });
+    });
+    this.route('waivers', function () {
+      this.route('index', { path: '/' });
+      this.route('new', { path: '/new' });
+      this.route('edit', { path: ':waiver_id/edit' });
     });
     this.route('equipment', function () {
       this.route('index', { path: '/' });
@@ -11996,13 +13613,23 @@ define('admin/routes/badges/edit', ['exports', 'admin/config/environment'], func
     value: true
   });
   exports.default = Ember.Route.extend({
+
+    store: Ember.inject.service(),
+
     model(params) {
       return Ember.RSVP.hash({
+        drones: this.get('store').findAll('drone'),
+        devices: this.get('store').findAll('device'),
+        equipments: this.get('store').findAll('pilot_equipment'),
+        licenses: this.get('store').findAll('license'),
         badge: this.store.findRecord('badge', params.badge_id),
         backgroundChecks: [],
         trainingPackages: this.store.findAll('training_package'),
         checkrPackages: this.store.findAll('checkr_package'),
-        mindflashSeries: this.store.query('mindflash_series', { mindflashRefresh: false })
+        mindflashSeries: this.store.query('mindflash_series', { mindflashRefresh: false }),
+        dispatchLimit: [{ "id": 20, "name": 20 }, { "id": 50, "name": 50 }].map(function (value) {
+          return new Ember.Object(value);
+        })
       });
     }
   });
@@ -12102,12 +13729,12 @@ define('admin/routes/clients/client/missions/index', ['exports', 'ember-infinity
         }),
         badges: this.store.query('badge', {}),
         public_packages: this.store.query('package', {}).then(function (response) {
-          return response.sortBy('organization.name', 'vertical.short_name', 'name', 'price');
+          return response.sortBy('organization.name', 'vertical.short_name', 'position', 'price', 'name');
         }),
         client_packages: this.store.query('package', {
           client_id: client.id
         }).then(function (response) {
-          return response.sortBy('vertical.short_name', 'name', 'price');
+          return response.sortBy('vertical.short_name', 'position', 'price', 'name');
         }),
         drones: this.store.findAll('drone'),
         devices: this.store.findAll('device'),
@@ -12143,6 +13770,7 @@ define('admin/routes/clients/client/missions/index', ['exports', 'ember-infinity
           mission_instructions: clone_package.get('mission_instructions'),
           mission_internal_notes: clone_package.get('mission_internal_notes'),
           mission_production_notes: clone_package.get('mission_production_notes'),
+          default_pilot_script: clone_package.get('default_pilot_script'),
           estimated_pilot_payout: clone_package.get('estimated_pilot_payout'),
           pilot_instructions: clone_package.get('pilot_instructions'),
           badge: clone_package.get('badge'),
@@ -12258,8 +13886,6 @@ define('admin/routes/clients/organization', ['exports'], function (exports) {
         badges: this.store.query('badge', {}),
         organization_packages: this.store.query('package', {
           organization_id: params.organization_id
-        }).then(function (response) {
-          return response.sortBy('vertical.short_name', 'name', 'price');
         }),
         drones: this.store.findAll('drone'),
         devices: this.store.findAll('device'),
@@ -12270,13 +13896,17 @@ define('admin/routes/clients/organization', ['exports'], function (exports) {
       });
     },
     setupController: function (controller, model) {
-      var newName;
+      var newName, newSlug;
       this._super(controller, model);
       model.templatesForSelect = model.templates.toArray().sortBy('name');
       model.verticalsForSelect = model.verticals.toArray().sortBy('name');
-      model.organization_packages_array = model.organization_packages.toArray();
+      model.sortedOrganizationPackages = model.organization_packages.toArray().sortBy('vertical.short_name', 'position', 'price', 'name');
+      model.sortedDronebasePackages = model.dronebase_packages.toArray().sortBy('vertical.short_name', 'position', 'price', 'name');
       newName = model.organization.get('name');
-      return controller.set('newName', newName);
+      newSlug = model.organization.get('slug');
+      console.log('newslug', newSlug);
+      controller.set('newName', newName);
+      return controller.set('newSlug', newSlug);
     },
     actions: {
       savePackage: function (model) {
@@ -12313,6 +13943,7 @@ define('admin/routes/clients/organization', ['exports'], function (exports) {
           mission_instructions: clone_package.get('mission_instructions'),
           mission_internal_notes: clone_package.get('mission_internal_notes'),
           mission_production_notes: clone_package.get('mission_production_notes'),
+          default_pilot_script: clone_package.get('default_pilot_script'),
           estimated_pilot_payout: clone_package.get('estimated_pilot_payout'),
           pilot_instructions: clone_package.get('pilot_instructions'),
           badge: clone_package.get('badge'),
@@ -12525,7 +14156,7 @@ define('admin/routes/missions/creative_missions', ['exports', 'ember-infinity/mi
 
   exports.default = CreativeMissionsRoute;
 });
-define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'admin/mixins/s3-asset-uploads', 'admin/mixins/mission-share', 'admin/feature-manager'], function (exports, _environment, _s3AssetUploads, _missionShare, _featureManager) {
+define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'admin/mixins/s3-asset-uploads', 'admin/mixins/mission-share'], function (exports, _environment, _s3AssetUploads, _missionShare) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -12617,6 +14248,7 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
       model.productionReps = Ember.A([]);
       model.operationReps = Ember.A([]);
       model.drones = model.drones.toArray();
+      model.busy = false;
       model.currentAdminName = this.store.peekRecord('admin', this.get('session.data.authenticated.id')).fullName;
       model.admins.forEach(function (admin) {
         if (admin.get('roles').includes('account_rep')) {
@@ -12637,6 +14269,10 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
       model["package"] = model.mission.get('package.name').match(/Custom/) ? model.mission.get('package') : this.store.createRecord('package', {
         name: 'Custom'
       });
+      if (!model.mission.get('duration')) {
+        model.mission.set('duration', model.mission["package"].get('mission_duration'));
+      }
+      model.mission.loadPayments();
       model.mission.loadImages();
       model.mission.loadVideos();
       model.mission.loadPanoramas();
@@ -12649,9 +14285,6 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
     },
     _saveOnsiteContact: function () {
       var onsiteContact;
-      if (_featureManager.default.FeatureManager.showOnsiteContacts() === false) {
-        return;
-      }
       onsiteContact = this.controller.get('model.mission.onsite_contact');
       if (!onsiteContact) {
         this.alertAndThrow("Error saving: onsiteContact == null");
@@ -12667,6 +14300,22 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
       throw new Error(message);
     },
     actions: {
+      busy: function (promise) {
+        var _this, body, callback;
+        body = Ember.$('body');
+        body.addClass('busy');
+        this.set('context.busy', true);
+        _this = this;
+        callback = function (response) {
+          body.removeClass('busy');
+          return _this.set('context.busy', false);
+        };
+        if (promise["finally"]) {
+          return promise["finally"](callback);
+        } else {
+          return promise.always(callback);
+        }
+      },
       loading: function (transition) {
         this.controllerFor('missions.edit').set('pageReady', false);
         transition.promise["finally"](function (_this) {
@@ -12694,9 +14343,9 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
         }(this));
       },
       hold: function (mission, data) {
-        var _this;
+        var _this, request;
         _this = this;
-        return Em.$.ajax({
+        request = Em.$.ajax({
           url: _environment.default.api.host + "/v1/admin/missions/" + mission.id + "/holds",
           type: 'POST',
           dataType: 'json',
@@ -12716,6 +14365,37 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
             return console.log('failed to put on hold', error);
           };
         }(this));
+        this.send('busy', request);
+        return request;
+      },
+      autoDispatchInvites: function (mission) {
+        var _this, request;
+        _this = this;
+        request = Ember.$.ajax({
+          url: _environment.default.api.host + "/v1/admin/missions/" + mission.id + "/notifications",
+          headers: this.get('sessionAccount.headers'),
+          type: 'POST',
+          dataType: 'json',
+          data: {
+            auto_dispatch: true
+          }
+        }).then(function (_this) {
+          return function (response) {
+            mission.set('pilot_invitations_dispatch', response.data.attributes);
+            mission.set('status', 'pilots_notified');
+            if (response.data.attributes['dispatch_status'] === 'in_progress') {
+              _this.controller.set('showInvitePilotLink', false);
+              _this.controller.set('invitationDispatchInProgress', true);
+              return mission.reload();
+            }
+          };
+        }(this), function (_this) {
+          return function (error) {
+            return console.log('failed to resume', error);
+          };
+        }(this));
+        this.send('busy', request);
+        return request;
       },
       cancelAutoDispatch: function (mission) {
         var _this;
@@ -12741,9 +14421,9 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
         }(this));
       },
       resume: function (mission) {
-        var _this;
+        var _this, request;
         _this = this;
-        return Em.$.ajax({
+        request = Em.$.ajax({
           url: _environment.default.api.host + "/v1/admin/missions/" + mission.id + "/holds/" + mission.get('hold').id,
           type: 'PUT',
           dataType: 'json',
@@ -12762,6 +14442,8 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
             return console.log('failed to resume', error);
           };
         }(this));
+        this.send('busy', request);
+        return request;
       },
       checkAirspace: function (mission, button) {
         return mission.checkAirspace();
@@ -12793,9 +14475,9 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
         return mission.reload();
       },
       save: function (model) {
-        var _this;
+        var _this, promise;
         _this = this;
-        return model.mission.save().then(function (response) {
+        promise = model.mission.save().then(function (response) {
           _this.set('pilotChanged', null);
           _this.transitionTo('missions.edit', model.mission.id);
           return _this._saveOnsiteContact(model.mission.get('onsite_contact'));
@@ -12805,6 +14487,7 @@ define('admin/routes/missions/edit', ['exports', 'admin/config/environment', 'ad
             return console.log('error saving mission: ' + error);
           };
         }(this));
+        return this.send('busy', promise);
       },
       cancel: function (model) {
         if (confirm('Are you sure you want to cancel this mission?')) {
@@ -12967,6 +14650,9 @@ define('admin/routes/missions/index', ['exports', 'ember-infinity/mixins/route',
         refreshModel: true
       },
       status: {
+        refreshModel: true
+      },
+      vertical_id: {
         refreshModel: true
       },
       lat: {
@@ -13393,6 +15079,9 @@ define('admin/routes/pilots/onboarding', ['exports'], function (exports) {
       'license_ids[]': {
         refreshModel: true
       },
+      'pilot_equipment_ids[]': {
+        refreshModel: true
+      },
       'pilot_badge_badge_ids': {
         refreshModel: true
       },
@@ -13416,6 +15105,7 @@ define('admin/routes/pilots/onboarding', ['exports'], function (exports) {
       this.set('cameraIds', params['camera_ids[]']);
       this.set('deviceIds', params['device_ids[]']);
       this.set('licenseIds', params['license_ids[]']);
+      this.set('pilotEquipmentIds', params['pilot_equipment_ids[]']);
       this.set('pilotBadgeBadgeIds', params['pilot_badge_badge_ids']);
       this.set('pilotBadgeStatusIds', params['pilot_badge_status_ids']);
       this.set('pilotBadgeInclude', params['pilot_badge_include']);
@@ -13429,6 +15119,7 @@ define('admin/routes/pilots/onboarding', ['exports'], function (exports) {
       controller.set('cameraIds', this.get('cameraIds'));
       controller.set('deviceIds', this.get('deviceIds'));
       controller.set('licenseIds', this.get('licenseIds'));
+      controller.set('pilotEquipmentIds', this.get('pilotEquipmentIds'));
       controller.set('pilotBadgeBadgeIds', this.get('pilotBadgeBadgeIds'));
       controller.set('pilotBadgeStatusIds', this.get('pilotBadgeStatusIds'));
       controller.set('pilotBadgeStatuses', this.get('pilotBadgeStatuses'));
@@ -13628,7 +15319,8 @@ define('admin/routes/templates/shots/clone', ['exports'], function (exports) {
           return _this.store.createRecord('shot_type', {
             name: response.get('name'),
             description: response.get('description'),
-            video: response.get('video')
+            video: response.get('video'),
+            post_process_type: response.get('post_process_type')
           });
         };
       }(this));
@@ -13703,6 +15395,54 @@ define('admin/routes/templates/shots/new', ['exports'], function (exports) {
 
   exports.default = TemplatesShotsIndexRoute;
 });
+define('admin/routes/waivers/edit', ['exports', 'admin/config/environment'], function (exports, _environment) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Route.extend({
+
+    store: Ember.inject.service(),
+
+    model(params) {
+      return Ember.RSVP.hash({
+        waiver: this.store.findRecord('waiver', params.waiver_id)
+      });
+    }
+  });
+});
+define('admin/routes/waivers/index', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Route.extend({
+    model: function (params) {
+      return Ember.RSVP.hash({
+        waivers: this.store.query('waiver', {})
+      });
+    }
+  });
+});
+define('admin/routes/waivers/new', ['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.Route.extend({
+
+    store: Ember.inject.service(),
+
+    model(params) {
+      return Ember.RSVP.hash({
+        waiver: this.store.createRecord('waiver')
+      });
+    }
+  });
+});
 define('admin/serializers/application', ['exports', 'ember-data'], function (exports, _emberData) {
   'use strict';
 
@@ -13722,6 +15462,69 @@ define('admin/serializers/application', ['exports', 'ember-data'], function (exp
   });
 
   exports.default = ApplicationSerializer;
+});
+define('admin/serializers/badge', ['exports', 'admin/serializers/application', 'ember-data/-private'], function (exports, _application, _private2) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _application.default.extend({
+    serializeHasMany(snapshot, json, relationship) {
+      if (relationship.options['serialize'] == 'object') {
+        this.__serializeHasManyAsObject(...arguments);
+      } else {
+        this._super(...arguments);
+      }
+    },
+
+    __serializeHasManyAsObject(snapshot, json, relationship) {
+      var key = relationship.key;
+      if (this.shouldSerializeHasMany(snapshot, key, relationship)) {
+        var hasMany = snapshot.hasMany(key);
+        if (hasMany !== undefined) {
+
+          json.relationships = json.relationships || {};
+
+          var payloadKey = this._getMappedKey(key, snapshot.type);
+          if (payloadKey === key && this.keyForRelationship) {
+            payloadKey = this.keyForRelationship(key, 'hasMany', 'serialize');
+          }
+
+          var data = new Array(hasMany.length);
+
+          for (var i = 0; i < hasMany.length; i++) {
+            var item = hasMany[i];
+
+            var payloadType = void 0;
+
+            if ((0, _private2.default.isEnabled)("ds-payload-type-hooks")) {
+              payloadType = this.payloadTypeFromModelName(item.modelName);
+              var deprecatedPayloadTypeLookup = this.payloadKeyFromModelName(item.modelName);
+
+              if (payloadType !== deprecatedPayloadTypeLookup && this._hasCustomPayloadKeyFromModelName()) {
+                true && !false && Ember.deprecate("You used payloadKeyFromModelName to serialize type for belongs-to relationship. Use payloadTypeFromModelName instead.", false, {
+                  id: 'ds.json-api-serializer.deprecated-payload-type-for-has-many',
+                  until: '4.0.0'
+                });
+
+                payloadType = deprecatedPayloadTypeLookup;
+              }
+            } else {
+              payloadType = this.payloadKeyFromModelName(item.modelName);
+            }
+
+            data[i] = {
+              type: payloadType,
+              id: item.id,
+              attributes: item.attributes()
+            };
+          }
+          json.relationships[payloadKey] = { data };
+        }
+      }
+    }
+  });
 });
 define('admin/serializers/client', ['exports', 'admin/serializers/application'], function (exports, _application) {
   'use strict';
@@ -13858,6 +15661,23 @@ define('admin/serializers/pilot', ['exports', 'admin/serializers/application'], 
 
   exports.default = MissionSerializer;
 });
+define('admin/serializers/serializeable-object', ['exports', 'admin/serializers/application'], function (exports, _application) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = _application.default.extend({
+    serializeHasMany(snapshot, json, relationship) {
+      var key = relationship.key;
+      if (key === 'comments') {
+        return;
+      } else {
+        this._super(...arguments);
+      }
+    }
+  });
+});
 define('admin/serializers/share', ['exports', 'admin/serializers/application'], function (exports, _application) {
   'use strict';
 
@@ -13978,6 +15798,25 @@ define('admin/services/ajax', ['exports', 'ember-ajax/services/ajax'], function 
       return _ajax.default;
     }
   });
+});
+define('admin/services/common-dictionaries', ['exports', 'ember-data'], function (exports, _emberData) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var CommonDictionaries;
+
+  CommonDictionaries = Ember.Service.extend({
+    session: Ember.inject.service(),
+    store: Ember.inject.service(),
+    verticals: Ember.computed(function () {
+      return this.get('store').findAll('vertical');
+    })
+  });
+
+  exports.default = CommonDictionaries;
 });
 define('admin/services/cookies', ['exports', 'ember-cookies/services/cookies'], function (exports, _cookies) {
   'use strict';
@@ -14220,6 +16059,19 @@ define('admin/services/upload-queue-manager', ['exports', 'admin/utils/uploader/
 
   exports.default = UploadQueueManagerService;
 });
+define('admin/services/uploader', ['exports', 'ember-plupload/services/uploader'], function (exports, _uploader) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  Object.defineProperty(exports, 'default', {
+    enumerable: true,
+    get: function () {
+      return _uploader.default;
+    }
+  });
+});
 define('admin/session-stores/application', ['exports', 'ember-simple-auth/session-stores/adaptive'], function (exports, _adaptive) {
   'use strict';
 
@@ -14234,7 +16086,7 @@ define("admin/templates/application", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "kXjxWm0I", "block": "{\"symbols\":[],\"statements\":[[1,[20,\"main-navigation\"],false],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"container container-main\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n    \"],[1,[20,\"outlet\"],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"outlet\",[\"modal\"],null],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/application.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "LzeqKDKj", "block": "{\"symbols\":[],\"statements\":[[1,[20,\"main-navigation\"],false],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"container container-main\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row main-row\"],[8],[0,\"\\n    \"],[1,[20,\"outlet\"],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"outlet\",[\"modal\"],null],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/application.hbs" } });
 });
 define("admin/templates/badges/edit", ["exports"], function (exports) {
   "use strict";
@@ -14242,7 +16094,7 @@ define("admin/templates/badges/edit", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "TPnEuYvu", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix edit-badge\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"pull-left\"],[8],[1,[22,[\"model\",\"badge\",\"name\"]],false],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n\\t\"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n\\t\\t\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n\\t\\t  \"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col\"],[8],[0,\"\\n\\t\\t\\t\\t\"],[6,\"h4\"],[8],[0,\"Badge\"],[9],[0,\"\\n\\t\\t\\t\\t\"],[6,\"p\"],[8],[0,\"Pilot will receive a badge on completion of the following steps\"],[9],[0,\"\\n\\t\\t\\t\\t\"],[6,\"label\"],[8],[0,\"Badge name\"],[9],[0,\"\\n\\t\\t\\t\\t\"],[6,\"input\"],[10,\"name\",\"badge-name\"],[11,\"value\",[27,[[22,[\"model\",\"badge\",\"name\"]]]]],[10,\"class\",\"form-control\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"changedName\"],null]],[10,\"type\",\"text\"],[8],[9],[0,\"\\n\\t\\t\\t\"],[9],[0,\"\\n\\t\\t\"],[9],[0,\"\\n\\n\\n\\t\\t\"],[6,\"div\"],[10,\"class\",\"row edit-badge\"],[8],[0,\"\\n\\t\\t  \"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col right-seperator\"],[8],[0,\"\\n\\t\\t  \\t\"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"h4\"],[8],[0,\"1. Online Training (Mindflash)\"],[9],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"p\"],[8],[0,\"Select the online course that is required. Pilots must pass the course in order to proceed to step 2\"],[9],[0,\"\\n\\t\\t\\t  \"],[9],[0,\"\\n\\t\\t\\t  \"],[6,\"label\"],[8],[0,\"Mindflash Course\"],[9],[0,\"\\n\\t\\t\\t\\t\\t\"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"selectName\",\"action\",\"optionLabelPath\",\"optionValuePath\",\"promptDisabled\",\"prompt\"],[[22,[\"model\",\"mindflashSeries\"]],[22,[\"model\",\"badge\",\"required_program\"]],\"program-select\",[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"badge\",\"required_program\"]]],null]],null],\"name\",\"id\",false,\"Not Required\"]]],false],[0,\"\\n\\t\\t\\t\\t\"],[6,\"div\"],[10,\"class\",\"refresh-mindflash\"],[3,\"action\",[[21,0,[]],\"refreshMindflashCourses\"]],[8],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"img\"],[10,\"src\",\"/assets/images/refresh_icon.svg\"],[8],[9],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"span\"],[8],[0,\"Update Courses\"],[9],[0,\"\\n\\t\\t\\t\\t\"],[9],[0,\"\\n\\t\\t\\t\"],[9],[0,\"\\n\\t\\t\\t\"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col right-seperator\"],[8],[0,\"\\n\\t\\t  \\t\"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"h4\"],[8],[0,\"2. Background Check (Checkr)\"],[9],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"p\"],[8],[0,\"Select the background check that is required for this badge. Pilot must clear the background check in order to proceed to step 3.\"],[9],[0,\"\\n\\t\\t\\t  \"],[9],[0,\"\\n\\t\\t\\t  \"],[6,\"label\"],[8],[0,\"Checkr Package\"],[9],[0,\"\\n\\t\\t\\t\\t\"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"selectName\",\"optionLabelPath\",\"optionValuePath\",\"promptDisabled\",\"action\",\"prompt\"],[[22,[\"model\",\"checkrPackages\"]],[22,[\"model\",\"badge\",\"required_checkr_package\"]],\"checkr-package-select\",\"name\",\"id\",false,[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"badge\",\"required_checkr_package\"]]],null]],null],\"Not Required\"]]],false],[0,\"\\n\\t\\t\\t\\t \"],[6,\"b\"],[8],[0,\"Included Screenings:\"],[9],[0,\"\\n\\t\\t\\t\\t \"],[6,\"ul\"],[8],[0,\"\\n\\t\\t\\t\\t \\t\"],[6,\"li\"],[8],[0,\"National Criminal Search\"],[9],[0,\"\\n\\t\\t\\t\\t \\t\"],[6,\"li\"],[8],[0,\"Sex Offender Search\"],[9],[0,\"\\n\\t\\t\\t\\t \\t\"],[6,\"li\"],[8],[0,\"Ssn Trace\"],[9],[0,\"\\n\\t\\t\\t\\t \\t\"],[6,\"li\"],[8],[0,\"Global Watchlist Search\"],[9],[0,\"\\n\\t\\t\\t\\t \"],[9],[0,\"\\n\\t\\t\\t\"],[9],[0,\"\\n\\t\\t\\t\"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col\"],[8],[0,\"\\n\\t\\t  \\t\"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"h4\"],[8],[0,\"3. Training Mission\"],[9],[0,\"\\n\\t\\t\\t\\t\\t\"],[6,\"p\"],[8],[0,\"Select the package with the desired shotlist for training mission below.\"],[9],[0,\"\\n\\t\\t\\t  \"],[9],[0,\"\\n\\t\\t\\t  \"],[6,\"label\"],[8],[0,\"Package\"],[9],[0,\"\\n\\t\\t\\t  \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"selectName\",\"optionLabelPath\",\"optionValuePath\",\"promptDisabled\",\"action\",\"prompt\"],[[22,[\"model\",\"trainingPackages\"]],[22,[\"model\",\"badge\",\"required_training_package\"]],\"training-package-select\",\"selectOption\",\"id\",false,[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"badge\",\"required_training_package\"]]],null]],null],\"Not Required\"]]],false],[0,\"\\n\\t\\t\\t\"],[9],[0,\"\\n\\t\\t\"],[9],[0,\"\\n\\t\\t\"],[6,\"div\"],[10,\"class\",\"save-badge\"],[8],[0,\"\\n\\t    \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"SAVE\",\"btn btn-lg turquoise-button\"]]],false],[0,\"\\n\\t\\t\"],[9],[0,\"\\n\\t\"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/badges/edit.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "ZqqsAal5", "block": "{\"symbols\":[\"item\",\"item\",\"item\",\"item\",\"dispatch_zone\",\"item\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix edit-badge\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"pull-left\"],[8],[1,[22,[\"model\",\"badge\",\"name\"]],false],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"badges form-group form-group-iconized\"],[8],[0,\"\\n  \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col\"],[8],[0,\"\\n        \"],[6,\"h4\"],[8],[0,\"Badge\"],[9],[0,\"\\n        \"],[6,\"p\"],[8],[0,\"Pilot will receive a badge on completion of the following steps\"],[9],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Badge name\"],[9],[0,\"\\n        \"],[6,\"input\"],[10,\"name\",\"badge-name\"],[11,\"value\",[27,[[22,[\"model\",\"badge\",\"name\"]]]]],[10,\"class\",\"form-control\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"changedName\"],null]],[10,\"type\",\"text\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row edit-badge\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col right-seperator\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[6,\"h4\"],[8],[0,\"1. Online Training (Mindflash)\"],[9],[0,\"\\n          \"],[6,\"p\"],[8],[0,\"Select the online course that is required. Pilots must pass the course in order to proceed to step 2\"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Mindflash Course\"],[9],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"selectName\",\"action\",\"optionLabelPath\",\"optionValuePath\",\"promptDisabled\",\"prompt\"],[[22,[\"model\",\"mindflashSeries\"]],[22,[\"model\",\"badge\",\"required_program\"]],\"program-select\",[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"badge\",\"required_program\"]]],null]],null],\"name\",\"id\",false,\"Not Required\"]]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"refresh-mindflash\"],[3,\"action\",[[21,0,[]],\"refreshMindflashCourses\"]],[8],[0,\"\\n          \"],[6,\"img\"],[10,\"src\",\"/assets/images/refresh_icon.svg\"],[8],[9],[0,\"\\n          \"],[6,\"span\"],[8],[0,\"Update Courses\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col right-seperator\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[6,\"h4\"],[8],[0,\"2. Background Check (Checkr)\"],[9],[0,\"\\n          \"],[6,\"p\"],[8],[0,\"Select the background check that is required for this badge. Pilot must clear the background check in order to proceed to step 3.\"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Checkr Package\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"selectName\",\"optionLabelPath\",\"optionValuePath\",\"promptDisabled\",\"action\",\"prompt\"],[[22,[\"model\",\"checkrPackages\"]],[22,[\"model\",\"badge\",\"required_checkr_package\"]],\"checkr-package-select\",\"name\",\"id\",false,[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"badge\",\"required_checkr_package\"]]],null]],null],\"Not Required\"]]],false],[0,\"\\n         \"],[6,\"b\"],[8],[0,\"Included Screenings:\"],[9],[0,\"\\n         \"],[6,\"ul\"],[8],[0,\"\\n          \"],[6,\"li\"],[8],[0,\"National Criminal Search\"],[9],[0,\"\\n          \"],[6,\"li\"],[8],[0,\"Sex Offender Search\"],[9],[0,\"\\n          \"],[6,\"li\"],[8],[0,\"Ssn Trace\"],[9],[0,\"\\n          \"],[6,\"li\"],[8],[0,\"Global Watchlist Search\"],[9],[0,\"\\n         \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4 badge-col\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[6,\"h4\"],[8],[0,\"3. Training Mission\"],[9],[0,\"\\n          \"],[6,\"p\"],[8],[0,\"Select the package with the desired shotlist for training mission below.\"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Package\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"selectName\",\"optionLabelPath\",\"optionValuePath\",\"promptDisabled\",\"action\",\"prompt\"],[[22,[\"model\",\"trainingPackages\"]],[22,[\"model\",\"badge\",\"required_training_package\"]],\"training-package-select\",\"selectOption\",\"id\",false,[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"badge\",\"required_training_package\"]]],null]],null],\"Not Required\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12 badge-col\"],[8],[0,\"\\n        \"],[6,\"h4\"],[8],[0,\"Pilots\"],[9],[0,\"\\n        \"],[6,\"p\"],[8],[0,\"Please specify pilot qualification to be eligible for this onboarding automation.\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"filter-button\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary filter-button\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"toggleModal\"]],[8],[0,\"EDIT FILTER\"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"badge-summary row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"filter-summary col-md-10\"],[8],[0,\"\\n            \"],[6,\"ul\"],[10,\"class\",\"main\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"License: \"],[9],[0,\" \"],[6,\"ul\"],[10,\"class\",\"items\"],[8],[4,\"each\",[[22,[\"model\",\"badge\",\"required_pilot_licenses\"]]],null,{\"statements\":[[0,\"\\n                \"],[6,\"li\"],[8],[1,[21,6,[\"name\"]],false],[9],[0,\"\\n              \"]],\"parameters\":[6]},{\"statements\":[[0,\" Not Required. \"]],\"parameters\":[]}],[9],[0,\" \"],[9],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"Location: \"],[9],[0,\" \"],[6,\"ul\"],[10,\"class\",\"items\"],[8],[4,\"each\",[[22,[\"model\",\"badge\",\"badge_dispatch_zones\"]]],null,{\"statements\":[[0,\"\\n                \"],[6,\"li\"],[8],[1,[21,5,[\"name\"]],false],[9],[0,\"\\n              \"]],\"parameters\":[5]},null],[9],[0,\" \"],[9],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"Drones + Camera: \"],[9],[0,\" \\n                \"],[6,\"ul\"],[10,\"class\",\"items\"],[8],[4,\"each\",[[22,[\"model\",\"badge\",\"required_drones_and_cameras\"]]],null,{\"statements\":[[0,\"\\n                \"],[6,\"li\"],[8],[1,[21,4,[\"name\"]],false],[9],[0,\"\\n                \"]],\"parameters\":[4]},{\"statements\":[[0,\" Not Required. \"]],\"parameters\":[]}],[0,\"\\n                \"],[9],[0,\" \\n              \"],[9],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"Devices: \"],[9],[0,\" \\n                \"],[6,\"ul\"],[10,\"class\",\"items\"],[8],[4,\"each\",[[22,[\"model\",\"badge\",\"required_devices\"]]],null,{\"statements\":[[0,\"\\n                \"],[6,\"li\"],[8],[1,[21,3,[\"name\"]],false],[9],[0,\"\\n                \"]],\"parameters\":[3]},{\"statements\":[[0,\" Not Required. \"]],\"parameters\":[]}],[0,\"\\n                \"],[9],[0,\" \\n              \"],[9],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"Equipments: \"],[9],[0,\" \\n                \"],[6,\"ul\"],[10,\"class\",\"items\"],[8],[4,\"each\",[[22,[\"model\",\"badge\",\"required_pilot_equipments\"]]],null,{\"statements\":[[0,\"\\n                \"],[6,\"li\"],[8],[1,[21,2,[\"name\"]],false],[9],[0,\"\\n                \"]],\"parameters\":[2]},{\"statements\":[[0,\" Not Required. \"]],\"parameters\":[]}],[0,\"\\n                \"],[9],[0,\" \\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"target-summary col-md-2\"],[8],[0,\"\\n          \"],[6,\"div\"],[8],[6,\"strong\"],[10,\"class\",\"pilot-count\"],[8],[1,[20,\"pilotPreview\"],false],[9],[0,\" \"],[6,\"strong\"],[10,\"class\",\"pilot-count-label\"],[8],[1,[26,\"pluralize\",[[22,[\"pilotPreview\"]],\"pilot\"],[[\"omitCount\"],[true]]],false],[9],[9],[0,\" meet the filter criteria and need \"],[1,[22,[\"model\",\"badge\",\"name\"]],false],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[6,\"p\"],[8],[0,\"Number of pilots you want to invite daily if the above filter criteria is met.\"],[9],[0,\"\\n\\n          \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n\\n              \"],[6,\"select\"],[11,\"value\",[22,[\"model\",\"badge\",\"auto_dispatch_batch_size\"]]],[10,\"class\",\"form-group form-control input-lg\"],[10,\"name\",\"auto_dispatch_batch_size\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setAutoDispatchBatchSize\"],null]],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"dispatchLimit\"]]],null,{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,1,[\"id\"]]],[11,\"selected\",[26,\"is-equal\",[[22,[\"model\",\"badge\",\"auto_dispatch_batch_size\"]],[21,1,[\"name\"]]],null]],[8],[1,[21,1,[\"name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"              \"],[9],[0,\"\\n\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"include-switch automation-switch\"],[8],[0,\"\\n                  Auto-invite\\n                  \"],[6,\"label\"],[10,\"class\",\"switch\"],[3,\"action\",[[21,0,[]],\"autoDispatchToggled\"]],[8],[0,\"\\n                     \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"badge\",\"auto_dispatch_enabled\"]]]]],false],[0,\"\\n                    \"],[6,\"span\"],[10,\"class\",\"slider round\"],[8],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"save-badge\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"SAVE\",\"btn btn-md btn-primary\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"showBadgeDispatchModal\"]]],null,{\"statements\":[[1,[26,\"badge-dispatch-requirement-modal\",null,[[\"drones\",\"devices\",\"equipments\",\"licenses\",\"show\",\"close\",\"validate\",\"model\"],[[22,[\"model\",\"drones\"]],[22,[\"model\",\"devices\"]],[22,[\"model\",\"equipments\"]],[22,[\"model\",\"licenses\"]],[22,[\"badgeDispatchModalVisible\"]],[26,\"action\",[[21,0,[]],\"toggleModal\"],null],[26,\"action\",[[21,0,[]],\"validate\"],null],[22,[\"model\",\"badge\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/badges/edit.hbs" } });
 });
 define("admin/templates/badges/index", ["exports"], function (exports) {
   "use strict";
@@ -14250,7 +16102,7 @@ define("admin/templates/badges/index", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "KTYgyLXU", "block": "{\"symbols\":[\"badge\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix badges\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"pull-left\"],[8],[0,\"Badges\"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n    \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"badges\",\"length\"]],false],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"new-badge\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn turquoise-button new-badge\"],[8],[4,\"link-to\",[\"badges.new\"],[[\"disabled\"],[true]],{\"statements\":[[0,\"NEW BADGE\"]],\"parameters\":[]},null],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"table\"],[10,\"class\",\"pe-table table badge-list\"],[8],[0,\"\\n  \"],[6,\"tr\"],[8],[0,\"\\n    \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n    \"],[6,\"th\"],[8],[0,\"Created Date\"],[9],[0,\"\\n    \"],[6,\"th\"],[8],[0,\"Requirements\"],[9],[0,\"\\n    \"],[6,\"th\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"badges\"]]],null,{\"statements\":[[0,\"    \"],[6,\"tr\"],[10,\"class\",\"badge-row\"],[8],[0,\"\\n      \"],[6,\"td\"],[8],[1,[21,1,[\"name\"]],false],[9],[0,\"\\n      \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_at\"]],\"MM/DD/YY, h:mm a\"],null],false],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"requirements\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"mindflash_series_name\"]]],null,{\"statements\":[[0,\"          \"],[6,\"p\"],[8],[0,\"Mindflash: \"],[1,[21,1,[\"mindflash_series_name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[21,1,[\"training_package_name\"]]],null,{\"statements\":[[0,\"          \"],[6,\"p\"],[8],[0,\"Training: \"],[1,[21,1,[\"training_package_name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[21,1,[\"checkr_package_name\"]]],null,{\"statements\":[[0,\"          \"],[6,\"p\"],[8],[0,\"Checkr: \"],[1,[21,1,[\"checkr_package_name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"td\"],[8],[4,\"link-to\",[\"badges.edit\",[21,1,[\"id\"]]],[[\"class\"],[\"action pull-right\"]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/badges/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "6YDLlemp", "block": "{\"symbols\":[\"badge\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-lg-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-header clearfix badges\"],[8],[0,\"\\n    \"],[6,\"h3\"],[10,\"class\",\"pull-left\"],[8],[0,\"Badges\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"badges\",\"length\"]],false],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"new-badge\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm new-badge\"],[8],[4,\"link-to\",[\"badges.new\"],[[\"disabled\"],[true]],{\"statements\":[[0,\"NEW BADGE\"]],\"parameters\":[]},null],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"table\"],[10,\"class\",\"pe-table table badge-list\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Created Date\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Requirements\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"badges\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[10,\"class\",\"badge-row\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"name\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_at\"]],\"MM/DD/YY, h:mm a\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[10,\"class\",\"requirements\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"mindflash_series_name\"]]],null,{\"statements\":[[0,\"              \"],[6,\"p\"],[8],[0,\"Mindflash: \"],[1,[21,1,[\"mindflash_series_name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[21,1,[\"training_package_name\"]]],null,{\"statements\":[[0,\"              \"],[6,\"p\"],[8],[0,\"Training: \"],[1,[21,1,[\"training_package_name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[21,1,[\"checkr_package_name\"]]],null,{\"statements\":[[0,\"              \"],[6,\"p\"],[8],[0,\"Checkr: \"],[1,[21,1,[\"checkr_package_name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[4,\"link-to\",[\"badges.edit\",[21,1,[\"id\"]]],[[\"class\"],[\"action pull-right\"]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/badges/index.hbs" } });
 });
 define("admin/templates/clients", ["exports"], function (exports) {
   "use strict";
@@ -14298,7 +16150,7 @@ define("admin/templates/clients/client/missions/index", ["exports"], function (e
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "4Cgyqrs1", "block": "{\"symbols\":[\"package\",\"package\",\"package\",\"csv\",\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"clientMissions\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"clientMissions\"]],[8],[0,\"Client Missions\"],[9],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"imports\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"imports\"]],[8],[0,\"Imports\"],[9],[9],[0,\"\\n    \"],[6,\"li\"],[8],[4,\"link-to\",[\"missions.new\",[22,[\"client\",\"id\"]]],null,{\"statements\":[[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" Mission\"]],\"parameters\":[]},null],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"packages\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"packages\"]],[8],[0,\"Packages\"],[9],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"clientMissions\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Status\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Created\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Scheduled\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Package\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Ref. Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"missions\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"id\"]],false],[0,\"\\n\"],[4,\"if\",[[21,5,[\"isOnHold\"]]],null,{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"on-hold-warning\"],[8],[0,\"\\n                  \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\"\\n                  \"],[6,\"span\"],[8],[0,\"On Hold\"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,5,[\"status\"]]],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,5,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[4,\"if\",[[21,5,[\"scheduled_at_start\"]]],null,{\"statements\":[[1,[26,\"moment-format\",[[21,5,[\"scheduled_at_start\"]],\"MM/DD/YY\"],[[\"timeZone\"],[[21,5,[\"location\",\"timezone_id\"]]]]],false]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,5,[\"price\"]]],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"package\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"reference_id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[4,\"link-to\",[\"missions.edit\",[21,5,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Edit / Upload\"]],\"parameters\":[]},null],[0,\" |\\n            \"],[4,\"link-to\",[\"missions.map\",[21,5,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Map\"]],\"parameters\":[]},null],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"imports\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer bottom-buffer\"],[8],[0,\"\\n  \"],[6,\"a\"],[10,\"class\",\"btn btn-default pull-right\"],[3,\"action\",[[21,0,[]],\"refresh\"]],[8],[6,\"i\"],[10,\"class\",\"fa fa-refresh\"],[8],[9],[0,\" Refresh\"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Status\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Date\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Imported By\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Package\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Original CSV\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Missions Created\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Errors\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedCsvs\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[11,\"class\",[26,\"if\",[[21,4,[\"error\"]],\"error\"],null]],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"displayStatus\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,4,[\"created_at\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"admin\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"default_mission_package\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[6,\"a\"],[11,\"href\",[21,4,[\"attachment_csv_url\"]]],[8],[0,\"Download\"],[9],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,4,[\"completed_csv_url\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[11,\"href\",[21,4,[\"completed_csv_url\"]]],[8],[1,[21,4,[\"mission_created\"]],false],[0,\" missions\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[21,4,[\"pending\"]]],null,{\"statements\":[[0,\"                pending\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[1,[21,4,[\"mission_created\"]],false],[0,\" missions\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,4,[\"errored_csv_url\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[11,\"href\",[21,4,[\"errored_csv_url\"]]],[8],[1,[21,4,[\"errors\"]],false],[0,\" rows\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[21,4,[\"pending\"]]],null,{\"statements\":[[0,\"                pending\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[1,[21,4,[\"errors\"]],false],[0,\" rows\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"packages\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer clients\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"organization-packages-table\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hasAvailableOrganizationPackages\"]]],null,{\"statements\":[[0,\"          \"],[4,\"link-to\",[\"clients.organization\",[22,[\"model\",\"client\",\"organization\",\"id\"]]],[[\"class\"],[\"edit-link edit-organization\"]],{\"statements\":[[1,[22,[\"model\",\"client\",\"organization\",\"name\"]],false]],\"parameters\":[]},null],[0,\" Packages\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"h4\"],[10,\"class\",\"section-header\"],[8],[0,\"Organization Packages\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"client\",\"organization\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"hasAvailableOrganizationPackages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"table-responsive no-padding-bottom\"],[8],[0,\"\\n            \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n              \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"\\n                    \"],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Vertical\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Instructions\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Template\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"client\",\"organization\",\"packages\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-in\",[[21,3,[]],[22,[\"model\",\"client\",\"available_packages\"]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"tr\"],[8],[0,\"\\n                    \"],[6,\"td\"],[8],[0,\"\\n                      \"],[1,[26,\"client-package-checkbox\",null,[[\"model\",\"available_package\",\"disabled\"],[[22,[\"model\"]],[21,3,[]],true]]],false],[0,\"\\n                    \"],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"vertical\",\"name\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"name\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,3,[\"price\"]]],null],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"mission_instructions\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"template\",\"name\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[0,\"\\n                      \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                        \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                           \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n                        \"],[9],[0,\"\\n                        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                          \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,3,[]]]],[8],[0,\"Clone as Custom Package\"],[9],[9],[0,\"\\n                        \"],[9],[0,\"\\n                      \"],[9],[0,\"\\n                    \"],[9],[0,\"\\n                  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[3]},null],[0,\"              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"no-packages-note\"],[8],[0,\" There are currently no visible packages for \"],[4,\"link-to\",[\"clients.organization\",[22,[\"model\",\"client\",\"organization\",\"id\"]]],[[\"class\"],[\"edit-link edit-organization\"]],{\"statements\":[[1,[22,[\"model\",\"client\",\"organization\",\"name\"]],false]],\"parameters\":[]},null],[0,\" \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"no-packages-note\"],[8],[0,\" The organization hasn't been set. \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"h4\"],[10,\"class\",\"section-header\"],[8],[0,\"Custom Packages\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive no-padding-bottom\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"\\n              \"],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Vertical\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Instructions\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Template\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedClientPackages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[1,[26,\"client-package-checkbox\",null,[[\"model\",\"available_package\"],[[22,[\"model\"]],[21,2,[]]]]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"vertical\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,2,[\"price\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"mission_instructions\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"template\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                   \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                  \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"editPackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Edit\"],[9],[9],[0,\"\\n                  \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Clone\"],[9],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"add-package-btn\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn btn-info\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" Add Custom Package\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"h4\"],[10,\"class\",\"section-header\"],[8],[0,\"Dronebase Packages\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Vertical\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Organization\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Instructions\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Template\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"public_packages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[1,[26,\"client-package-checkbox\",null,[[\"model\",\"available_package\"],[[22,[\"model\"]],[21,1,[]]]]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"vertical\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"organization\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,1,[\"price\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"mission_instructions\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"template\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                   \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                  \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,1,[]]]],[8],[0,\"Clone as Custom Package\"],[9],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/client/missions/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "xXnbKEXK", "block": "{\"symbols\":[\"package\",\"package\",\"package\",\"csv\",\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"clientMissions\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"clientMissions\"]],[8],[0,\"Client Missions\"],[9],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"imports\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"imports\"]],[8],[0,\"Imports\"],[9],[9],[0,\"\\n    \"],[6,\"li\"],[8],[4,\"link-to\",[\"missions.new\",[22,[\"client\",\"id\"]]],null,{\"statements\":[[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" Mission\"]],\"parameters\":[]},null],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"packages\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"packages\"]],[8],[0,\"Packages\"],[9],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"clientMissions\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Status\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Created\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Scheduled\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Package\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Ref. Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"missions\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"id\"]],false],[0,\"\\n\"],[4,\"if\",[[21,5,[\"isOnHold\"]]],null,{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"on-hold-warning\"],[8],[0,\"\\n                  \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\"\\n                  \"],[6,\"span\"],[8],[0,\"On Hold\"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,5,[\"status\"]]],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,5,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[4,\"if\",[[21,5,[\"scheduled_at_start\"]]],null,{\"statements\":[[1,[26,\"moment-format\",[[21,5,[\"scheduled_at_start\"]],\"MM/DD/YY\"],[[\"timeZone\"],[[21,5,[\"location\",\"timezone_id\"]]]]],false]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,5,[\"price\"]]],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"package\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,5,[\"reference_id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[4,\"link-to\",[\"missions.edit\",[21,5,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Edit / Upload\"]],\"parameters\":[]},null],[0,\" |\\n            \"],[4,\"link-to\",[\"missions.map\",[21,5,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Map\"]],\"parameters\":[]},null],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"imports\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer bottom-buffer\"],[8],[0,\"\\n  \"],[6,\"a\"],[10,\"class\",\"btn btn-default pull-right\"],[3,\"action\",[[21,0,[]],\"refresh\"]],[8],[6,\"i\"],[10,\"class\",\"fa fa-refresh\"],[8],[9],[0,\" Refresh\"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Status\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Date\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Imported By\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Package\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Original CSV\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Missions Created\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Errors\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedCsvs\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[11,\"class\",[26,\"if\",[[21,4,[\"error\"]],\"error\"],null]],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"displayStatus\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,4,[\"created_at\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"admin\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,4,[\"default_mission_package\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[6,\"a\"],[11,\"href\",[21,4,[\"attachment_csv_url\"]]],[8],[0,\"Download\"],[9],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,4,[\"completed_csv_url\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[11,\"href\",[21,4,[\"completed_csv_url\"]]],[8],[1,[21,4,[\"mission_created\"]],false],[0,\" missions\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[21,4,[\"pending\"]]],null,{\"statements\":[[0,\"                pending\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[1,[21,4,[\"mission_created\"]],false],[0,\" missions\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,4,[\"errored_csv_url\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[11,\"href\",[21,4,[\"errored_csv_url\"]]],[8],[1,[21,4,[\"errors\"]],false],[0,\" rows\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[21,4,[\"pending\"]]],null,{\"statements\":[[0,\"                pending\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[1,[21,4,[\"errors\"]],false],[0,\" rows\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"packages\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer clients\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"organization-packages-table\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hasAvailableOrganizationPackages\"]]],null,{\"statements\":[[0,\"          \"],[4,\"link-to\",[\"clients.organization\",[22,[\"model\",\"client\",\"organization\",\"id\"]]],[[\"class\"],[\"edit-link edit-organization\"]],{\"statements\":[[1,[22,[\"model\",\"client\",\"organization\",\"name\"]],false]],\"parameters\":[]},null],[0,\" Packages\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"h4\"],[10,\"class\",\"section-header\"],[8],[0,\"Organization Packages\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"client\",\"organization\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"hasAvailableOrganizationPackages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"table-responsive no-padding-bottom\"],[8],[0,\"\\n            \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n              \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"\\n                    \"],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Vertical\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Instructions\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[0,\"Template\"],[9],[0,\"\\n                  \"],[6,\"th\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"client\",\"organization\",\"packages\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-in\",[[21,3,[]],[22,[\"model\",\"client\",\"available_packages\"]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"tr\"],[8],[0,\"\\n                    \"],[6,\"td\"],[8],[0,\"\\n                      \"],[1,[26,\"client-package-checkbox\",null,[[\"model\",\"available_package\",\"disabled\"],[[22,[\"model\"]],[21,3,[]],true]]],false],[0,\"\\n                    \"],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"vertical\",\"name\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"name\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,3,[\"price\"]]],null],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"mission_instructions\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[1,[21,3,[\"template\",\"name\"]],false],[9],[0,\"\\n                    \"],[6,\"td\"],[8],[0,\"\\n                      \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                        \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                           \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n                        \"],[9],[0,\"\\n                        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                          \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,3,[]]]],[8],[0,\"Clone as Custom Package\"],[9],[9],[0,\"\\n                        \"],[9],[0,\"\\n                      \"],[9],[0,\"\\n                    \"],[9],[0,\"\\n                  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[3]},null],[0,\"              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"no-packages-note\"],[8],[0,\" There are currently no visible packages for \"],[4,\"link-to\",[\"clients.organization\",[22,[\"model\",\"client\",\"organization\",\"id\"]]],[[\"class\"],[\"edit-link edit-organization\"]],{\"statements\":[[1,[22,[\"model\",\"client\",\"organization\",\"name\"]],false]],\"parameters\":[]},null],[0,\" \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"no-packages-note\"],[8],[0,\" The organization hasn't been set. \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"h4\"],[10,\"class\",\"section-header\"],[8],[0,\"Custom Packages\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive no-padding-bottom\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"\\n              \"],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Vertical\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Instructions\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Template\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedClientPackages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[1,[26,\"client-package-checkbox\",null,[[\"model\",\"available_package\"],[[22,[\"model\"]],[21,2,[]]]]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"vertical\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,2,[\"price\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"mission_instructions\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,2,[\"template\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                   \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                  \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"editPackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Edit\"],[9],[9],[0,\"\\n                  \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Clone\"],[9],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"add-package-btn\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-md btn-primary\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[0,\" Add Custom Package\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"h4\"],[10,\"class\",\"section-header\"],[8],[0,\"Dronebase Packages\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Vertical\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Price\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Instructions\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Template\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"public_packages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[1,[26,\"client-package-checkbox\",null,[[\"model\",\"available_package\"],[[22,[\"model\"]],[21,1,[]]]]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"vertical\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,1,[\"price\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"mission_instructions\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"template\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                   \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                  \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,1,[]]]],[8],[0,\"Clone as Custom Package\"],[9],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/client/missions/index.hbs" } });
 });
 define("admin/templates/clients/client/missions/modal-package", ["exports"], function (exports) {
   "use strict";
@@ -14322,7 +16174,7 @@ define("admin/templates/clients/index", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "EVvCLIY5", "block": "{\"symbols\":[\"client\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n  \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Clients\"],[9],[0,\" \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n      \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"client name, email, company and organization\",\"form-control\"]]],false],[0,\"\\n\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"        \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"btn btn-sm btn-default pull-right ember-view\"],[3,\"action\",[[21,0,[]],\"openNewClientModal\"]],[8],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" Client\"],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Company\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Organization\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Actions\"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"clients\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"company_name\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"organization\",\"name\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n               \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"clients.client.missions\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"View\"]],\"parameters\":[]},null],[9],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"missions.new\",[21,1,[\"id\"]]],null,{\"statements\":[[0,\"New Mission\"]],\"parameters\":[]},null],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Clients...\",\"All Clients loaded.\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "Rh1bhdGz", "block": "{\"symbols\":[\"client\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n  \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Clients\"],[9],[0,\" \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n      \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"client name, email, company and organization\",\"form-control\"]]],false],[0,\"\\n\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"        \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"btn btn-sm btn-primary pull-right ember-view\"],[3,\"action\",[[21,0,[]],\"openNewClientModal\"]],[8],[0,\"New Client\"],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Company\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Organization\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Actions\"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"clients\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"company_name\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"organization\",\"name\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n               \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"clients.client.missions\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"View\"]],\"parameters\":[]},null],[9],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"missions.new\",[21,1,[\"id\"]]],null,{\"statements\":[[0,\"New Mission\"]],\"parameters\":[]},null],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Clients...\",\"All Clients loaded.\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/index.hbs" } });
 });
 define("admin/templates/clients/organization", ["exports"], function (exports) {
   "use strict";
@@ -14330,7 +16182,7 @@ define("admin/templates/clients/organization", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "6j/0YwR1", "block": "{\"symbols\":[\"client\",\"package\"],\"statements\":[[6,\"div\"],[10,\"class\",\"organization-page\"],[8],[0,\"\\n  \"],[6,\"h2\"],[10,\"class\",\"organization-name\"],[8],[1,[22,[\"model\",\"organization\",\"name\"]],false],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"edit-data\"],[8],[0,\"\\n    \"],[6,\"div\"],[8],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"\\n        Organization Name\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\",\"key-press\"],[[22,[\"newName\"]],\"org-name\",\"form-control org-name-input\",[26,\"action\",[[21,0,[]],\"changedName\"],null]]]],false],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showSaveButton\"]]],null,{\"statements\":[[0,\"      \"],[6,\"button\"],[10,\"class\",\"turquoise-border-button\"],[3,\"action\",[[21,0,[]],\"saveNewName\"]],[8],[0,\"SAVE\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"organization-packages\"],[8],[0,\"\\n    \"],[6,\"h4\"],[10,\"class\",\"table-header\"],[8],[0,\"Organization Packages\\n      \"],[6,\"div\"],[10,\"class\",\"pretable-note\"],[8],[0,\"Clients belonging to this Organization can see its packages when placing orders. \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"package-list-header dronebase-table-header\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"visibility\"],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"vertical\"],[8],[0,\" Vertical \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\" Name \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"price\"],[8],[0,\" Price \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"slug\"],[8],[0,\" Slug \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"instructions\"],[8],[0,\" Instructions \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"template\"],[8],[0,\" Template \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"model\",\"organization\",\"packages\",\"length\"]]],null,{\"statements\":[[4,\"each\",[[22,[\"model\",\"organization\",\"packages\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"package-list-item\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"visibility\"],[8],[0,\"\\n            \"],[1,[26,\"organization-package-checkbox\",null,[[\"model\",\"available_package\"],[[22,[\"model\"]],[21,2,[]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"vertical\"],[8],[0,\" \"],[1,[21,2,[\"vertical\",\"name\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\" \"],[1,[21,2,[\"name\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"price\"],[8],[0,\" \"],[1,[26,\"format-dollar\",[[21,2,[\"price\"]]],null],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"slug\"],[8],[0,\" \"],[1,[21,2,[\"slug\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"instructions\"],[8],[0,\" \"],[1,[21,2,[\"mission_instructions\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"template\"],[8],[0,\" \"],[1,[21,2,[\"template\",\"name\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n               \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"editPackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Edit\"],[9],[9],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Clone\"],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"no-package\"],[8],[0,\"There is no package on this organization yet.\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"turquoise-button\"],[3,\"action\",[[21,0,[]],\"openAddPackageModal\"]],[8],[0,\"ADD PACKAGE\"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"client-list-header row\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-10\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"table-header\"],[8],[0,\"Client list \"],[6,\"span\"],[10,\"class\",\"total-clients\"],[8],[0,\"(\"],[1,[22,[\"model\",\"organization\",\"clients\",\"length\"]],false],[0,\")\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pretable-note\"],[8],[0,\"\\n        Use this when setting up a new Organization by adding EXISTING client accounts. New customers should sign up through their landing page. Clients can only belong to one Organization at a time.\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"add-client-form row\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-10\"],[8],[0,\"\\n      \"],[6,\"label\"],[8],[0,\" \"],[6,\"span\"],[10,\"class\",\"darkblue\"],[8],[0,\"Email(s)\"],[9],[0,\" separated by comma\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"insert-newline\",\"value\",\"class\",\"placeholder\"],[\"addNewClients\",[22,[\"newClients\"]],\"form-control new-client-emails\",\"clientemail@dronebase.com\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n          \"],[1,[26,\"button-to-circle\",null,[[\"text\",\"submit\",\"saveState\",\"classes\",\"border\"],[\"Add\",\"addNewClients\",[22,[\"saveState\"]],\"btnSubmit turquoise-border-button\",true]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"notFoundClients\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"col-md-10 error-message\"],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"error\"],[8],[0,\"\\n          These customers don’t exist in our database.\\n        \"],[9],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[1,[20,\"notFoundClients\"],false],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"organization\",\"clients\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[6,\"span\"],[10,\"class\",\"turquoise-text\"],[8],[1,[21,1,[\"added\"]],false],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/organization.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "CP7PC/Q7", "block": "{\"symbols\":[\"package\",\"package\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"organization-page\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"organization-name\"],[8],[1,[22,[\"model\",\"organization\",\"name\"]],false],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"edit-data\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Organization Name\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\",\"key-press\"],[[22,[\"newName\"]],\"org-name\",\"form-control org-name-input\",[26,\"action\",[[21,0,[]],\"changedName\"],null]]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Organization Slug\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\",\"key-press\"],[[22,[\"newSlug\"]],\"org-slug\",\"form-control org-slug-input\",[26,\"action\",[[21,0,[]],\"changedSlug\"],null]]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showSaveButton\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"saveNewName\"]],[8],[0,\"SAVE\"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"clas\",\"row\"],[8],[0,\"\\n    \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n      \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"packages\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"packages\"]],[8],[0,\"Packages\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"clients\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"clients\"]],[8],[0,\"Clients (\"],[1,[22,[\"model\",\"organization\",\"clients\",\"length\"]],false],[0,\")\"],[9],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"packages\"],null]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"organization-packages first\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"table-header\"],[8],[0,\"Organization Packages\\n        \"],[6,\"div\"],[10,\"class\",\"pretable-note\"],[8],[0,\"Clients belonging to this Organization can see its packages when placing orders. \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"package-list-header dronebase-table-header\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"visibility\"],[8],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"vertical\"],[8],[0,\" Vertical \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\" Name \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"price\"],[8],[0,\" Price \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"slug\"],[8],[0,\" Slug \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"instructions\"],[8],[0,\" Instructions \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"template\"],[8],[0,\" Template \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"model\",\"sortedOrganizationPackages\",\"length\"]]],null,{\"statements\":[[4,\"each\",[[22,[\"model\",\"sortedOrganizationPackages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"package-list-item\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"visibility\"],[8],[0,\"\\n              \"],[1,[26,\"organization-package-checkbox\",null,[[\"model\",\"available_package\"],[[22,[\"model\"]],[21,2,[]]]]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"vertical\"],[8],[0,\" \"],[1,[21,2,[\"vertical\",\"name\"]],false],[0,\" \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\" \"],[1,[21,2,[\"name\"]],false],[0,\" \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"price\"],[8],[0,\" \"],[1,[26,\"format-dollar\",[[21,2,[\"price\"]]],null],false],[0,\" \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"slug\"],[8],[0,\" \"],[1,[21,2,[\"slug\"]],false],[0,\" \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"instructions\"],[8],[0,\" \"],[1,[21,2,[\"mission_instructions\"]],false],[0,\" \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"template\"],[8],[0,\" \"],[1,[21,2,[\"template\",\"name\"]],false],[0,\" \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n              \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                 \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"editPackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Edit\"],[9],[9],[0,\"\\n                \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,2,[]]]],[8],[0,\"Clone\"],[9],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"no-package\"],[8],[0,\"There is no package on this organization yet.\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"button\"],[10,\"class\",\"btn-primary btn-md\"],[3,\"action\",[[21,0,[]],\"openAddPackageModal\"]],[8],[0,\"ADD ORGANIZATION PACKAGE\"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"organization-packages\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"table-header\"],[8],[0,\"Dronebase Packages\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"package-list-header dronebase-table-header\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"visibility\"],[8],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"fa fa-eye\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Visible to Client\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"vertical\"],[8],[0,\" Vertical \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\" Name \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"price\"],[8],[0,\" Price \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"slug\"],[8],[0,\" Slug \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"instructions\"],[8],[0,\" Instructions \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"template\"],[8],[0,\" Template \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\"],[4,\"each\",[[22,[\"model\",\"sortedDronebasePackages\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"package-list-item\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"visibility\"],[8],[0,\"\\n            \"],[1,[26,\"organization-package-checkbox\",null,[[\"model\",\"available_package\"],[[22,[\"model\"]],[21,1,[]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"vertical\"],[8],[0,\" \"],[1,[21,1,[\"vertical\",\"name\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\" \"],[1,[21,1,[\"name\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"price\"],[8],[0,\" \"],[1,[26,\"format-dollar\",[[21,1,[\"price\"]]],null],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"slug\"],[8],[0,\" \"],[1,[21,1,[\"slug\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"instructions\"],[8],[0,\" \"],[1,[21,1,[\"mission_instructions\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"template\"],[8],[0,\" \"],[1,[21,1,[\"template\",\"name\"]],false],[0,\" \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n               \"],[6,\"span\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clonePackage\",[22,[\"model\"]],[21,1,[]]]],[8],[0,\"Clone\"],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"clients\"],null]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"client-list-header row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-10\"],[8],[0,\"\\n        \"],[6,\"h4\"],[10,\"class\",\"table-header\"],[8],[0,\"Client list \"],[6,\"span\"],[10,\"class\",\"total-clients\"],[8],[0,\"(\"],[1,[22,[\"model\",\"organization\",\"clients\",\"length\"]],false],[0,\")\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pretable-note\"],[8],[0,\"\\n          Use this when setting up a new Organization by adding EXISTING client accounts. New customers should sign up through their landing page. Clients can only belong to one Organization at a time.\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"add-client-form row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-10\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\" \"],[6,\"span\"],[10,\"class\",\"darkblue\"],[8],[0,\"Email(s)\"],[9],[0,\" separated by comma\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"insert-newline\",\"value\",\"class\",\"placeholder\"],[[26,\"action\",[[21,0,[]],\"addNewClients\"],null],[22,[\"newClients\"]],\"form-control new-client-emails\",\"clientemail@dronebase.com\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n            \"],[1,[26,\"button-to-circle\",null,[[\"text\",\"submit\",\"saveState\",\"classes\",\"border\"],[\"Add\",\"addNewClients\",[22,[\"saveState\"]],\"btnSubmit btn-secondary\",true]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"notFoundClients\",\"length\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"col-md-10 error-message\"],[8],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"error\"],[8],[0,\"\\n            These customers don’t exist in our database.\\n          \"],[9],[0,\"\\n          \"],[6,\"br\"],[8],[9],[0,\"\\n          \"],[1,[20,\"notFoundClients\"],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"organizations/client-list\",null,[[\"clients\",\"organization\",\"goToClientPage\"],[[22,[\"sortedClients\"]],[22,[\"model\",\"organization\"]],\"goToClientPage\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/organization.hbs" } });
 });
 define("admin/templates/clients/organization/modal-package", ["exports"], function (exports) {
   "use strict";
@@ -14346,7 +16198,7 @@ define("admin/templates/clients/organization/modal", ["exports"], function (expo
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "pgU5VFIs", "block": "{\"symbols\":[],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"action\",\"appendedClasses\",\"animatable\",\"fullScreen\"],[\"close\",\"full-screen-modal\",true,\"true\"]],{\"statements\":[[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"container-fluid new-org-modal\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n      \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"New Organization\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[8],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-6 organization-inputs\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Organization Name\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"model\",\"organization\",\"name\"]],\"form-control\",\"\"]]],false],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Reference ID\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"model\",\"organization\",\"referenceId\"]],\"form-control\",\"\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"new-org-button-row\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"turquoise-border-button\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"turquoise-button\"],[3,\"action\",[[21,0,[]],\"saveOrganization\",[22,[\"model\"]]]],[8],[0,\"CREATE\"],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/organization/modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "gABfLGFz", "block": "{\"symbols\":[],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"action\",\"appendedClasses\",\"animatable\",\"fullScreen\"],[\"close\",\"full-screen-modal\",true,\"true\"]],{\"statements\":[[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"container-fluid new-org-modal\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n      \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"New Organization\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[8],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-6 organization-inputs\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Organization Name\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"model\",\"organization\",\"name\"]],\"form-control\",\"\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-6 organization-inputs\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\" Slug \"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"model\",\"organization\",\"slug\"]],\"form-control\",\"\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-6 organization-inputs\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Reference ID\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"model\",\"organization\",\"referenceId\"]],\"form-control\",\"\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-6 organization-inputs\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"buttons-block\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"saveOrganization\",[22,[\"model\"]]]],[8],[0,\"CREATE\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/organization/modal.hbs" } });
 });
 define("admin/templates/clients/organizations", ["exports"], function (exports) {
   "use strict";
@@ -14354,7 +16206,7 @@ define("admin/templates/clients/organizations", ["exports"], function (exports) 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "qrQhZAms", "block": "{\"symbols\":[\"organization\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body organization\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"missions-list no-filter\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Organizations\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n        \"],[2,\" TODO rewrite it with meta\"],[0,\"\\n        \"],[6,\"h4\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"length\"]],false],[9],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"turquoise-button new-org-button\"],[3,\"action\",[[21,0,[]],\"newOrganization\",[22,[\"model\"]]]],[8],[0,\"NEW ORGANIZATION\"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"org-table\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"org-table-header\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\"\\n          Name\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"created\"],[8],[0,\"\\n          Created\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"contact\"],[8],[0,\"\\n          Contact\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"view\"],[8],[0,\"\\n          \"],[2,\" deliberately empty \"],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"org-table-body\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"org-table-item\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\"\\n              \"],[1,[21,1,[\"name\"]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"created\"],[8],[0,\"\\n              \"],[1,[21,1,[\"created\"]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"contact\"],[8],[0,\"\\n              \"],[1,[21,1,[\"contact\"]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"view\"],[8],[0,\"\\n              \"],[6,\"a\"],[11,\"href\",[27,[\"/clients/organization/\",[21,1,[\"id\"]]]]],[8],[0,\"View\"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/organizations.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "/5hMimnq", "block": "{\"symbols\":[\"organization\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body organization\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"missions-list no-filter\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Organizations\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n        \"],[2,\" TODO rewrite it with meta\"],[0,\"\\n        \"],[6,\"h4\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"length\"]],false],[9],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn-primary btn-sm new-org-button\"],[3,\"action\",[[21,0,[]],\"newOrganization\",[22,[\"model\"]]]],[8],[0,\"NEW ORGANIZATION\"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"org-table\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"org-table-header\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\"\\n          Name\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"created\"],[8],[0,\"\\n          Created\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"contact\"],[8],[0,\"\\n          Contact\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"view\"],[8],[0,\"\\n          \"],[2,\" deliberately empty \"],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"org-table-body\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"org-table-item\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"name\"],[8],[0,\"\\n              \"],[1,[21,1,[\"name\"]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"created\"],[8],[0,\"\\n              \"],[1,[21,1,[\"created\"]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"contact\"],[8],[0,\"\\n              \"],[1,[21,1,[\"contact\"]],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"view\"],[8],[0,\"\\n              \"],[6,\"a\"],[11,\"href\",[27,[\"/clients/organization/\",[21,1,[\"id\"]]]]],[8],[0,\"View\"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/clients/organizations.hbs" } });
 });
 define("admin/templates/components/add-camera-modal", ["exports"], function (exports) {
   "use strict";
@@ -14362,7 +16214,7 @@ define("admin/templates/components/add-camera-modal", ["exports"], function (exp
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "Rdv2pHf5", "block": "{\"symbols\":[\"error\",\"error\",\"error\",\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Camera\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Camera\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Brand\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"prompt\",\"selectClass\"],[\"name\",[22,[\"droneManufacturers\"]],[22,[\"currentRecord\",\"drone_manufacturer\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"currentRecord\",\"drone_manufacturer\"]]],null]],null],\"Brand\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"drone_manufacturer\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,4,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Model\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Camera Model\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,3,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Mega Pixels\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"mega_pixels\"]],\"form-control\",\"Mega Pixels\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"mega_pixels\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,2,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"currentRecord\",\"thermal\"]]]]],false],[0,\" Thermal\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"device_type\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn create-button\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-camera-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "3pCNeHmu", "block": "{\"symbols\":[\"error\",\"error\",\"error\",\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Camera\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Camera\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Brand\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"prompt\",\"selectClass\"],[\"name\",[22,[\"droneManufacturers\"]],[22,[\"currentRecord\",\"drone_manufacturer\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"currentRecord\",\"drone_manufacturer\"]]],null]],null],\"Brand\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"drone_manufacturer\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,4,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Model\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Camera Model\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,3,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Mega Pixels\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"mega_pixels\"]],\"form-control\",\"Mega Pixels\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"mega_pixels\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,2,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"currentRecord\",\"thermal\"]]]]],false],[0,\" Thermal\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"device_type\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-camera-modal.hbs" } });
 });
 define("admin/templates/components/add-device-modal", ["exports"], function (exports) {
   "use strict";
@@ -14370,7 +16222,7 @@ define("admin/templates/components/add-device-modal", ["exports"], function (exp
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "Jq6IaQ6K", "block": "{\"symbols\":[\"error\",\"error\",\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Device\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Device\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Operating System\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"operatingSystems\"]],[22,[\"currentRecord\",\"operating_system\"]],\"Operating System\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"operating_system\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,3,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Model\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Device Model\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,2,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"deviceTypes\"]],[22,[\"currentRecord\",\"device_type\"]],\"Device Type\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"device_type\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn create-button\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-device-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "U7eP+ytt", "block": "{\"symbols\":[\"error\",\"error\",\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Device\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Device\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Operating System\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"operatingSystems\"]],[22,[\"currentRecord\",\"operating_system\"]],\"Operating System\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"operating_system\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,3,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Model\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Device Model\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,2,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"deviceTypes\"]],[22,[\"currentRecord\",\"device_type\"]],\"Device Type\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"device_type\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-device-modal.hbs" } });
 });
 define("admin/templates/components/add-drone-modal", ["exports"], function (exports) {
   "use strict";
@@ -14378,7 +16230,7 @@ define("admin/templates/components/add-drone-modal", ["exports"], function (expo
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "6/dlIFS8", "block": "{\"symbols\":[\"error\",\"camera\",\"camera\",\"error\",\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Drone\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Drone\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Brand\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"prompt\",\"selectClass\"],[\"name\",[22,[\"droneManufacturers\"]],[22,[\"currentRecord\",\"drone_manufacturer\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"currentRecord\",\"drone_manufacturer\"]]],null]],null],\"Brand\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"drone_manufacturer\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,5,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Model\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Drone Model\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,4,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Stock Camera\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"prompt\",\"action\",\"useSendAction\",\"selectClass\"],[\"name\",[22,[\"cameras\"]],\"Camera\",\"addStockCamera\",true,\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"camera-list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"stock_cameras\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"camera-pill\"],[8],[0,\"\\n                \"],[1,[21,3,[\"name\"]],false],[0,\" \"],[4,\"unless\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[6,\"span\"],[10,\"class\",\"fa fa-times-circle\"],[3,\"action\",[[21,0,[]],\"removeStockCamera\",[21,3,[]]]],[8],[9]],\"parameters\":[]},null],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Optional Camera\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"prompt\",\"action\",\"useSendAction\",\"selectClass\"],[\"name\",[22,[\"cameras\"]],\"Camera\",\"addOptionalCamera\",true,\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"camera-list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"optional_cameras\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"camera-pill\"],[8],[0,\"\\n                \"],[1,[21,2,[\"name\"]],false],[0,\" \"],[4,\"unless\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[6,\"span\"],[10,\"class\",\"fa fa-times-circle\"],[3,\"action\",[[21,0,[]],\"removeOptionalCamera\",[21,2,[]]]],[8],[9]],\"parameters\":[]},null],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"droneTypes\"]],[22,[\"currentRecord\",\"drone_type\"]],\"Drone Type\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"drone_type\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn create-button\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-drone-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "jRKzud4y", "block": "{\"symbols\":[\"error\",\"camera\",\"camera\",\"error\",\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Drone\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Drone\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Brand\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"reset\",\"selection\",\"action\",\"prompt\",\"selectClass\"],[\"name\",[22,[\"droneManufacturers\"]],false,[22,[\"currentRecord\",\"drone_manufacturer\"]],[26,\"action\",[[21,0,[]],\"selectManufacturer\"],null],\"Brand\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"drone_manufacturer\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,5,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Model\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Drone Model\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,4,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Stock Camera\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"prompt\",\"action\",\"useSendAction\",\"selectClass\"],[\"name\",[22,[\"cameras\"]],\"Camera\",\"addStockCamera\",true,\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"camera-list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"stock_cameras\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"camera-pill\"],[8],[0,\"\\n                \"],[1,[21,3,[\"name\"]],false],[0,\" \"],[4,\"unless\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[6,\"span\"],[10,\"class\",\"fa fa-times-circle\"],[3,\"action\",[[21,0,[]],\"removeStockCamera\",[21,3,[]]]],[8],[9]],\"parameters\":[]},null],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Optional Camera\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12 form-group-padding-fix\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"prompt\",\"action\",\"useSendAction\",\"selectClass\"],[\"name\",[22,[\"cameras\"]],\"Camera\",\"addOptionalCamera\",true,\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"camera-list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"optional_cameras\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"camera-pill\"],[8],[0,\"\\n                \"],[1,[21,2,[\"name\"]],false],[0,\" \"],[4,\"unless\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[6,\"span\"],[10,\"class\",\"fa fa-times-circle\"],[3,\"action\",[[21,0,[]],\"removeOptionalCamera\",[21,2,[]]]],[8],[9]],\"parameters\":[]},null],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"droneTypes\"]],[22,[\"currentRecord\",\"drone_type\"]],\"Drone Type\",\"form-control input-md\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"drone_type\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-drone-modal.hbs" } });
 });
 define("admin/templates/components/add-pilot-equipment-modal", ["exports"], function (exports) {
   "use strict";
@@ -14386,7 +16238,7 @@ define("admin/templates/components/add-pilot-equipment-modal", ["exports"], func
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "BMOMpHF9", "block": "{\"symbols\":[\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Pilot Equipment\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Pilot Equipment\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Equipment Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Equipment Type\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn create-button\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-pilot-equipment-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "jfBEgtEE", "block": "{\"symbols\":[\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"pe-modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pe-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"currentRecord\",\"id\"]]],null,{\"statements\":[[0,\"            Edit Pilot Equipment\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            Create New Pilot Equipment\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Equipment Type\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"currentRecord\",\"name\"]],\"form-control\",\"Equipment Type\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"currentRecord\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"              \"],[1,[21,1,[\"message\"]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[0,\"\\n            Save\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/add-pilot-equipment-modal.hbs" } });
 });
 define("admin/templates/components/asset-share", ["exports"], function (exports) {
   "use strict";
@@ -14394,7 +16246,7 @@ define("admin/templates/components/asset-share", ["exports"], function (exports)
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "SOw9E/qZ", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[22,[\"isShareable\"]]],null,{\"statements\":[[0,\"  \"],[6,\"a\"],[11,\"class\",[27,[[20,\"buttonClassNames\"]]]],[3,\"action\",[[21,0,[]],[22,[\"shareCreateAction\"]],[22,[\"shareable\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-share-alt-square\"],[8],[9],[0,\" \"],[1,[20,\"linkText\"],false],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"  \"],[6,\"a\"],[11,\"class\",[27,[[20,\"buttonClassNames\"],\" disabled\"]]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-share-alt-square\"],[8],[9],[0,\" \"],[1,[20,\"linkText\"],false],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"\\n\"],[4,\"if\",[[22,[\"showShareModal\"]]],null,{\"statements\":[[4,\"modal-dialog\",null,[[\"translucentOverlay\",\"class\"],[true,\"modal-content\"]],{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"modal-header\"],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-close close\"],[3,\"action\",[[21,0,[]],\"hideShareModal\",[22,[\"shareable\"]]]],[8],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"modal-title\"],[8],[1,[26,\"asset-share-header\",[[22,[\"shareable\"]]],null],false],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"modal-body\"],[8],[0,\"\\n      Link \"],[6,\"a\"],[11,\"href\",[27,[[20,\"shareLink\"]]]],[10,\"class\",\"pull-right\"],[10,\"target\",\"_blank\"],[8],[0,\"Preview\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input-readonly-select-all\",null,[[\"value\",\"class\"],[[22,[\"shareLink\"]],\"form-control\"]]],false],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"text-notes\"],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-globe\"],[8],[9],[0,\"\\n        Only people who have this link can see your assets\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"modal-footer\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-default\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"hideShareModal\",[22,[\"mission\"]]]],[8],[0,\"Close\"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/asset-share.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "uI0hbyv5", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[22,[\"isShareable\"]]],null,{\"statements\":[[0,\"  \"],[6,\"a\"],[11,\"class\",[27,[[20,\"buttonClassNames\"]]]],[3,\"action\",[[21,0,[]],[22,[\"shareCreateAction\"]],[22,[\"shareable\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-share-alt-square\"],[8],[9],[0,\" \"],[1,[20,\"linkText\"],false],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"  \"],[6,\"a\"],[11,\"class\",[27,[[20,\"buttonClassNames\"],\" disabled\"]]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-share-alt-square\"],[8],[9],[0,\" \"],[1,[20,\"linkText\"],false],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"\\n\"],[4,\"if\",[[22,[\"showShareModal\"]]],null,{\"statements\":[[4,\"modal-dialog\",null,[[\"translucentOverlay\",\"class\"],[true,\"modal-content\"]],{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"modal-header\"],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-close close\"],[3,\"action\",[[21,0,[]],\"hideShareModal\",[22,[\"shareable\"]]]],[8],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"modal-title\"],[8],[1,[26,\"asset-share-header\",[[22,[\"shareable\"]]],null],false],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"modal-body\"],[8],[0,\"\\n      Link \"],[6,\"a\"],[11,\"href\",[27,[[20,\"shareLink\"]]]],[10,\"class\",\"pull-right\"],[10,\"target\",\"_blank\"],[8],[0,\"Preview\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input-readonly-select-all\",null,[[\"value\",\"class\"],[[22,[\"shareLink\"]],\"form-control\"]]],false],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"text-notes\"],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-globe\"],[8],[9],[0,\"\\n        Only people who have this link can see your assets\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"modal-footer buttons-block\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-primary\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"hideShareModal\",[22,[\"mission\"]]]],[8],[0,\"Close\"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/asset-share.hbs" } });
 });
 define("admin/templates/components/asset-uploader", ["exports"], function (exports) {
   "use strict";
@@ -14402,7 +16254,31 @@ define("admin/templates/components/asset-uploader", ["exports"], function (expor
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "Wr9+Zgly", "block": "{\"symbols\":[\"file\"],\"statements\":[[6,\"div\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"upload-actions\"],[8],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"queue\",\"uploading\"]]],null,{\"statements\":[[0,\"    \"],[6,\"span\"],[10,\"class\",\"progress-text\"],[8],[1,[22,[\"queue\",\"uploadProgressText\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"a\"],[11,\"id\",[27,[\"upload-asset-\",[20,\"shot_id\"]]]],[10,\"class\",\"btn btn-lg btn-default button button-mg-right button-width\"],[8],[0,\"\\n      \"],[6,\"img\"],[10,\"src\",\"/assets/images/upload.svg\"],[8],[9],[0,\" Upload Files\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"\\n\"],[4,\"if\",[[22,[\"queue\",\"uploadsQueued\"]]],null,{\"statements\":[[0,\"    \"],[6,\"a\"],[10,\"class\",\"btn btn-lg btn-success button-width\"],[3,\"action\",[[21,0,[]],\"startUpload\",[22,[\"queue\",\"uploader\"]]]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-upload\"],[8],[9],[0,\" Start Uploading\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"queue\",\"content\"]]],null,{\"statements\":[[0,\"    \"],[6,\"span\"],[10,\"class\",\"check-all-raw\"],[8],[0,\"\\n      \"],[6,\"input\"],[11,\"onclick\",[20,\"toggleAllRaw\"]],[10,\"type\",\"checkbox\"],[8],[9],[0,\" All Raw\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[9],[0,\"\\n\\n\"],[4,\"each\",[[22,[\"queue\",\"content\"]]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"asset\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-upload\"],[8],[9],[0,\" \"],[1,[21,1,[\"sanitizedName\"]],false],[0,\"\\n\"],[4,\"if\",[[21,1,[\"uploading\"]]],null,{\"statements\":[[0,\"          \"],[1,[21,1,[\"progress\"]],false],[0,\"%\\n\"]],\"parameters\":[]},null],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"pull-right\"],[3,\"action\",[[21,0,[]],\"removeAsset\",[22,[\"queue\",\"uploader\"]],[21,1,[]]]],[8],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-remove\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"pull-right file-edited\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[21,1,[\"raw\"]]]]],false],[0,\" Raw\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"progress\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"progress-bar\"],[10,\"role\",\"progressbar\"],[11,\"aria-valuenow\",[27,[[21,1,[\"progress\"]]]]],[10,\"aria-valuemin\",\"0\"],[10,\"aria-valuemax\",\"100\"],[11,\"style\",[27,[\"width: \",[21,1,[\"progress\"]],\"%\"]]],[8],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/asset-uploader.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "+9UtwgT4", "block": "{\"symbols\":[\"file\"],\"statements\":[[6,\"div\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"upload-actions\"],[8],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"queue\",\"uploading\"]]],null,{\"statements\":[[0,\"    \"],[6,\"span\"],[10,\"class\",\"progress-text\"],[8],[1,[22,[\"queue\",\"uploadProgressText\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"a\"],[11,\"id\",[27,[\"upload-asset-\",[20,\"shot_id\"]]]],[10,\"class\",\"btn btn-lg btn-default button button-mg-right button-width\"],[8],[0,\"\\n      \"],[6,\"img\"],[10,\"src\",\"/assets/images/upload.svg\"],[8],[9],[0,\" Add Files\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"\\n\"],[4,\"if\",[[22,[\"queue\",\"uploadsQueued\"]]],null,{\"statements\":[[0,\"    \"],[6,\"a\"],[10,\"class\",\"btn btn-lg btn-success button-width\"],[3,\"action\",[[21,0,[]],\"startUpload\",[22,[\"queue\",\"uploader\"]]]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-upload\"],[8],[9],[0,\" Start Uploading\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"queue\",\"content\"]]],null,{\"statements\":[[0,\"    \"],[6,\"span\"],[10,\"class\",\"check-all-raw\"],[8],[0,\"\\n      \"],[6,\"input\"],[11,\"onclick\",[20,\"toggleAllRaw\"]],[10,\"type\",\"checkbox\"],[8],[9],[0,\" All Raw\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[9],[0,\"\\n\\n\"],[4,\"each\",[[22,[\"queue\",\"content\"]]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"asset\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-upload\"],[8],[9],[0,\" \"],[1,[21,1,[\"sanitizedName\"]],false],[0,\"\\n\"],[4,\"if\",[[21,1,[\"uploading\"]]],null,{\"statements\":[[0,\"          \"],[1,[21,1,[\"progress\"]],false],[0,\"%\\n\"]],\"parameters\":[]},null],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"pull-right\"],[3,\"action\",[[21,0,[]],\"removeAsset\",[22,[\"queue\",\"uploader\"]],[21,1,[]]]],[8],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-remove\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"pull-right file-edited\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[21,1,[\"raw\"]]]]],false],[0,\" Raw\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"progress\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"progress-bar\"],[10,\"role\",\"progressbar\"],[11,\"aria-valuenow\",[27,[[21,1,[\"progress\"]]]]],[10,\"aria-valuemin\",\"0\"],[10,\"aria-valuemax\",\"100\"],[11,\"style\",[27,[\"width: \",[21,1,[\"progress\"]],\"%\"]]],[8],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/asset-uploader.hbs" } });
+});
+define("admin/templates/components/available-timeslot-selector", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "JrgAGe57", "block": "{\"symbols\":[\"timeslot\",\"index\",\"day\",\"day\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"Pilot Availability\"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"header-label\"],[8],[0,\"\\n    \"],[6,\"p\"],[8],[0,\"Below are the estimated pilot availability time slots for this mission.\"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[1,[26,\"scheduler-mission-details\",null,[[\"model\"],[[22,[\"model\"]]]]],false],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"nav-dates\"],[8],[0,\"\\n    \"],[6,\"div\"],[11,\"disabled\",[26,\"is-equal\",[[22,[\"currPage\"]],1],null]],[3,\"action\",[[21,0,[]],\"prevPage\",[22,[\"currPage\"]]]],[8],[0,\"\\n      \"],[6,\"img\"],[10,\"src\",\"/assets/images/left-arrow.svg\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"span\"],[8],[0,\" \"],[1,[26,\"moment-format\",[[22,[\"model\",\"currDays\",\"firstObject\",\"date\"]],\"MMM DD\"],null],false],[0,\" - \"],[1,[26,\"moment-format\",[[22,[\"model\",\"currDays\",\"lastObject\",\"date\"]],\"MMM DD\"],null],false],[0,\" \"],[9],[0,\"\\n    \"],[6,\"div\"],[11,\"disabled\",[26,\"is-equal\",[[22,[\"currPage\"]],2],null]],[3,\"action\",[[21,0,[]],\"nextPage\",[22,[\"currPage\"]]]],[8],[0,\"\\n      \"],[6,\"img\"],[10,\"src\",\"/assets/images/right-arrow.svg\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[10,\"class\",\"time\"],[8],[6,\"p\"],[10,\"class\",\"header\"],[8],[1,[20,\"timezone\"],false],[9],[9],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"currPage\"]],1],null]],null,{\"statements\":[[0,\"            \"],[6,\"th\"],[10,\"class\",\"unavailable\"],[8],[0,\"\\n              \"],[6,\"p\"],[10,\"class\",\"day\"],[8],[1,[26,\"moment-format\",[[22,[\"dateToday\"]],\"ddd\"],null],false],[9],[0,\"\\n              \"],[6,\"p\"],[10,\"class\",\"header date\"],[8],[1,[26,\"moment-format\",[[22,[\"dateToday\"]],\"DD\"],null],false],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"each\",[[22,[\"model\",\"currDays\"]]],null,{\"statements\":[[0,\"            \"],[6,\"th\"],[8],[0,\"\\n              \"],[6,\"p\"],[10,\"class\",\"day\"],[8],[1,[26,\"moment-format\",[[21,4,[\"date\"]],\"ddd\"],null],false],[9],[0,\"\\n              \"],[6,\"p\"],[10,\"class\",\"header date\"],[8],[1,[26,\"moment-format\",[[21,4,[\"date\"]],\"DD\"],null],false],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"currDays\",\"0\",\"timeslots\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"h:mm A\"],[[\"timeZone\"],[[22,[\"model\",\"mission\",\"location\",\"timezone_id\"]]]]],false],[9],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"currPage\"]],1],null]],null,{\"statements\":[[0,\"            \"],[6,\"td\"],[10,\"class\",\"col-md-12 capacity\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"unavailable\"],[8],[0,\"\\n                \"],[6,\"p\"],[8],[0,\"Unavailable\"],[9],[0,\"\\n                \"],[6,\"p\"],[10,\"class\",\"small\"],[8],[0,\"Same day schedule is unavailable\"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"each\",[[22,[\"model\",\"currDays\"]]],null,{\"statements\":[[0,\"            \"],[6,\"td\"],[11,\"class\",[27,[\"col-md-12 capacity \",[21,3,[\"date\"]],\"-\",[21,2,[]]]]],[3,\"action\",[[21,0,[]],\"selectSlots\",[21,3,[\"timeslots\"]],[21,2,[]],[21,3,[\"date\"]],[22,[\"schedulingTimeslotSpan\"]]]],[8],[0,\"\\n              \"],[6,\"div\"],[11,\"class\",[27,[\"capacity-details \",[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"capacity\"],null]]]],[8],[0,\"\\n                \"],[6,\"span\"],[10,\"class\",\"popup hidden\"],[8],[0,\"\\n                  \"],[6,\"p\"],[8],[0,\"Av. score of pilots: \"],[6,\"span\"],[8],[1,[26,\"format-float\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"average_score\"],null],2],null],false],[9],[9],[0,\"\\n                  \"],[6,\"p\"],[8],[0,\"Av. distance of pilots: \"],[6,\"span\"],[8],[1,[26,\"format-float\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"average_distance\"],null],2],null],false],[9],[9],[0,\"\\n                  \"],[6,\"p\"],[8],[0,\"Av. pilot invite acceptance rate: \"],[6,\"span\"],[8],[1,[26,\"format-float\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"average_pilot_acceptance_rate\"],null],1],null],false],[9],[9],[0,\"\\n                  \"],[6,\"p\"],[8],[0,\"Av. pilot invites within slot: \"],[6,\"span\"],[8],[1,[26,\"format-float\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"average_pilot_invites\"],null],1],null],false],[9],[9],[0,\"\\n                  \"],[6,\"p\"],[8],[0,\"Available pilots: \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"pilots_found\"],null],false],[9],[9],[0,\"\\n                  \"],[6,\"p\"],[8],[0,\"Mission(s) sourcing: \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"missions_to_source\"],null],false],[9],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"capacity-details-basic\"],[8],[0,\"\\n                  \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n                    \"],[6,\"img\"],[11,\"src\",[27,[\"/assets/images/weather/\",[26,\"get\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"weather_forecast\"],null],\"icon\"],null],\".svg\"]]],[8],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"div\"],[10,\"class\",\"col-md-10\"],[8],[0,\"\\n                    \"],[6,\"p\"],[8],[0,\"Available pilots: \"],[9],[0,\"\\n                    \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"pilots_found\"],null],false],[9],[0,\"\\n                    \"],[6,\"p\"],[8],[0,\"Mission(s) sourcing: \"],[9],[0,\"\\n                    \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"missions_to_source\"],null],false],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"        \"],[9],[0,\"\\n\"]],\"parameters\":[1,2]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/available-timeslot-selector.hbs" } });
+});
+define("admin/templates/components/badge-dispatch-requirement-modal", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "UoRPNCLl", "block": "{\"symbols\":[\"equipment\",\"tablet\",\"phone\",\"camera\",\"drone\",\"drone\",\"dispatch_zone\",\"license\"],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"close\",\"appendedClasses\",\"translucentOverlay\",\"hasOverlay\",\"id\",\"fullScreen\"],[[26,\"action\",[[21,0,[]],\"close\"],null],\"capacity-modal full-screen-modal\",true,true,\"badge-dispatch-requirement-modal\",\"true\"]],{\"statements\":[[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"badge-requirement-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Pilot Filters\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n      \"],[6,\"div\"],[10,\"class\",\"collapsible-panel accordion accordion-first\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"d-inline-block search-field\"],[8],[0,\"\\n          License(s): \"],[4,\"each\",[[22,[\"licenses\"]]],null,{\"statements\":[[0,\" \"],[1,[26,\"checkbox-aria\",null,[[\"classNames\",\"model\",\"selections\"],[\"license-list\",[21,8,[]],[22,[\"model\",\"required_pilot_licenses\"]]]]],false],[0,\" \"]],\"parameters\":[8]},null],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"collapsible-panel accordion\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block search-field\"],[8],[0,\"\\n            Pilot Location(s): \\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"body row equipment-form\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          Location\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          Distance\\n        \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"badge_dispatch_zones\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"body row equipment-form\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n\\n          \"],[1,[26,\"dispatch-zone-autocomplete\",null,[[\"model\"],[[21,7,[]]]]],false],[0,\"\\n\"],[4,\"if\",[[21,7,[\"hasLatLng\"]]],null,{\"statements\":[[0,\"            \"],[6,\"div\"],[10,\"class\",\"geo\"],[8],[0,\"(\"],[1,[21,7,[\"latitude\"]],false],[0,\", \"],[1,[21,7,[\"longitude\"]],false],[0,\")\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\",\"placeholder\",\"min\"],[\"number\",[21,7,[\"distance\"]],\"form-control\",\"Distance\",\"1\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"remove-location\"],[3,\"action\",[[21,0,[]],\"removeBadgeRequiredLocation\",[21,7,[]]]],[8],[0,\" Cancel \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[7]},null],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"body row equipment-form\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"more-locations\"],[3,\"action\",[[21,0,[]],\"addBadgeRequiredLocation\"]],[8],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[10,\"aria-hidden\",\"true\"],[8],[9],[0,\" More Location\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\\n\"],[4,\"collapsible-panel\",null,[[\"title\",\"counter\",\"body-classes\",\"body-id\"],[\"Drone + Cameras\",[22,[\"droneSelectionCount\"]],\"row collapse equipment-form\",\"equipment-drone-camera\"]],{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"col-md-1 col-md-label\"],[8],[0,\"Accepted Drone Models\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"dronesOne\"]]],null,{\"statements\":[[0,\"          \"],[1,[26,\"checkbox-aria\",null,[[\"model\",\"selections\",\"includeManufacturer\"],[[21,6,[]],[22,[\"model\",\"required_drones\"]],true]]],false],[0,\"\\n\"]],\"parameters\":[6]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[4,\"each\",[[22,[\"dronesTwo\"]]],null,{\"statements\":[[0,\" \"],[1,[26,\"checkbox-aria\",null,[[\"model\",\"selections\",\"includeManufacturer\"],[[21,5,[]],[22,[\"model\",\"required_drones\"]],true]]],false],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-1 col-md-label\"],[8],[0,\"Camera Details\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[4,\"each\",[[22,[\"cameras\"]]],null,{\"statements\":[[0,\" \"],[1,[26,\"checkbox-aria\",null,[[\"model\",\"selections\"],[[21,4,[]],[22,[\"model\",\"required_drone_cameras\"]]]]],false],[0,\" \"]],\"parameters\":[4]},null],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"collapsible-panel\",null,[[\"title\",\"counter\",\"body-classes\",\"body-id\"],[\"Devices\",[22,[\"model\",\"required_devices\",\"length\"]],\"row collapse equipment-form\",\"equipment-devices\"]],{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"col-md-1 col-md-label\"],[8],[0,\"Accepted Phones\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[4,\"each\",[[22,[\"phones\"]]],null,{\"statements\":[[0,\" \"],[1,[26,\"checkbox-aria\",null,[[\"model\",\"selections\"],[[21,3,[]],[22,[\"model\",\"required_devices\"]]]]],false],[0,\" \"]],\"parameters\":[3]},null],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-1 col-md-label\"],[8],[0,\"Accepted Tablets\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"tablets\"]]],null,{\"statements\":[[0,\"          \"],[1,[26,\"checkbox-aria\",null,[[\"model\",\"selections\"],[[21,2,[]],[22,[\"model\",\"required_devices\"]]]]],false],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\\n\"],[4,\"collapsible-panel\",null,[[\"title\",\"counter\",\"body-classes\",\"body-id\"],[\"Other Equipment\",[22,[\"model\",\"required_pilot_equipments\",\"length\"]],\"row collapse equipment-form\",\"equipment-equipment\"]],{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"col-md-1 col-md-label\"],[8],[0,\"Equipment Type\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[4,\"each\",[[22,[\"equipments\"]]],null,{\"statements\":[[0,\" \"],[1,[26,\"checkbox-aria\",null,[[\"model\",\"selections\"],[[21,1,[]],[22,[\"model\",\"required_pilot_equipments\"]]]]],false],[0,\" \"]],\"parameters\":[1]},null],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/badge-dispatch-requirement-modal.hbs" } });
+});
+define("admin/templates/components/busy-modal", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "5X1FpnH7", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[22,[\"busy\"]]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"busy-modal\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"loading-container\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"loader\"],[8],[0,\"Loading...\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"processing\"],[8],[0,\"Processing \"],[1,[20,\"progressText\"],false],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/busy-modal.hbs" } });
 });
 define("admin/templates/components/button-to-circle", ["exports"], function (exports) {
   "use strict";
@@ -14426,7 +16302,15 @@ define("admin/templates/components/capacity-modal", ["exports"], function (expor
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "3xTSDPJo", "block": "{\"symbols\":[\"timeslot\",\"index\",\"day\",\"day\"],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"close\",\"appendedClasses\",\"translucentOverlay\",\"hasOverlay\",\"fullScreen\"],[[26,\"action\",[[21,0,[]],\"close\"],null],\"capacity-modal full-screen-modal\",true,true,\"true\"]],{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"container-fluid capacity-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n      \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"Pilot Availability\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[8],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"header-label\"],[8],[0,\"\\n      \"],[6,\"p\"],[8],[0,\"Below are the time slots for estimated pilot availability for this mission.\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"nav-dates\"],[8],[0,\"\\n        \"],[6,\"a\"],[11,\"class\",[27,[\"btn cancel-button \",[26,\"if\",[[26,\"is-equal\",[[22,[\"currPage\"]],1],null],\"disabled\"],null]]]],[11,\"disabled\",[26,\"is-equal\",[[22,[\"currPage\"]],1],null]],[3,\"action\",[[21,0,[]],\"resetPage\"]],[8],[0,\"TODAY\"],[9],[0,\"\\n        \"],[6,\"div\"],[11,\"disabled\",[26,\"check-if\",[[22,[\"currPage\"]],\"<\",2],null]],[3,\"action\",[[21,0,[]],\"prevPage\",[22,[\"currPage\"]]]],[8],[0,\"\\n          \"],[6,\"img\"],[10,\"src\",\"/assets/images/left-arrow.svg\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"span\"],[8],[0,\" \"],[1,[26,\"moment-format\",[[22,[\"model\",\"currDays\",\"firstObject\",\"date\"]],\"MMM DD\"],null],false],[0,\" - \"],[1,[26,\"moment-format\",[[22,[\"model\",\"currDays\",\"lastObject\",\"date\"]],\"MMM DD\"],null],false],[0,\" \"],[9],[0,\"\\n        \"],[6,\"div\"],[11,\"disabled\",[26,\"check-if\",[[22,[\"currPage\"]],\">\",2],null]],[3,\"action\",[[21,0,[]],\"nextPage\",[22,[\"currPage\"]]]],[8],[0,\"\\n          \"],[6,\"img\"],[10,\"src\",\"/assets/images/right-arrow.svg\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n          \"],[6,\"thead\"],[8],[0,\"\\n            \"],[6,\"tr\"],[8],[0,\"\\n              \"],[6,\"th\"],[8],[6,\"p\"],[10,\"class\",\"header\"],[8],[1,[20,\"timezone\"],false],[9],[9],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"currPage\"]],1],null]],null,{\"statements\":[[0,\"                \"],[6,\"th\"],[10,\"class\",\"unavailable\"],[8],[0,\"\\n                  \"],[6,\"p\"],[10,\"class\",\"day\"],[8],[1,[26,\"moment-format\",[[22,[\"dateToday\"]],\"ddd\"],null],false],[9],[0,\"\\n                  \"],[6,\"p\"],[10,\"class\",\"header date\"],[8],[1,[26,\"moment-format\",[[22,[\"dateToday\"]],\"DD\"],null],false],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"each\",[[22,[\"model\",\"currDays\"]]],null,{\"statements\":[[0,\"                \"],[6,\"th\"],[8],[0,\"\\n                  \"],[6,\"p\"],[10,\"class\",\"day\"],[8],[1,[26,\"moment-format\",[[21,4,[\"date\"]],\"ddd\"],null],false],[9],[0,\"\\n                  \"],[6,\"p\"],[10,\"class\",\"header date\"],[8],[1,[26,\"moment-format\",[[21,4,[\"date\"]],\"DD\"],null],false],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"currDays\",\"0\",\"timeslots\"]]],null,{\"statements\":[[0,\"            \"],[6,\"tr\"],[8],[0,\"\\n              \"],[6,\"td\"],[8],[1,[26,\"format-timeslot\",[[21,1,[\"scheduled_at_start\"]],[21,1,[\"scheduled_at_end\"]],[22,[\"model\",\"mission\",\"location\",\"timezone_id\"]]],null],false],[9],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"currPage\"]],1],null]],null,{\"statements\":[[0,\"                \"],[6,\"td\"],[10,\"class\",\"capacity\"],[8],[0,\"\\n                  \"],[6,\"div\"],[10,\"class\",\"unavailable\"],[8],[0,\"\\n                    \"],[6,\"p\"],[8],[0,\"Unavailable\"],[9],[0,\"\\n                    \"],[6,\"p\"],[10,\"class\",\"small\"],[8],[0,\"Same day schedule is unavailable at this time\"],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"each\",[[22,[\"model\",\"currDays\"]]],null,{\"statements\":[[0,\"                \"],[6,\"td\"],[10,\"class\",\"capacity\"],[3,\"action\",[[21,0,[]],\"selectSlot\",[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"scheduled_at_start\"],null],[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"scheduled_at_end\"],null]]],[8],[0,\"\\n                  \"],[6,\"div\"],[11,\"class\",[27,[\"capacity-details \",[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"capacity\"],null]]]],[8],[0,\"\\n                    \"],[6,\"span\"],[10,\"class\",\"popup hidden\"],[8],[0,\"\\n                      \"],[6,\"p\"],[8],[0,\"Av. score of pilots: \"],[6,\"span\"],[8],[1,[26,\"format-float\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"average_score\"],null],2],null],false],[9],[9],[0,\"\\n                      \"],[6,\"p\"],[8],[0,\"Av. distance of pilots: \"],[6,\"span\"],[8],[1,[26,\"format-float\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"average_distance\"],null],2],null],false],[9],[9],[0,\"\\n                      \"],[6,\"p\"],[8],[0,\"Av. pilot invites: \"],[6,\"span\"],[8],[1,[26,\"format-float\",[[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"average_pilot_invites\"],null],1],null],false],[9],[9],[0,\"\\n                      \"],[6,\"p\"],[8],[0,\"Available pilots: \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"pilots_found\"],null],false],[9],[9],[0,\"\\n                      \"],[6,\"p\"],[8],[0,\"Mission(s) sourcing: \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"missions_to_source\"],null],false],[9],[9],[0,\"\\n                    \"],[9],[0,\"\\n                    \"],[6,\"p\"],[8],[0,\"Available pilots: \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"pilots_found\"],null],false],[9],[9],[0,\"\\n                    \"],[6,\"p\"],[8],[0,\"Mission(s) sourcing: \"],[6,\"span\"],[8],[1,[26,\"dig-index-of\",[[21,3,[\"timeslots\"]],[21,2,[]],\"missions_to_source\"],null],false],[9],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"            \"],[9],[0,\"\\n\"]],\"parameters\":[1,2]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group row\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n        CANCEL\\n      \"],[9],[0,\"\\n      \"],[6,\"a\"],[11,\"class\",[27,[\"btn btn-primary \",[26,\"if\",[[26,\"is-blank\",[[22,[\"selectedStart\"]]],null],\"disabled\"],null]]]],[11,\"disabled\",[26,\"is-blank\",[[22,[\"selectedStart\"]]],null]],[3,\"action\",[[21,0,[]],\"saveSchedule\"]],[8],[0,\"\\n        CONFIRM\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/capacity-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "TRQM9tTj", "block": "{\"symbols\":[],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"close\",\"appendedClasses\",\"translucentOverlay\",\"hasOverlay\",\"fullScreen\"],[[26,\"action\",[[21,0,[]],\"close\"],null],\"capacity-modal full-screen-modal\",true,true,\"true\"]],{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"container-fluid capacity-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"close-modal pull-right\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n      \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[1,[26,\"available-timeslot-selector\",null,[[\"model\",\"selectAction\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"setSelected\"],null]]]],false],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group row buttons-block\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n        CANCEL\\n      \"],[9],[0,\"\\n      \"],[6,\"a\"],[11,\"class\",[27,[\"btn btn-primary \",[26,\"if\",[[26,\"is-blank\",[[22,[\"selectedTimeslotData\"]]],null],\"disabled\"],null]]]],[11,\"disabled\",[26,\"is-blank\",[[22,[\"selectedTimeslotData\"]]],null]],[3,\"action\",[[21,0,[]],\"saveSchedule\"]],[8],[0,\"\\n        CONFIRM\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/capacity-modal.hbs" } });
+});
+define("admin/templates/components/checkbox-aria", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "xZMurQHu", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[11,\"class\",[27,[[20,\"containerClasses\"]]]],[8],[0,\"\\n  \"],[6,\"label\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"allSelected\"]]],null,{\"statements\":[[4,\"aria-checkbox\",null,[[\"class\",\"checked\",\"disabled\"],[[22,[\"formattedLabel\"]],true,true]],{\"statements\":[[0,\"          \"],[4,\"if\",[[22,[\"wrap\"]]],null,{\"statements\":[[6,\"span\"],[8],[1,[20,\"label\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[1,[20,\"label\"],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},null]],\"parameters\":[]},{\"statements\":[[4,\"aria-checkbox\",null,[[\"class\",\"checked\"],[[22,[\"formattedLabel\"]],[22,[\"checked\"]]]],{\"statements\":[[0,\"          \"],[4,\"if\",[[22,[\"wrap\"]]],null,{\"statements\":[[6,\"span\"],[8],[1,[20,\"label\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[1,[20,\"label\"],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/checkbox-aria.hbs" } });
 });
 define("admin/templates/components/checkbox-item", ["exports"], function (exports) {
   "use strict";
@@ -14434,7 +16318,7 @@ define("admin/templates/components/checkbox-item", ["exports"], function (export
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "194ECyDl", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[8],[0,\"\\n  \"],[6,\"label\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"allSelected\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"checked\",\"disabled\"],[\"checkbox\",[22,[\"formattedLabel\"]],true,true]]],false],[0,\" \\n        \"],[4,\"if\",[[22,[\"wrap\"]]],null,{\"statements\":[[6,\"span\"],[8],[1,[20,\"label\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[20,\"label\"],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"checked\"],[\"checkbox\",[22,[\"formattedLabel\"]],[22,[\"checked\"]]]]],false],[0,\"\\n        \"],[4,\"if\",[[22,[\"wrap\"]]],null,{\"statements\":[[6,\"span\"],[8],[1,[20,\"label\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[20,\"label\"],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/checkbox-item.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "UZ9cAcbc", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[11,\"class\",[27,[[20,\"containerClasses\"]]]],[8],[0,\"\\n  \"],[6,\"label\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"allSelected\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"checked\",\"disabled\"],[\"checkbox\",[22,[\"formattedLabel\"]],true,true]]],false],[0,\" \\n        \"],[4,\"if\",[[22,[\"wrap\"]]],null,{\"statements\":[[6,\"span\"],[8],[1,[20,\"label\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[20,\"label\"],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"checked\"],[\"checkbox\",[22,[\"formattedLabel\"]],[22,[\"checked\"]]]]],false],[0,\"\\n        \"],[4,\"if\",[[22,[\"wrap\"]]],null,{\"statements\":[[6,\"span\"],[8],[1,[20,\"label\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[20,\"label\"],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/checkbox-item.hbs" } });
 });
 define("admin/templates/components/client-details-view", ["exports"], function (exports) {
   "use strict";
@@ -14442,7 +16326,7 @@ define("admin/templates/components/client-details-view", ["exports"], function (
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "ufIeY1/e", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[22,[\"showDetails\"]]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"client-details-view\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"header-row\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"name\"],[8],[0,\"Client Contact\"],[9],[0,\"\\n      \"],[4,\"link-to\",[\"clients.client\",[22,[\"client\",\"id\"]]],[[\"class\"],[\"profile-link\"]],{\"statements\":[[0,\"View Profile\"]],\"parameters\":[]},null],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"body-row\"],[8],[0,\"\\n      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"fullName\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"email\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"phone\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"company_name\"]],false],[9],[0,\"\\n        \"],[1,[26,\"open-client-app\",null,[[\"label\",\"params\"],[\"Login to this mission as the customer\",[22,[\"clientLoginParams\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"client\",\"invoiceable\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"invoiceable\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"disabled\",\"name\"],[\"checkbox\",\"true\",\"true\",\"Invoiceable\"]]],false],[0,\"\\n          Invoiced client\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/client-details-view.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "3NWMKuG5", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[22,[\"showDetails\"]]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"client-details-view\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"header-row\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"name\"],[8],[0,\"Client Contact\"],[9],[0,\"\\n      \"],[6,\"a\"],[11,\"href\",[27,[\"/clients/\",[22,[\"client\",\"id\"]]]]],[10,\"class\",\"profile-link\"],[8],[0,\"View Profile\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"body-row\"],[8],[0,\"\\n      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"fullName\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"email\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"phone\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"client\",\"company_name\"]],false],[9],[0,\"\\n        \"],[1,[26,\"open-client-app\",null,[[\"label\",\"params\"],[\"Login to this mission as the customer\",[22,[\"clientLoginParams\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"client\",\"invoiceable\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"invoiceable\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"disabled\",\"name\"],[\"checkbox\",\"true\",\"true\",\"Invoiceable\"]]],false],[0,\"\\n          Invoiced client\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/client-details-view.hbs" } });
 });
 define("admin/templates/components/client-package-checkbox", ["exports"], function (exports) {
   "use strict";
@@ -14466,7 +16350,7 @@ define("admin/templates/components/clients/client-profile-edit", ["exports"], fu
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "16Agfel8", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"Client Profile\"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"first_name\"],[8],[0,\"First Name\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"first_name\"]],[22,[\"model\",\"client\",\"errors\",\"first_name\"]],\"first_name\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"last_name\"],[8],[0,\"Last Name\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"last_name\"]],[22,[\"model\",\"client\",\"errors\",\"last_name\"]],\"first_name\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"email\"],[8],[0,\"Email\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"email\"]],[22,[\"model\",\"client\",\"errors\",\"email\"]],\"email\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"phone\"],[8],[0,\"Phone\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"phone\"]],[22,[\"model\",\"client\",\"errors\",\"phone\"]],\"phone\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"company_name\"],[8],[0,\"Company Name\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"company_name\"]],[22,[\"model\",\"client\",\"errors\",\"company_name\"]],\"company_name\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"organization\"],[8],[0,\"Organization\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\",\"promptDisabled\"],[[22,[\"model\",\"organizations\"]],[22,[\"selectedOrganization\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selectedOrganization\"]]],null]],null],\"Select Organization\",\"name\",false]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"label\"],[10,\"for\",\"Invoiceable\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"model\",\"client\",\"invoiceable\"]],\"Invoiceable\"]]],false],[0,\" Send Invoice\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group buttons-block\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn turquoise-border-button-white-on-hover\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[0,\"\\n        Cancel\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",[22,[\"saveButtonText\"]],\"btn turquoise-button\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/clients/client-profile-edit.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "L3xiFQ21", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"Client Profile\"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"first_name\"],[8],[0,\"First Name\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"first_name\"]],[22,[\"model\",\"client\",\"errors\",\"first_name\"]],\"first_name\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"last_name\"],[8],[0,\"Last Name\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"last_name\"]],[22,[\"model\",\"client\",\"errors\",\"last_name\"]],\"first_name\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"email\"],[8],[0,\"Email\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"email\"]],[22,[\"model\",\"client\",\"errors\",\"email\"]],\"email\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"phone\"],[8],[0,\"Phone\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"phone\"]],[22,[\"model\",\"client\",\"errors\",\"phone\"]],\"phone\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"company_name\"],[8],[0,\"Company Name\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"name\"],[[22,[\"model\",\"client\",\"company_name\"]],[22,[\"model\",\"client\",\"errors\",\"company_name\"]],\"company_name\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"for\",\"organization\"],[8],[0,\"Organization\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\",\"promptDisabled\"],[[22,[\"model\",\"organizations\"]],[22,[\"selectedOrganization\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selectedOrganization\"]]],null]],null],\"Select Organization\",\"name\",false]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"label\"],[10,\"for\",\"Invoiceable\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"model\",\"client\",\"invoiceable\"]],\"Invoiceable\"]]],false],[0,\" Send Invoice\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group buttons-block\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[0,\"\\n        Cancel\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",[22,[\"saveButtonText\"]],\"btn btn-primary\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/clients/client-profile-edit.hbs" } });
 });
 define("admin/templates/components/clients/modal-client", ["exports"], function (exports) {
   "use strict";
@@ -14482,7 +16366,7 @@ define("admin/templates/components/clients/package-form", ["exports"], function 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "8IO7uqfS", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[1,[20,\"submitLabel\"],false],[0,\" \"],[1,[20,\"mode\"],false],[0,\" Package\"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showDronebasePack\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Clone from DroneBase package \"],[6,\"span\"],[10,\"class\",\"note\"],[8],[0,\"(optional)\"],[9],[9],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"prompt\",\"disabled\"],[\"fullName\",[22,[\"dronebasePackagesSorted\"]],[22,[\"selectedDronebasePackage\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selectedDronebasePackage\"]]],null]],null],\"Select Package\",[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-8\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Package Name\"],[9],[0,\"\\n          \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"disabled\"],[[22,[\"model\",\"package\",\"name\"]],[22,[\"model\",\"package\",\"errors\",\"name\"]],[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Vertical\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"class\",\"prompt\",\"disabled\"],[\"name\",[22,[\"model\",\"verticalsForSelect\"]],[22,[\"model\",\"package\",\"vertical\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"package\",\"vertical\"]]],null]],null],[26,\"if\",[[22,[\"model\",\"package\",\"errors\",\"vertical\",\"length\"]],\"error\"],null],\"Select Vertical\",[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"package\",\"errors\",\"vertical\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Package Price\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\",\"disabled\"],[[22,[\"model\",\"package\",\"price\"]],\"Price\",[22,[\"model\",\"package\",\"errors\",\"price\"]],[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"showDronebasePack\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row package-name\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Package Name\"],[9],[0,\"\\n          \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"disabled\"],[[22,[\"model\",\"package\",\"name\"]],[22,[\"model\",\"package\",\"errors\",\"name\"]],[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row grey-section\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\" Account Rep \"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"package\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"package\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Salesforce Opportunity ID\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"package\",\"salesforce_opportunity_id\"]],\"Salesforce Opportunity ID\",[22,[\"model\",\"package\",\"errors\",\"salesforce_opportunity_id\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Slug\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"package\",\"slug\"]],\"API slug\",[22,[\"model\",\"package\",\"errors\",\"slug\"]]]]],false],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"field-info\"],[8],[0,\"This is for API partners; please do not change this value without discussing it with a developer or a product manager\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Shot Template\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"class\",\"prompt\"],[\"name\",[22,[\"model\",\"templatesForSelect\"]],[22,[\"model\",\"package\",\"template\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"package\",\"template\"]]],null]],null],\"{{if =model.package.errors.template.length 'error'}}\",\"Select Template\"]]],false],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"package\",\"errors\",\"template\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Estimated Pilot Payout\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"package\",\"estimated_pilot_payout\"]],\"Estimated Pilot Payout\",[22,[\"model\",\"package\",\"errors\",\"estimated_pilot_payout\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Default Pilot Instructions\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"rows\",\"placeholder\",\"class\"],[[22,[\"model\",\"package\",\"mission_instructions\"]],\"4\",\"Default Pilot Instructions\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Internal Notes\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"rows\",\"placeholder\",\"class\"],[[22,[\"model\",\"package\",\"mission_internal_notes\"]],\"4\",\"\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Internal Production Notes\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"rows\",\"placeholder\",\"class\"],[[22,[\"model\",\"package\",\"mission_production_notes\"]],\"4\",\"\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row dispatch-section\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"dispatch-label\"],[8],[0,\"\\n            Dispatch\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"trigger\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"switch-with-label\"],[11,\"onclick\",[26,\"action\",[[21,0,[]],\"toggleAutoDispatch\"],null]],[8],[0,\"\\n              \"],[6,\"span\"],[10,\"class\",\"slider-label\"],[8],[0,\"Auto Dispatch\"],[9],[0,\"\\n              \"],[6,\"label\"],[10,\"for\",\"auto_dispatch_enabled\"],[10,\"class\",\"switch\"],[8],[0,\"\\n                \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"model\",\"package\",\"auto_dispatch_enabled\"]],\"auto_dispatch_enabled\"]]],false],[0,\"\\n                \"],[6,\"span\"],[10,\"class\",\"slider round\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row without-margin\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6 auto-dispatch\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Special Onboarding\"],[9],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\",\"promptDisabled\"],[[22,[\"model\",\"badges\"]],[22,[\"model\",\"package\",\"badge\"]],[26,\"action\",[[21,0,[]],\"changeBadge\"],null],\"None\",\"name\",false]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6 \"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"for\",\"badge_required\"],[10,\"class\",\"badge-required\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\",\"disabled\"],[\"checkbox\",[22,[\"model\",\"package\",\"badge_required\"]],\"badge_required\",[26,\"is-equal\",[[22,[\"model\",\"package\",\"badge\"]],null],null]]]],false],[0,\"\\n            \"],[6,\"span\"],[10,\"class\",\"slider-label\"],[8],[0,\"Badge Required\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row without-margin\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Min. Camera Resolution\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMegaPixels\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"\"],[8],[0,\"Any Resolution\"],[9],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"20\"],[11,\"selected\",[26,\"is-equal\",[\"20\",[22,[\"model\",\"package\",\"camera_mega_pixels\"]]],null]],[8],[0,\"20mp\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"drones-devices-equipment-selection\",null,[[\"model\",\"drones\",\"selectedDrones\",\"selectedCameras\",\"selectedDevices\",\"selectedEquipment\",\"includeManufacturer\"],[[22,[\"model\"]],[22,[\"drones\"]],[22,[\"model\",\"package\",\"drones\"]],[22,[\"model\",\"package\",\"droneCameras\"]],[22,[\"model\",\"package\",\"devices\"]],[22,[\"model\",\"package\",\"pilotEquipments\"]],[26,\"is-not\",[[22,[\"disableOnEdit\"]]],null]]]],false],[0,\"\\n\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group buttons-block\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn turquoise-border-button-white-on-hover\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[0,\"\\n        Cancel\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",[22,[\"submitLabel\"]],\"btn turquoise-button\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/clients/package-form.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "iH6gagO/", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n  \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[1,[20,\"submitLabel\"],false],[0,\" \"],[1,[20,\"mode\"],false],[0,\" Package\"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showDronebasePack\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Clone from DroneBase package \"],[6,\"span\"],[10,\"class\",\"note\"],[8],[0,\"(optional)\"],[9],[9],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"prompt\",\"disabled\"],[\"fullName\",[22,[\"dronebasePackagesSorted\"]],[22,[\"selectedDronebasePackage\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selectedDronebasePackage\"]]],null]],null],\"Select Package\",[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-8\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Package Name\"],[9],[0,\"\\n          \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"disabled\"],[[22,[\"model\",\"package\",\"name\"]],[22,[\"model\",\"package\",\"errors\",\"name\"]],[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Vertical\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"class\",\"prompt\",\"disabled\"],[\"name\",[22,[\"model\",\"verticalsForSelect\"]],[22,[\"model\",\"package\",\"vertical\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"package\",\"vertical\"]]],null]],null],[26,\"if\",[[22,[\"model\",\"package\",\"errors\",\"vertical\",\"length\"]],\"error\"],null],\"Select Vertical\",[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"package\",\"errors\",\"vertical\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Package Price\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\",\"disabled\"],[[22,[\"model\",\"package\",\"price\"]],\"Price\",[22,[\"model\",\"package\",\"errors\",\"price\"]],[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"showDronebasePack\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row package-name\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Package Name\"],[9],[0,\"\\n          \"],[1,[26,\"input-validated\",null,[[\"value\",\"modelErrors\",\"disabled\"],[[22,[\"model\",\"package\",\"name\"]],[22,[\"model\",\"package\",\"errors\",\"name\"]],[22,[\"disableOnEdit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row grey-section\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\" Account Rep \"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"package\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"package\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Salesforce Opportunity ID\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"package\",\"salesforce_opportunity_id\"]],\"Salesforce Opportunity ID\",[22,[\"model\",\"package\",\"errors\",\"salesforce_opportunity_id\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Slug\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"package\",\"slug\"]],\"API slug\",[22,[\"model\",\"package\",\"errors\",\"slug\"]]]]],false],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"field-info\"],[8],[0,\"This is for API partners; please do not change this value without discussing it with a developer or a product manager\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row dispatch-section\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"dispatch-label\"],[8],[0,\"\\n            Mission Details\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Shot Template\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"optionLabelPath\",\"content\",\"selection\",\"action\",\"class\",\"prompt\"],[\"name\",[22,[\"model\",\"templatesForSelect\"]],[22,[\"model\",\"package\",\"template\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"package\",\"template\"]]],null]],null],\"{{if =model.package.errors.template.length 'error'}}\",\"Select Template\"]]],false],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"package\",\"errors\",\"template\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Estimated Pilot Payout\"],[9],[0,\"\\n        \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"package\",\"estimated_pilot_payout\"]],\"Estimated Pilot Payout\",[22,[\"model\",\"package\",\"errors\",\"estimated_pilot_payout\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Mission Duration\"],[9],[0,\"\\n        \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"promptDisabled\",\"selectClass\",\"modelErrors\"],[[22,[\"durationOptions\"]],[22,[\"model\",\"package\",\"mission_duration\"]],true,\"select-custom\",[22,[\"model\",\"package\",\"errors\",\"mission_duration\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"SLA\"],[9],[0,\"\\n        \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"promptDisabled\",\"prompt\",\"selectClass\"],[[22,[\"slaOptions\"]],[22,[\"model\",\"package\",\"sla_time_to_schedule\"]],false,\"No SLA\",\"select-custom\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Mission Timeframe\"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"promptDisabled\",\"prompt\",\"selectClass\"],[[26,\"timeframe-options\",[8,21,[22,[\"model\",\"package\",\"missionDurationInHours\"]],true],null],[22,[\"model\",\"package\",\"timeframe_start\"]],true,\"Select timeframe\",\"select-custom\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"promptDisabled\",\"prompt\",\"selectClass\",\"modelErrors\"],[[26,\"timeframe-options\",[8,21,[22,[\"model\",\"package\",\"missionDurationInHours\"]],false],null],[22,[\"model\",\"package\",\"timeframe_end\"]],true,\"Select timeframe\",\"select-custom\",[22,[\"model\",\"package\",\"errors\",\"timeframe_end\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Customer Weather Requirement\"],[9],[0,\"\\n\"],[0,\"          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"cloudOptions\"]],[22,[\"model\",\"package\",\"cloud_reqs\"]],\"select please\",\"select-custom\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Default Pilot Instructions\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"rows\",\"placeholder\",\"class\"],[[22,[\"model\",\"package\",\"mission_instructions\"]],\"4\",\"Default Pilot Instructions\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Pilot script\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"rows\",\"placeholder\",\"class\"],[[22,[\"model\",\"package\",\"default_pilot_script\"]],\"4\",\"Pilot script\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row dispatch-section\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"dispatch-label\"],[8],[0,\"\\n            Admin Notes\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Internal Notes\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"rows\",\"placeholder\",\"class\"],[[22,[\"model\",\"package\",\"mission_internal_notes\"]],\"4\",\"\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Internal Production Notes\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"rows\",\"placeholder\",\"class\"],[[22,[\"model\",\"package\",\"mission_production_notes\"]],\"4\",\"\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row dispatch-section\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"dispatch-label\"],[8],[0,\"\\n            Dispatch\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"trigger\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"switch-with-label\"],[11,\"onclick\",[26,\"action\",[[21,0,[]],\"toggleAutoDispatch\"],null]],[8],[0,\"\\n              \"],[6,\"span\"],[10,\"class\",\"slider-label\"],[8],[0,\"Auto Dispatch\"],[9],[0,\"\\n              \"],[6,\"label\"],[10,\"for\",\"auto_dispatch_enabled\"],[10,\"class\",\"switch\"],[8],[0,\"\\n                \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"model\",\"package\",\"auto_dispatch_enabled\"]],\"auto_dispatch_enabled\"]]],false],[0,\"\\n                \"],[6,\"span\"],[10,\"class\",\"slider round\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row without-margin\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6 auto-dispatch\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"field-label\"],[8],[0,\"Special Onboarding\"],[9],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\",\"promptDisabled\"],[[22,[\"model\",\"badges\"]],[22,[\"model\",\"package\",\"badge\"]],[26,\"action\",[[21,0,[]],\"changeBadge\"],null],\"None\",\"name\",false]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6 \"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"for\",\"badge_required\"],[10,\"class\",\"badge-required\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\",\"disabled\"],[\"checkbox\",[22,[\"model\",\"package\",\"badge_required\"]],\"badge_required\",[26,\"is-equal\",[[22,[\"model\",\"package\",\"badge\"]],null],null]]]],false],[0,\"\\n            \"],[6,\"span\"],[10,\"class\",\"slider-label\"],[8],[0,\"Badge Required\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row without-margin\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Min. Camera Resolution\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMegaPixels\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"\"],[8],[0,\"Any Resolution\"],[9],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"20\"],[11,\"selected\",[26,\"is-equal\",[\"20\",[22,[\"model\",\"package\",\"camera_mega_pixels\"]]],null]],[8],[0,\"20mp\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row without-margin\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Shot Camera Requirements\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\\n\\n\\n    \"],[1,[26,\"drones-devices-equipment-selection\",null,[[\"model\",\"drones\",\"selectedDrones\",\"selectedCameras\",\"selectedDevices\",\"selectedEquipment\",\"includeManufacturer\"],[[22,[\"model\"]],[22,[\"drones\"]],[22,[\"model\",\"package\",\"drones\"]],[22,[\"model\",\"package\",\"droneCameras\"]],[22,[\"model\",\"package\",\"devices\"]],[22,[\"model\",\"package\",\"pilotEquipments\"]],[26,\"is-not\",[[22,[\"disableOnEdit\"]]],null]]]],false],[0,\"\\n\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group buttons-block\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"closeModal\"]],[8],[0,\"\\n        Cancel\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",[22,[\"submitLabel\"]],\"btn btn-primary\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/clients/package-form.hbs" } });
 });
 define("admin/templates/components/collaborator-list", ["exports"], function (exports) {
   "use strict";
@@ -14490,7 +16374,15 @@ define("admin/templates/components/collaborator-list", ["exports"], function (ex
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "uSCGt4HW", "block": "{\"symbols\":[\"collaborator\"],\"statements\":[[6,\"div\"],[10,\"class\",\"collaboration\"],[8],[0,\"\\n\\n  \"],[6,\"div\"],[11,\"class\",[27,[\"alert alert-info create-mode\\n    \",[26,\"if\",[[22,[\"createMode\"]],\"create-mode-on\",\"create-mode-off\"],null]]]],[10,\"role\",\"alert\"],[8],[0,\"\\n    \"],[6,\"strong\"],[8],[0,\"\\n      \"],[1,[26,\"if\",[[22,[\"createMode\"]],\"Please specify a first and last name.\",\"\"],null],false],[0,\"\\n      \"],[1,[26,\"if\",[[22,[\"success\"]],\"An invitation has been sent.\"],null],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"label\"],[8],[0,\"Collaborators\"],[9],[0,\"\\n  \"],[6,\"form\"],[3,\"action\",[[21,0,[]],\"add\",[22,[\"mission\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table table-striped collaborator-module\"],[8],[0,\"\\n  \"],[6,\"thead\"],[8],[0,\"\\n  \"],[6,\"tr\"],[8],[0,\"\\n    \"],[6,\"th\"],[10,\"class\",\"email\"],[8],[0,\"Email\"],[9],[0,\"\\n    \"],[6,\"th\"],[10,\"class\",\"name\"],[8],[0,\"Name\"],[9],[0,\"\\n    \"],[6,\"th\"],[10,\"class\",\"action\"],[8],[0,\" \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"tbody\"],[8],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"form-group email\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"size\",\"class\",\"name\",\"value\",\"type\",\"placeholder\"],[\"10\",\"form-control\",\"email\",[22,[\"newEmail\"]],\"email\",\"email address\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"form-group name\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"createMode\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"input\",null,[[\"size\",\"class\",\"name\",\"value\",\"type\",\"placeholder\"],[\"10\",\"form-control first-name\",\"firstName\",[22,[\"newFirstName\"]],\"text\",\"first name\"]]],false],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"size\",\"class\",\"value\",\"name\",\"type\",\"placeholder\"],[\"10\",\"form-control last-name\",[22,[\"newLastName\"]],\"lastName\",\"text\",\"last name\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"action\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm\"],[10,\"type\",\"submit\"],[8],[0,\"\\n          \"],[1,[26,\"if\",[[22,[\"createMode\"]],\"Confirm\",\"Add\"],null],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"mission\",\"collaborators\"]]],null,{\"statements\":[[0,\"    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"email\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"name\"],[8],[0,\"\\n        \"],[1,[21,1,[\"first_name\"]],false],[0,\" \"],[1,[21,1,[\"last_name\"]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"action\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-danger\"],[3,\"action\",[[21,0,[]],\"delete\",[21,1,[]]]],[8],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-ban\"],[10,\"aria-hidden\",\"true\"],[8],[9],[0,\" Remove\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/collaborator-list.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "J8qiHGVo", "block": "{\"symbols\":[\"collaborator\"],\"statements\":[[6,\"div\"],[10,\"class\",\"collaboration\"],[8],[0,\"\\n\\n  \"],[6,\"div\"],[11,\"class\",[27,[\"alert alert-info create-mode\\n    \",[26,\"if\",[[22,[\"createMode\"]],\"create-mode-on\",\"create-mode-off\"],null]]]],[10,\"role\",\"alert\"],[8],[0,\"\\n    \"],[6,\"strong\"],[8],[0,\"\\n      \"],[1,[26,\"if\",[[22,[\"createMode\"]],\"Please specify a first and last name.\",\"\"],null],false],[0,\"\\n      \"],[1,[26,\"if\",[[22,[\"success\"]],\"An invitation has been sent.\"],null],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"label\"],[8],[0,\"Collaborators\"],[9],[0,\"\\n  \"],[6,\"form\"],[3,\"action\",[[21,0,[]],\"add\",[22,[\"mission\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table collaborator-module\"],[8],[0,\"\\n  \"],[6,\"thead\"],[8],[0,\"\\n  \"],[6,\"tr\"],[8],[0,\"\\n    \"],[6,\"th\"],[10,\"class\",\"email\"],[8],[0,\"Email\"],[9],[0,\"\\n    \"],[6,\"th\"],[10,\"class\",\"name\"],[8],[0,\"Name\"],[9],[0,\"\\n    \"],[6,\"th\"],[10,\"class\",\"action\"],[8],[0,\" \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"tbody\"],[8],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"form-group email\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"size\",\"class\",\"name\",\"value\",\"type\",\"placeholder\"],[\"10\",\"form-control\",\"email\",[22,[\"newEmail\"]],\"email\",\"email address\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"form-group name\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"createMode\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"input\",null,[[\"size\",\"class\",\"name\",\"value\",\"type\",\"placeholder\"],[\"10\",\"form-control first-name\",\"firstName\",[22,[\"newFirstName\"]],\"text\",\"first name\"]]],false],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"size\",\"class\",\"value\",\"name\",\"type\",\"placeholder\"],[\"10\",\"form-control last-name\",[22,[\"newLastName\"]],\"lastName\",\"text\",\"last name\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"action\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm\"],[10,\"type\",\"submit\"],[8],[0,\"\\n          \"],[1,[26,\"if\",[[22,[\"createMode\"]],\"Confirm\",\"Add\"],null],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"mission\",\"collaborators\"]]],null,{\"statements\":[[0,\"    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"email\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"name\"],[8],[0,\"\\n        \"],[1,[21,1,[\"first_name\"]],false],[0,\" \"],[1,[21,1,[\"last_name\"]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"action\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-sm btn-secondary \"],[3,\"action\",[[21,0,[]],\"delete\",[21,1,[]]]],[8],[0,\"\\n          Remove\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/collaborator-list.hbs" } });
+});
+define("admin/templates/components/collapsible-panel", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "uvVeqNLb", "block": "{\"symbols\":[\"&default\"],\"statements\":[[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"collapsible-panel accordion \",[20,\"container-classes\"]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row equipment-header\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[10,\"data-toggle\",\"collapse\"],[11,\"data-target\",[27,[\"#\",[20,\"body-id\"]]]],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"d-inline-block search-field\"],[8],[0,\"\\n          \"],[1,[20,\"title\"],false],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"counter\"],[8],[0,\"(\"],[1,[20,\"counter\"],false],[0,\")\"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"d-inline-block pull-right arrow\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"open\"]]],null,{\"statements\":[[0,\"          \"],[6,\"img\"],[10,\"src\",\"/assets/images/up-arrow.svg\"],[8],[9],[0,\" \"]],\"parameters\":[]},{\"statements\":[[0,\"\\n          \"],[6,\"img\"],[10,\"src\",\"/assets/images/down-arrow.svg\"],[8],[9],[0,\" \"]],\"parameters\":[]}],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[11,\"class\",[27,[\"body \",[20,\"body-classes\"]]]],[11,\"id\",[27,[[20,\"body-id\"]]]],[8],[0,\"\\n      \"],[13,1],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/collapsible-panel.hbs" } });
 });
 define("admin/templates/components/collapsible-sidebar-item", ["exports"], function (exports) {
   "use strict";
@@ -14506,7 +16398,7 @@ define("admin/templates/components/creative-mission-meta-form", ["exports"], fun
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "6H/nMsfq", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"row creative-mission-meta-container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 creative-mission-meta-title\"],[8],[0,\"\\n    Creative Mission Metadata\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"name\"]],\"Title\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"thumbnail_timecode\"]],\"Timecode 00:15\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"textarea\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"mission\",\"description\"]],\"Description\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"city\"]],\"City\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"state\"]],\"State\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-4\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"country\"]],\"Country\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"creative-mission-tag-count\"],[8],[0,\"\\n        \"],[1,[22,[\"model\",\"mission\",\"tags\",\"length\"]],false],[0,\" of 8\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"tagList\"]],\"Tags\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n    \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"optionLabelPath\",\"prompt\"],[[22,[\"model\",\"categoriesForSelect\"]],[22,[\"model\",\"mission\",\"category\",\"content\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"category\"]]],null]],null],\"name\",\"Select Category\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 text-right\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-success btn-sm\"],[3,\"action\",[[21,0,[]],\"updateMissionMeta\",[22,[\"model\"]]]],[8],[0,\"Save Meta\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/creative-mission-meta-form.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "dWuxANDL", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"row creative-mission-meta-container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 creative-mission-meta-title\"],[8],[0,\"\\n    Creative Mission Metadata\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"name\"]],\"Title\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"thumbnail_timecode\"]],\"Timecode 00:15\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"textarea\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"mission\",\"description\"]],\"Description\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"city\"]],\"City\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"state\"]],\"State\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-4\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"location\",\"country\"]],\"Country\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"creative-mission-tag-count\"],[8],[0,\"\\n        \"],[1,[22,[\"model\",\"mission\",\"tags\",\"length\"]],false],[0,\" of 8\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"tagList\"]],\"Tags\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n    \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"optionLabelPath\",\"prompt\"],[[22,[\"model\",\"categoriesForSelect\"]],[22,[\"model\",\"mission\",\"category\",\"content\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"category\"]]],null]],null],\"name\",\"Select Category\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 text-right\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm\"],[3,\"action\",[[21,0,[]],\"updateMissionMeta\",[22,[\"model\"]]]],[8],[0,\"Save Meta\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/creative-mission-meta-form.hbs" } });
 });
 define("admin/templates/components/creative-mission-response", ["exports"], function (exports) {
   "use strict";
@@ -14514,7 +16406,15 @@ define("admin/templates/components/creative-mission-response", ["exports"], func
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "jqOXTe7o", "block": "{\"symbols\":[\"note\"],\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"row creative-mission-response-container\\n    \",[26,\"unless\",[[22,[\"transcoderRejected\"]],\"hide\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 creative-mission-meta-title rejected\"],[8],[0,\"\\n    Transcoder Rejected Mission\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"md-text\",null,[[\"text\"],[[22,[\"model\",\"rejection_notes\"]]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[11,\"class\",[27,[\"row creative-mission-response-container\\n    \",[26,\"if\",[[22,[\"transcoderRejected\"]],\"hide\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 creative-mission-meta-title\"],[8],[0,\"\\n    Creative Mission Approve/Reject\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      Approve: \"],[1,[26,\"radio-button\",null,[[\"value\",\"checked\"],[\"true\",[22,[\"model\",\"accepted\"]]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      Reject: \"],[1,[26,\"radio-button\",null,[[\"value\",\"checked\"],[\"false\",[22,[\"model\",\"accepted\"]]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-5\"],[8],[0,\"\\n    \"],[6,\"div\"],[11,\"class\",[27,[\"form-group \",[26,\"unless\",[[22,[\"rejected\"]],\"hide\"],null]]]],[8],[0,\"\\n      \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setResponseNote\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n        \"],[6,\"option\"],[10,\"value\",\"\"],[8],[0,\"-- Reason --\"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"responseNotes\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"model\",\"rejection_notes\"]],[21,1,[]]],null]],null,{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,1,[]]],[10,\"selected\",\"\"],[8],[1,[21,1,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,1,[]]],[8],[1,[21,1,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2 text-right\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-\",[26,\"if\",[[22,[\"rejected\"]],\"danger\",\"success\"],null],\" btn-sm\"]]],[3,\"action\",[[21,0,[]],\"sendResponse\",[22,[\"model\"]]]],[8],[0,\"\\n        \"],[1,[26,\"if\",[[22,[\"rejected\"]],\"Reject\",\"Accept\"],null],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/creative-mission-response.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "nfE5t1IV", "block": "{\"symbols\":[\"note\"],\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"row creative-mission-response-container\\n    \",[26,\"unless\",[[22,[\"transcoderRejected\"]],\"hide\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 creative-mission-meta-title rejected\"],[8],[0,\"\\n    Transcoder Rejected Mission\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n       \"],[1,[26,\"textarea\",null,[[\"value\"],[[22,[\"model\",\"rejection_notes\"]]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[11,\"class\",[27,[\"row creative-mission-response-container\\n    \",[26,\"if\",[[22,[\"transcoderRejected\"]],\"hide\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-12 creative-mission-meta-title\"],[8],[0,\"\\n    Creative Mission Approve/Reject\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      Approve: \"],[1,[26,\"radio-button\",null,[[\"value\",\"checked\"],[\"true\",[22,[\"model\",\"accepted\"]]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      Reject: \"],[1,[26,\"radio-button\",null,[[\"value\",\"checked\"],[\"false\",[22,[\"model\",\"accepted\"]]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-5\"],[8],[0,\"\\n    \"],[6,\"div\"],[11,\"class\",[27,[\"form-group \",[26,\"unless\",[[22,[\"rejected\"]],\"hide\"],null]]]],[8],[0,\"\\n      \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setResponseNote\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n        \"],[6,\"option\"],[10,\"value\",\"\"],[8],[0,\"-- Reason --\"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"responseNotes\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"model\",\"rejection_notes\"]],[21,1,[]]],null]],null,{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,1,[]]],[10,\"selected\",\"\"],[8],[1,[21,1,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,1,[]]],[8],[1,[21,1,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-2 text-right\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-\",[26,\"if\",[[22,[\"rejected\"]],\"danger\",\"primary\"],null],\" btn-sm\"]]],[3,\"action\",[[21,0,[]],\"sendResponse\",[22,[\"model\"]]]],[8],[0,\"\\n        \"],[1,[26,\"if\",[[22,[\"rejected\"]],\"Reject\",\"Accept\"],null],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/creative-mission-response.hbs" } });
+});
+define("admin/templates/components/db-checkbox", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "rGvxfoY3", "block": "{\"symbols\":[\"&default\"],\"statements\":[[13,1],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/db-checkbox.hbs" } });
 });
 define("admin/templates/components/device-index-list", ["exports"], function (exports) {
   "use strict";
@@ -14523,6 +16423,14 @@ define("admin/templates/components/device-index-list", ["exports"], function (ex
     value: true
   });
   exports.default = Ember.HTMLBars.template({ "id": "B4czCkRW", "block": "{\"symbols\":[\"device\"],\"statements\":[[4,\"if\",[[22,[\"showModal\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"add-device-modal\",null,[[\"close\",\"action\",\"currentRecord\"],[[26,\"action\",[[21,0,[]],\"toggleModal\"],null],[26,\"action\",[[21,0,[]],\"saveRecord\"],null],[22,[\"currentRecord\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"pe-header\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"pe-title\"],[3,\"action\",[[21,0,[]],\"toggleCollapsed\"]],[8],[0,\"\\n    \"],[6,\"h4\"],[8],[0,\"\\n      Devices\\n\"],[4,\"if\",[[22,[\"collapsed\"]]],null,{\"statements\":[[0,\"        \"],[6,\"i\"],[10,\"class\",\"fa fa-angle-down\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"i\"],[10,\"class\",\"fa fa-angle-up\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n    \"],[6,\"button\"],[10,\"class\",\"btn btn-add\"],[3,\"action\",[[21,0,[]],\"addRecord\"]],[8],[0,\"Add Device\"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"unless\",[[22,[\"collapsed\"]]],null,{\"statements\":[[6,\"table\"],[10,\"class\",\"pe-table\"],[8],[0,\"\\n  \"],[6,\"tr\"],[8],[0,\"\\n    \"],[6,\"th\"],[8],[0,\"Model\"],[9],[0,\"\\n    \"],[6,\"th\"],[8],[0,\"OS\"],[9],[0,\"\\n    \"],[6,\"th\"],[8],[0,\"Type\"],[9],[0,\"\\n    \"],[6,\"th\"],[8],[9],[0,\"\\n    \"],[6,\"th\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"allRecords\"]]],null,{\"statements\":[[0,\"    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[8],[1,[21,1,[\"name\"]],false],[9],[0,\"\\n      \"],[6,\"td\"],[8],[1,[21,1,[\"operating_system\"]],false],[9],[0,\"\\n      \"],[6,\"td\"],[8],[1,[21,1,[\"device_type\"]],false],[9],[0,\"\\n      \"],[6,\"td\"],[8],[9],[0,\"\\n      \"],[6,\"td\"],[8],[0,\"  \\n        \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n            \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n            \"],[6,\"li\"],[8],[0,\"\\n              \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"editRecord\",[21,1,[]]]],[8],[0,\"Edit\"],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"li\"],[8],[0,\"\\n              \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"cloneRecord\",[21,1,[]]]],[8],[0,\"Clone\"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/device-index-list.hbs" } });
+});
+define("admin/templates/components/dispatch-zone-autocomplete", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "wCW6hLLN", "block": "{\"symbols\":[],\"statements\":[[1,[26,\"place-autocomplete-field\",null,[[\"value\",\"disabled\",\"inputClass\",\"placeChangedCallback\",\"withGeoLocate\",\"setValueWithProperty\",\"preventSubmit\"],[[22,[\"model\",\"name\"]],false,[22,[\"inputClass\"]],[26,\"action\",[[21,0,[]],\"placeChanged\"],null],true,\"formatted_address\",true]]],false]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/dispatch-zone-autocomplete.hbs" } });
 });
 define("admin/templates/components/drone-index-list", ["exports"], function (exports) {
   "use strict";
@@ -14578,7 +16486,7 @@ define("admin/templates/components/filter-missions", ["exports"], function (expo
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "gmYZNPpT", "block": "{\"symbols\":[\"client\",\"client\"],\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"refine \",[26,\"if\",[[22,[\"overFlowScroll\"]],\"over-flow-scroll\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"header-row\"],[8],[0,\"\\n    \"],[6,\"h2\"],[8],[0,\"Refine\"],[9],[0,\"\\n    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showStatus\"]]],null,{\"statements\":[[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Status\"]],{\"statements\":[[0,\"      \"],[1,[26,\"mission-status-filter\",null,[[\"selectedStatus\",\"sidebar\"],[[22,[\"status\"]],true]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[4,\"if\",[[22,[\"showLocation\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"onboarding/pilot-location-filter\",null,[[\"distance\",\"lat\",\"lon\",\"locationTitle\"],[[22,[\"distance\"]],[22,[\"latitude\"]],[22,[\"longitude\"]],[22,[\"locationTitle\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"clientMissions\"]]],null,{\"statements\":[[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Client\"]],{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"include-switch\"],[8],[0,\"\\n        Include\\n        \"],[6,\"label\"],[10,\"class\",\"switch\"],[8],[0,\"\\n           \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"include\"]],[22,[\"toggleInclude\"]]]]],false],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"slider round\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"key-up\",\"placeholder\",\"id\",\"class\"],[[22,[\"client\"]],[26,\"action\",[[21,0,[]],\"updateClientAutocomplete\"],null],\"Search\",\"clientAutocomplete\",\"client-autocomplete\"]]],false],[0,\"\\n      \"],[6,\"div\"],[11,\"class\",[27,[\"client-autocomplete-list\\n          \",[26,\"if\",[[26,\"is-not\",[[22,[\"clientAutocompleteList\",\"length\"]],0],null],\"hidden\"],null]]]],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"clientAutocompleteList\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"client-in-list\"],[11,\"onclick\",[26,\"action\",[[21,0,[]],\"selectClient\",[21,2,[]]],null]],[8],[0,\"\\n            \"],[1,[21,2,[\"companyOrFullName\"]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"      \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"selectedClients\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"selected-client\"],[8],[1,[21,1,[\"companyOrFullName\"]],false],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"fa fa-times-circle\"],[3,\"action\",[[21,0,[]],\"deselectClient\",[21,1,[]]]],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[6,\"div\"],[10,\"class\",\"turquoise-button\"],[3,\"action\",[[21,0,[]],\"filterClients\"]],[8],[0,\"FILTER\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Special Status\"]],{\"statements\":[[0,\"      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"assets_late\"]],[22,[\"updateAssetsLate\"]]]]],false],[0,\"\\n        Assets Late\\n      \"],[9],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"reshoot\"]],[22,[\"updateReshoot\"]]]]],false],[0,\"\\n        Reshoot\\n      \"],[9],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"on_hold\"]],[22,[\"updateOnHold\"]]]]],false],[0,\"\\n        On Hold\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[4,\"if\",[[22,[\"showPilotStatuses\"]]],null,{\"statements\":[[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Pilot Status\"]],{\"statements\":[[0,\"      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"approvedPilots\"]],[22,[\"updateApprovedPilots\"]]]]],false],[0,\"\\n        Approved\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/filter-missions.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "08gX3aVG", "block": "{\"symbols\":[\"client\",\"client\"],\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"refine \",[26,\"if\",[[22,[\"overFlowScroll\"]],\"over-flow-scroll\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"header-row\"],[8],[0,\"\\n    \"],[6,\"h2\"],[8],[0,\"Refine\"],[9],[0,\"\\n    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showStatus\"]]],null,{\"statements\":[[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Status\"]],{\"statements\":[[0,\"      \"],[1,[26,\"mission-status-filter\",null,[[\"selectedStatus\",\"sidebar\"],[[22,[\"status\"]],true]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[4,\"if\",[[22,[\"showLocation\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"onboarding/pilot-location-filter\",null,[[\"distance\",\"lat\",\"lon\",\"locationTitle\"],[[22,[\"distance\"]],[22,[\"latitude\"]],[22,[\"longitude\"]],[22,[\"locationTitle\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"clientMissions\"]]],null,{\"statements\":[[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Client\"]],{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"include-switch\"],[8],[0,\"\\n        Include\\n        \"],[6,\"label\"],[10,\"class\",\"switch\"],[8],[0,\"\\n           \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"include\"]],[22,[\"toggleInclude\"]]]]],false],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"slider round\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"key-up\",\"placeholder\",\"id\",\"class\"],[[22,[\"client\"]],[26,\"action\",[[21,0,[]],\"updateClientAutocomplete\"],null],\"Search\",\"clientAutocomplete\",\"client-autocomplete\"]]],false],[0,\"\\n      \"],[6,\"div\"],[11,\"class\",[27,[\"client-autocomplete-list\\n          \",[26,\"if\",[[26,\"is-not\",[[22,[\"clientAutocompleteList\",\"length\"]],0],null],\"hidden\"],null]]]],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"clientAutocompleteList\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"client-in-list\"],[11,\"onclick\",[26,\"action\",[[21,0,[]],\"selectClient\",[21,2,[]]],null]],[8],[0,\"\\n            \"],[1,[21,2,[\"selectableOption\"]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"      \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"selectedClients\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"selected-client\"],[8],[1,[21,1,[\"companyOrFullName\"]],false],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"fa fa-times-circle\"],[3,\"action\",[[21,0,[]],\"deselectClient\",[21,1,[]]]],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[6,\"div\"],[10,\"class\",\"btn-primary btn-sm\"],[3,\"action\",[[21,0,[]],\"filterClients\"]],[8],[0,\"FILTER\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Verticals\"]],{\"statements\":[[0,\"      \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"promptDisabled\",\"selectClass\"],[[22,[\"verticals\"]],[22,[\"vertical_id\"]],\"Any Vertical\",false,\"form-control input-md\"]]],false],[0,\"\\n\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Special Status\"]],{\"statements\":[[0,\"      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"assets_late\"]],[22,[\"updateAssetsLate\"]]]]],false],[0,\"\\n        Assets Late\\n      \"],[9],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"reshoot\"]],[22,[\"updateReshoot\"]]]]],false],[0,\"\\n        Reshoot\\n      \"],[9],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"on_hold\"]],[22,[\"updateOnHold\"]]]]],false],[0,\"\\n        On Hold\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[4,\"if\",[[22,[\"showPilotStatuses\"]]],null,{\"statements\":[[4,\"collapsible-sidebar-item\",null,[[\"title\"],[\"Pilot Status\"]],{\"statements\":[[0,\"      \"],[6,\"label\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"approvedPilots\"]],[22,[\"updateApprovedPilots\"]]]]],false],[0,\"\\n        Approved\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/filter-missions.hbs" } });
 });
 define("admin/templates/components/hold-mission-modal", ["exports"], function (exports) {
   "use strict";
@@ -14586,7 +16494,7 @@ define("admin/templates/components/hold-mission-modal", ["exports"], function (e
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "WbKogAVp", "block": "{\"symbols\":[\"reason\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"hold-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Put Mission on Hold\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Reason\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setHoldReason\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-md\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"disabled\",\"\"],[10,\"selected\",\"\"],[8],[0,\"\\n              Choose reason\\n            \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"holdReasons\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,1,[\"id\"]]],[8],[0,\"\\n                \"],[1,[21,1,[\"name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Details\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"reasonDetails\"]],\"form-control\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"top-buffer\"],[8],[0,\"\\n            (optional, for internal use only)\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group text-center\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n          Cancel\\n        \"],[9],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"hold\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n          Put Mission on Hold\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/hold-mission-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "4KI7O2RA", "block": "{\"symbols\":[\"reason\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"hold-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Put Mission on Hold\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Reason\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setHoldReason\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-md\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"disabled\",\"\"],[10,\"selected\",\"\"],[8],[0,\"\\n              Choose reason\\n            \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"holdReasons\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,1,[\"id\"]]],[8],[0,\"\\n                \"],[1,[21,1,[\"name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Details\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"reasonDetails\"]],\"form-control\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"top-buffer\"],[8],[0,\"\\n            (optional, for internal use only)\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group text-center buttons-block\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n          Cancel\\n        \"],[9],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"hold\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n          Put Mission on Hold\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/hold-mission-modal.hbs" } });
 });
 define("admin/templates/components/infinity-loader", ["exports"], function (exports) {
   "use strict";
@@ -14610,7 +16518,7 @@ define("admin/templates/components/input-inplace-edit", ["exports"], function (e
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "bd/Xiq4T", "block": "{\"symbols\":[\"error\",\"&default\"],\"statements\":[[4,\"if\",[[22,[\"isEditing\"]]],null,{\"statements\":[[4,\"each\",[[22,[\"modelErrors\"]]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[1,[21,1,[\"message\"]],false],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"  \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[1,[20,\"placeholder\"],false],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"typeTextArea\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"textarea-trigger-save\",null,[[\"value\"],[[22,[\"value\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"input-trigger-save\",null,[[\"type\",\"value\",\"save\"],[[22,[\"type\"]],[22,[\"value\"]],\"save\"]]],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"inline-input\"],[8],[0,\"\\n    \"],[6,\"span\"],[10,\"class\",\"normal-field-label\"],[8],[1,[20,\"placeholder\"],false],[0,\":\"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"value\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"typeTextArea\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"md-text\",null,[[\"text\"],[[22,[\"value\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[24,2]],null,{\"statements\":[[0,\"        \"],[13,2,[[21,0,[]]]],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[20,\"value\"],false],[0,\"\\n      \"]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"placeholder\"],[8],[0,\"\\n        \"],[1,[20,\"placeholder\"],false],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[6,\"i\"],[10,\"class\",\"fa fa-pencil\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/input-inplace-edit.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "bTiMZviq", "block": "{\"symbols\":[\"error\",\"&default\"],\"statements\":[[4,\"if\",[[22,[\"isEditing\"]]],null,{\"statements\":[[4,\"each\",[[22,[\"modelErrors\"]]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[1,[21,1,[\"message\"]],false],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"  \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[1,[20,\"placeholder\"],false],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"typeTextArea\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"textarea-trigger-save\",null,[[\"value\",\"save\"],[[22,[\"value\"]],\"save\"]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"input-trigger-save\",null,[[\"type\",\"value\",\"save\"],[[22,[\"type\"]],[22,[\"value\"]],\"save\"]]],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"inline-input\"],[8],[0,\"\\n    \"],[6,\"span\"],[10,\"class\",\"normal-field-label\"],[8],[1,[20,\"placeholder\"],false],[0,\":\"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"value\"]]],null,{\"statements\":[[4,\"if\",[[24,2]],null,{\"statements\":[[0,\"        \"],[13,2,[[21,0,[]]]],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[20,\"value\"],false],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"placeholder\"],[8],[0,\"\\n        \"],[1,[20,\"placeholder\"],false],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[6,\"i\"],[10,\"class\",\"fa fa-pencil\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/input-inplace-edit.hbs" } });
 });
 define("admin/templates/components/input-trigger-save", ["exports"], function (exports) {
   "use strict";
@@ -14650,15 +16558,7 @@ define("admin/templates/components/main-navigation", ["exports"], function (expo
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "KIf26D/5", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"navbar-header\"],[8],[0,\"\\n    \"],[6,\"button\"],[10,\"class\",\"navbar-toggle collapsed\"],[10,\"data-toggle\",\"collapse\"],[10,\"data-target\",\"#navbar\"],[10,\"aria-expanded\",\"false\"],[10,\"aria-controls\",\"navbar\"],[10,\"type\",\"button\"],[8],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"sr-only\"],[8],[0,\"Toggle navigation\"],[9],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"icon-bar\"],[8],[9],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"icon-bar\"],[8],[9],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"icon-bar\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"a\"],[10,\"class\",\"navbar-brand\"],[10,\"href\",\"/\"],[8],[0,\"DroneBase Admin\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"navbar\"],[10,\"class\",\"navbar-collapse collapse\"],[8],[0,\"\\n    \"],[6,\"ul\"],[10,\"class\",\"nav navbar-nav navbar-right\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"session\",\"isAuthenticated\"]]],null,{\"statements\":[[0,\"      \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/missions\"],[8],[0,\"Client Missions\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/missions/creative_missions\"],[8],[0,\"Creative Missions\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[8],[4,\"link-to\",[\"missions.pending_panos\"],null,{\"statements\":[[0,\"Pano Missions\"]],\"parameters\":[]},null],[9],[0,\"\\n      \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/missions/training_missions\"],[8],[0,\"Training Missions\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n        \"],[6,\"a\"],[11,\"class\",[27,[\"dropdown-toggle \",[26,\"if\",[[22,[\"highlightedClients\"]],\"selected-menu\"],null]]]],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[8],[0,\"\\n          Clients\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu pilot-menu\"],[8],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/clients\"],[8],[0,\"Client List\"],[9],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"clients.organizations\"],null,{\"statements\":[[0,\"Organizations\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"li\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n        \"],[6,\"a\"],[11,\"class\",[27,[\"dropdown-toggle \",[26,\"if\",[[22,[\"highlightedPilots\"]],\"selected-menu\"],null]]]],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[8],[0,\"\\n          Pilots\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu pilot-menu\"],[8],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/pilots\"],[8],[0,\"List\"],[9],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"pilots.onboarding\"],null,{\"statements\":[[0,\"Onboarding\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"li\"],[8],[4,\"link-to\",[\"payouts\"],null,{\"statements\":[[0,\"Payouts\"]],\"parameters\":[]},null],[9],[0,\"\\n      \"],[6,\"li\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n        \"],[6,\"a\"],[11,\"class\",[27,[\"dropdown-toggle \",[26,\"if\",[[22,[\"highlightedAdminTools\"]],\"selected-menu\"],null]]]],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[8],[0,\"\\n          Admin Tools\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"global_assets\"],null,{\"statements\":[[0,\"Assets\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"templates.index\"],null,{\"statements\":[[0,\"Shot Templates\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"partner_integration\"],null,{\"statements\":[[0,\"Partner Integration\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"equipment\"],null,{\"statements\":[[0,\"Pilot Equipment\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"badges\"],null,{\"statements\":[[0,\"Badges\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"invalidateSession\"]],[8],[0,\"Logout\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"li\"],[8],[4,\"link-to\",[\"login\"],null,{\"statements\":[[0,\"Login\"]],\"parameters\":[]},null],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[2,\"/.navbar-collapse \"],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/main-navigation.hbs" } });
-});
-define("admin/templates/components/mapbox-map", ["exports"], function (exports) {
-  "use strict";
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.default = Ember.HTMLBars.template({ "id": "kUDM20m1", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"map-container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"map\"],[10,\"class\",\"map\"],[8],[0,\" \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mapbox-map.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "VbnK7g7m", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"navbar-header\"],[8],[0,\"\\n    \"],[6,\"button\"],[10,\"class\",\"navbar-toggle collapsed\"],[10,\"data-toggle\",\"collapse\"],[10,\"data-target\",\"#navbar\"],[10,\"aria-expanded\",\"false\"],[10,\"aria-controls\",\"navbar\"],[10,\"type\",\"button\"],[8],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"sr-only\"],[8],[0,\"Toggle navigation\"],[9],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"icon-bar\"],[8],[9],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"icon-bar\"],[8],[9],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"icon-bar\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"a\"],[10,\"class\",\"navbar-brand\"],[10,\"href\",\"/\"],[8],[0,\"DroneBase Admin\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"navbar\"],[10,\"class\",\"navbar-collapse collapse\"],[8],[0,\"\\n    \"],[6,\"ul\"],[10,\"class\",\"nav navbar-nav navbar-right\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"session\",\"isAuthenticated\"]]],null,{\"statements\":[[0,\"      \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/missions\"],[8],[0,\"Client Missions\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/missions/creative_missions\"],[8],[0,\"Creative Missions\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/missions/pending_panos\"],[8],[0,\"Pano Missions\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/missions/training_missions\"],[8],[0,\"Training Missions\"],[9],[9],[0,\"\\n      \"],[6,\"li\"],[10,\"class\",\"dropdown dropdown-topnav\"],[8],[0,\"\\n        \"],[6,\"a\"],[11,\"class\",[27,[\"dropdown-toggle \",[26,\"if\",[[22,[\"highlightedClients\"]],\"selected-menu\"],null]]]],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[8],[0,\"\\n          Clients\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu pilot-menu\"],[8],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/clients\"],[8],[0,\"Client List\"],[9],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"clients.organizations\"],null,{\"statements\":[[0,\"Organizations\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"li\"],[10,\"class\",\"dropdown dropdown-topnav\"],[8],[0,\"\\n        \"],[6,\"a\"],[11,\"class\",[27,[\"dropdown-toggle \",[26,\"if\",[[22,[\"highlightedPilots\"]],\"selected-menu\"],null]]]],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[8],[0,\"\\n          Pilots\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu pilot-menu\"],[8],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"a\"],[10,\"href\",\"/pilots\"],[8],[0,\"List\"],[9],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"pilots.onboarding\"],null,{\"statements\":[[0,\"Onboarding\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"li\"],[8],[4,\"link-to\",[\"payouts\"],null,{\"statements\":[[0,\"Payouts\"]],\"parameters\":[]},null],[9],[0,\"\\n      \"],[6,\"li\"],[10,\"class\",\"dropdown dropdown-topnav\"],[8],[0,\"\\n        \"],[6,\"a\"],[11,\"class\",[27,[\"dropdown-toggle \",[26,\"if\",[[22,[\"highlightedAdminTools\"]],\"selected-menu\"],null]]]],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[8],[0,\"\\n          Admin Tools\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"waivers.index\"],null,{\"statements\":[[0,\"Airport Waivers\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"global_assets\"],null,{\"statements\":[[0,\"Assets\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"badges\"],null,{\"statements\":[[0,\"Badges\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"partner_integration\"],null,{\"statements\":[[0,\"Partner Integration\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"equipment\"],null,{\"statements\":[[0,\"Pilot Equipment\"]],\"parameters\":[]},null],[9],[0,\"\\n          \"],[6,\"li\"],[8],[4,\"link-to\",[\"templates.index\"],null,{\"statements\":[[0,\"Shot Templates\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"invalidateSession\"]],[8],[0,\"Logout\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"li\"],[8],[4,\"link-to\",[\"login\"],null,{\"statements\":[[0,\"Login\"]],\"parameters\":[]},null],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[2,\"/.navbar-collapse \"],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/main-navigation.hbs" } });
 });
 define("admin/templates/components/mission-asset-map", ["exports"], function (exports) {
   "use strict";
@@ -14668,6 +16568,14 @@ define("admin/templates/components/mission-asset-map", ["exports"], function (ex
   });
   exports.default = Ember.HTMLBars.template({ "id": "YXn+GSH+", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"id\",\"asset-map\"],[8],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-asset-map.hbs" } });
 });
+define("admin/templates/components/mission-assets-meta", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "8G5uxqKE", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"assets-meta\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"header-row col-md-12\"],[8],[0,\"\\n    \"],[6,\"label\"],[8],[0,\"Assets\"],[9],[0,\"\\n    \"],[4,\"link-to\",[\"missions.map\",[22,[\"mission\",\"id\"]]],null,{\"statements\":[[0,\"Edit Map\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"mission\",\"isShareable\"]]],null,{\"statements\":[[0,\"      | \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"linkText\"],[[22,[\"mission\"]],\"shareShareable\",\"Share All\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"mission\",\"archived_at\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"regenerate-zip\"],[8],[0,\"\\n        Zip file created: \"],[1,[26,\"moment-format\",[[22,[\"mission\",\"archived_at\"]],\"MM/DD/YY, h:mm a\"],null],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"buttons-block\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"mission\",\"archives_ready\"]]],null,{\"statements\":[[0,\"          \"],[6,\"a\"],[11,\"href\",[27,[[22,[\"mission\",\"archive_url\"]]]]],[10,\"class\",\"btn btn-primary btn-sm\"],[8],[0,\"\\n              DOWNLOAD ZIP FILE\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"mission\",\"archivesGenerating\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"btn btn-info disabled btn-sm\"],[8],[0,\"\\n              REGENERATING...\\n              \"],[6,\"img\"],[10,\"class\",\"spinner\"],[10,\"src\",\"/assets/images/spinner.gif\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"btn btn-info btn-sm\"],[3,\"action\",[[21,0,[]],\"regenerateZip\",[22,[\"mission\"]]]],[8],[0,\"\\n              REGENERATE ZIP FILE\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n    \"],[6,\"div\"],[8],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"Total Assets: \"],[1,[20,\"totalAssetsCount\"],false],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"span\"],[8],[1,[26,\"pluralize\",[[22,[\"mission\",\"images\",\"length\"]],\"Image\"],null],false],[0,\" | \"],[1,[26,\"pluralize\",[[22,[\"mission\",\"videos\",\"length\"]],\"Video\"],null],false],[0,\" | \"],[1,[26,\"pluralize\",[[22,[\"mission\",\"panoramas\",\"length\"]],\"Panorama\"],null],false],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"mission\",\"images\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"First Timestamp: \"],[9],[6,\"span\"],[8],[1,[20,\"firstImageTakenAt\"],false],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Last Timestamp: \"],[9],[6,\"span\"],[8],[1,[20,\"lastImageTakenAt\"],false],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Model: \"],[9],[6,\"span\"],[8],[1,[20,\"cameraModels\"],false],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Make: \"],[9],[6,\"span\"],[8],[1,[20,\"cameraMakes\"],false],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-assets-meta.hbs" } });
+});
 define("admin/templates/components/mission-flight-app", ["exports"], function (exports) {
   "use strict";
 
@@ -14676,13 +16584,21 @@ define("admin/templates/components/mission-flight-app", ["exports"], function (e
   });
   exports.default = Ember.HTMLBars.template({ "id": "jO0QWhRZ", "block": "{\"symbols\":[\"app\",\"index\",\"appGroup\",\"index\"],\"statements\":[[6,\"h3\"],[8],[0,\"Pilot Workflow\"],[9],[0,\"\\n\"],[6,\"hr\"],[8],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"panel-collapse\"],[10,\"role\",\"tabpanel\"],[10,\"aria-expanded\",\"true\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"panel-body\"],[8],[0,\"\\n    \"],[6,\"form\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-check\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"form-check-label\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"workflow-mode\"],[10,\"value\",\"none\"],[11,\"checked\",[26,\"is-checked\",[[22,[\"workflowMode\"]],\"none\"],null]],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setEditorMode\",\"none\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            Pilot fly with any apps of their choice and upload to us\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-check\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"form-check-label\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"workflow-mode\"],[10,\"value\",\"create\"],[11,\"checked\",[26,\"is-checked\",[[22,[\"workflowMode\"]],\"create\"],null]],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setEditorMode\",\"create\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n          Require Specific Workflow\\n        \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"missionFlightApp\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n                \"],[6,\"label\"],[10,\"class\",\"mr-sm-2\"],[10,\"for\",\"workflow-select\"],[8],[0,\"Workflow\"],[9],[0,\"\\n                \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setAppGroup\"],null]],[10,\"class\",\"form-control input-lg\"],[10,\"name\",\"workflow-select\"],[10,\"id\",\"workflow-select\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"groupedFlightApps\"]]],null,{\"statements\":[[0,\"                    \"],[6,\"option\"],[11,\"value\",[21,4,[]]],[11,\"selected\",[26,\"is-equal\",[[21,3,[\"name\"]],[22,[\"missionFlightApp\",\"flight_app\",\"name\"]]],null]],[8],[1,[21,3,[\"name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[3,4]},null],[0,\"                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeFlightAppGroup\",\"dataType\"]],\"external_id\"],null]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n                \"],[6,\"label\"],[10,\"for\",\"workflow-value\"],[8],[0,\"External ID\"],[9],[0,\"\\n                \"],[6,\"div\"],[11,\"class\",[27,[\"form-group \",[26,\"if\",[[22,[\"valueError\"]],\"error\"],null]]]],[8],[0,\"\\n                  \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"name\",\"class\"],[\"text\",[22,[\"missionFlightApp\",\"value\",\"external_id\"]],\"workflow-value[external_id]\",\"form-control input-lg\"]]],false],[0,\"\\n                  \"],[4,\"if\",[[22,[\"valueError\"]]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"error-message\"],[8],[1,[20,\"valueError\"],false],[9]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeFlightAppGroup\",\"dataType\"]],\"deep_link\"],null]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n                \"],[6,\"label\"],[10,\"for\",\"workflow-value\"],[8],[0,\"Deep Link (Android)\"],[9],[0,\"\\n                \"],[6,\"div\"],[11,\"class\",[27,[\"form-group \",[26,\"if\",[[22,[\"valueError\"]],\"error\"],null]]]],[8],[0,\"\\n                  \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"name\",\"class\",\"class\"],[\"text\",[22,[\"missionFlightApp\",\"value\",\"android\"]],\"workflow-value[android]\",\"form-control\",\"form-control input-lg\"]]],false],[0,\"\\n                  \"],[4,\"if\",[[22,[\"valueError\"]]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"error-message\"],[8],[1,[20,\"valueError\"],false],[9]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"label\"],[10,\"for\",\"workflow-value\"],[8],[0,\"Deep Link (iOS)\"],[9],[0,\"\\n                \"],[6,\"div\"],[11,\"class\",[27,[\"form-group \",[26,\"if\",[[22,[\"valueError\"]],\"error\"],null]]]],[8],[0,\"\\n                  \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"name\",\"class\",\"class\"],[\"text\",[22,[\"missionFlightApp\",\"value\",\"ios\"]],\"workflow-value[ios]\",\"form-control\",\"form-control input-lg\"]]],false],[0,\"\\n                  \"],[4,\"if\",[[22,[\"valueError\"]]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"error-message\"],[8],[1,[20,\"valueError\"],false],[9]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n                \"],[6,\"label\"],[10,\"class\",\"mr-sm-2\"],[10,\"for\",\"workflow-select\"],[8],[0,\"Upload To\"],[9],[0,\"\\n                \"],[6,\"select\"],[10,\"class\",\"form-control input-lg\"],[10,\"name\",\"workflow-select\"],[10,\"id\",\"workflow-select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setFlightApp\"],null]],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"activeFlightAppGroup\",\"apps\"]]],null,{\"statements\":[[0,\"                    \"],[6,\"option\"],[11,\"value\",[21,1,[\"id\"]]],[11,\"selected\",[26,\"is-equal\",[[21,1,[\"id\"]],[22,[\"missionFlightApp\",\"flight_app\",\"id\"]]],null]],[8],[1,[26,\"titleize\",[[21,1,[\"deliver_to_app\"]]],null],false],[9],[0,\"\\n\"]],\"parameters\":[1,2]},null],[0,\"                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"requireCyberduck\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"hasCyberduckCredentials\"]]],null,{\"statements\":[[0,\"                  \"],[6,\"div\"],[10,\"class\",\"cyberduck-content\"],[8],[0,\"\\n                    \"],[6,\"a\"],[10,\"class\",\"download-link\"],[3,\"action\",[[21,0,[]],\"getDuckFile\",[22,[\"mission\"]]]],[8],[6,\"img\"],[10,\"src\",\"/assets/images/credential_icon.svg\"],[10,\"width\",\"25\"],[10,\"height\",\"25\"],[8],[9],[0,\" Download Cyberduck Credentials\"],[9],[0,\"\\n                  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"requireExternalUrl\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[10,\"id\",\"delivery-url\"],[8],[0,\"\\n                \"],[6,\"label\"],[10,\"for\",\"workflow-value\"],[8],[0,\"Upload URL\"],[9],[0,\"\\n                \"],[6,\"div\"],[11,\"class\",[27,[\"form-group \",[26,\"if\",[[22,[\"deliveryError\"]],\"error\"],null]]]],[8],[0,\"\\n                  \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\",\"class\",\"placeholder\"],[[22,[\"missionFlightApp\",\"delivery_to_url\"]],\"workflow-upload-url\",\"form-control\",\"form-control input-lg\",\"http://example.org\"]]],false],[0,\"\\n                  \"],[4,\"if\",[[22,[\"deliveryError\"]]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"error-message\"],[8],[1,[20,\"deliveryError\"],false],[9]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"requireCyberduck\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"hasCyberduckCredentials\"]]],null,{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"col-xs-6 cyberduck-content\"],[8],[0,\"\\n                  \"],[6,\"div\"],[8],[0,\"\\n                    \"],[6,\"label\"],[10,\"for\",\"access_id\"],[8],[0,\"Access ID\"],[9],[0,\"\\n                    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n                      \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\"],[[22,[\"missionFlightApp\",\"value\",\"access_id\"]],\"access_id\",\"form-control input-lg\"]]],false],[0,\"\\n                    \"],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"div\"],[8],[0,\"\\n                    \"],[6,\"label\"],[10,\"for\",\"secret_key\"],[8],[0,\"Secret Key\"],[9],[0,\"\\n                    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n                      \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\"],[[22,[\"missionFlightApp\",\"value\",\"secret_key\"]],\"secret_key\",\"form-control input-lg\"]]],false],[0,\"\\n                    \"],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"div\"],[8],[0,\"\\n                    \"],[6,\"label\"],[10,\"for\",\"path\"],[8],[0,\"Path\"],[9],[0,\"\\n                    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n                      \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\"],[[22,[\"missionFlightApp\",\"value\",\"path\"]],\"path\",\"form-control input-lg\"]]],false],[0,\"\\n                    \"],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"col-xs-6 cyberduck-no-credentials\"],[8],[0,\"\\n                  \"],[6,\"span\"],[8],[0,\"Pilot hasn't generated credentials yet\"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"              \"],[6,\"div\"],[10,\"class\",\"col-xs-6 col-xs-offset-6 pull-right cyberduck-content cyberduck-credentials\"],[8],[0,\"\\n                \"],[6,\"a\"],[10,\"class\",\"cyberduck-link\"],[3,\"action\",[[21,0,[]],\"generateCredentials\",[22,[\"mission\"]]]],[8],[0,\"\\n                  \"],[6,\"img\"],[10,\"src\",\"/assets/images/refresh_icon.svg\"],[10,\"width\",\"25\"],[10,\"height\",\"25\"],[8],[9],[0,\"\\n                  \"],[6,\"span\"],[8],[0,\"Generate Credentials\"],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"p\"],[8],[0,\"\\n                  Note: Use this if the pilot is having trouble generating credentials.\\n                \"],[9],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[0,\"\\n                  Cannot generate credentials. Mission must have pilot.\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"col-xs-6 col-xs-offset-6 pull-right cyberduck-content cyberduck-reset\"],[8],[0,\"\\n                \"],[6,\"a\"],[10,\"class\",\"cyberduck-link\"],[3,\"action\",[[21,0,[]],\"resetCyberduck\",[22,[\"mission\"]]]],[8],[0,\"\\n                  \"],[6,\"img\"],[10,\"src\",\"/assets/images/reset_icon.svg\"],[10,\"width\",\"25\"],[10,\"height\",\"25\"],[8],[9],[0,\"\\n                  \"],[6,\"span\"],[8],[0,\"Reset Mission for Upload\"],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"p\"],[8],[0,\"\\n                  Note: This will delete assets in admin, assets in S3, and move the mission back to pilot_accepted so the pilot can re-try uploading.\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"value\",\"Update Workflow\"],[10,\"class\",\"btn btn-primary btn-sm ember-view ember-text-field update-button\"],[10,\"type\",\"submit\"],[3,\"action\",[[21,0,[]],\"submit\"]],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-flight-app.hbs" } });
 });
+define("admin/templates/components/mission-list-map", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "VdRPdHAF", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"id\",\"map-canvas\"],[10,\"class\",\"map-canvas-dashboard\"],[8],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-list-map.hbs" } });
+});
 define("admin/templates/components/mission-map", ["exports"], function (exports) {
   "use strict";
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "95HF7C7D", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-header\"],[8],[0,\"\\n    \"],[6,\"h4\"],[8],[1,[20,\"title\"],false],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"create\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n    \"],[6,\"div\"],[11,\"class\",[27,[\"row \",[26,\"unless\",[[22,[\"showInput\"]],\"hide\"],null]]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"search-field-group\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\",\"placeholder\"],[\"text\",[22,[\"searchValue\"]],\"form-control search-field\",\"Enter Location\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"kml-container\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"or\"],[8],[0,\"\\n            or\\n          \"],[9],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"turquoise-button outlined\"],[8],[0,\"\\n              Load KML \"],[6,\"input\"],[10,\"hidden\",\"\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"add_geojson\"],null]],[10,\"style\",\"display:none !important;\"],[10,\"type\",\"file\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[11,\"class\",[27,[\"existing-address row \",[26,\"if\",[[22,[\"showInput\"]],\"hide\"],null]]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"icon-Pin\"],[8],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"formatted-address\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"address\"],[8],[1,[22,[\"model\",\"location\",\"address\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"address\"],[8],[1,[22,[\"model\",\"location\",\"city\"]],false],[1,[26,\"if\",[[22,[\"model\",\"location\",\"city\"]],\", \"],null],false],[1,[22,[\"model\",\"location\",\"state\"]],false],[0,\" \"],[1,[22,[\"model\",\"location\",\"postal_code\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"lat-long\"],[8],[0,\"(\"],[1,[22,[\"model\",\"location\",\"latitude\"]],false],[0,\", \"],[1,[22,[\"model\",\"location\",\"longitude\"]],false],[0,\")\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"edit-location\"],[3,\"action\",[[21,0,[]],\"toggleShowInput\"]],[8],[0,\"Edit Location\"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"id\",\"map_canvas\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\",\"disabled\"],[\"submit\",\"Create\",\"turquoise-button\",[22,[\"disableSubmit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-map.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "wnfpdWxg", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-header\"],[8],[0,\"\\n    \"],[6,\"h4\"],[8],[1,[20,\"title\"],false],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"create\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"div\"],[11,\"class\",[27,[\"row \",[26,\"unless\",[[22,[\"showInput\"]],\"hide\"],null]]]],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"search-field-group\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\",\"placeholder\"],[\"text\",[22,[\"searchValue\"]],\"form-control search-field\",\"Enter Location\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3 kml\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"kml-container\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"or\"],[8],[0,\"\\n              or\\n            \"],[9],[0,\"\\n            \"],[6,\"label\"],[10,\"class\",\"btn-secondary btn-md\"],[8],[0,\"\\n                Load KML \"],[6,\"input\"],[10,\"hidden\",\"\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"add_geojson\"],null]],[10,\"style\",\"display:none !important;\"],[10,\"type\",\"file\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[11,\"class\",[27,[\"existing-address row \",[26,\"if\",[[22,[\"showInput\"]],\"hide\"],null]]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"icon-Pin\"],[8],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"formatted-address\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"address\"],[8],[1,[22,[\"model\",\"location\",\"address\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"address\"],[8],[1,[22,[\"model\",\"location\",\"city\"]],false],[1,[26,\"if\",[[22,[\"model\",\"location\",\"city\"]],\", \"],null],false],[1,[22,[\"model\",\"location\",\"state\"]],false],[0,\" \"],[1,[22,[\"model\",\"location\",\"postal_code\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"lat-long\"],[8],[0,\"(\"],[1,[22,[\"model\",\"location\",\"latitude\"]],false],[0,\", \"],[1,[22,[\"model\",\"location\",\"longitude\"]],false],[0,\")\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"edit-location\"],[3,\"action\",[[21,0,[]],\"toggleShowInput\"]],[8],[0,\"Edit Location\"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"id\",\"map_canvas\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\",\"disabled\"],[\"submit\",\"Create\",\"btn btn-primary btn-md\",[22,[\"disableSubmit\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-map.hbs" } });
 });
 define("admin/templates/components/mission-plan-map-feature", ["exports"], function (exports) {
   "use strict";
@@ -14698,7 +16614,7 @@ define("admin/templates/components/mission-plan-map", ["exports"], function (exp
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "yW/V2Fkg", "block": "{\"symbols\":[\"feature\"],\"statements\":[[6,\"div\"],[10,\"id\",\"map_ui_container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"search-location\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"search-field-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\",\"placeholder\"],[\"text\",[22,[\"location\"]],\"form-control controls search-field\",\"Enter Location\"]]],false],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"search-locate\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"geo_locate\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-compass\"],[10,\"title\",\"Locate Me\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"right\"],[10,\"title\",\"Use your current location\"],[8],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"search-drawer\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"map-search-undo\"],[8],[0,\"\\n        \"],[6,\"small\"],[8],[0,\"Location changed\"],[9],[0,\"\\n        \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"small\"],[3,\"action\",[[21,0,[]],\"undo_search\"]],[8],[0,\"UNDO\"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"map-client-url\"],[8],[0,\"\\n        \"],[1,[26,\"input-readonly-select-all\",null,[[\"value\"],[[22,[\"clientMapUrl\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"action-buttons\"],[11,\"class\",[27,[[26,\"unless\",[[22,[\"noLocation\"]],\"enabled\"],null]]]],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"updateAction\"]]],null,{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success controls\"],[10,\"title\",\"Update\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"update\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-check\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success controls\"],[10,\"title\",\"Continue\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"continue\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"feature-buttons\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"add_property_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-primary feature\\n          \",[26,\"unless\",[[22,[\"noLocation\"]],\"enabled\"],null]]]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_property\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-object-ungroup\"],[8],[9],[0,\" PROPERTY AREA\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"point_of_interest_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-warning feature \",[26,\"unless\",[[22,[\"noProperty\"]],\"enabled\"],null]]]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_point_of_interest\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-star\"],[8],[9],[0,\" POINT OF INTEREST\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"no_fly_zone_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-danger feature \",[26,\"unless\",[[22,[\"noProperty\"]],\"enabled\"],null]]]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_no_fly_zone\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-ban\"],[8],[9],[0,\" NO FLY ZONE\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"shot_list_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-default\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"show_shot_list\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-ban\"],[8],[9],[0,\" SHOT LIST\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"small_device_controls_container\"],[8],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn help enabled\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"toggle_help\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-question-circle\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-primary\"],[11,\"disabled\",[20,\"noLocation\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_property\",\"click\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-object-ungroup\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-warning\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_point_of_interest\",\"click\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-star\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-danger\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_no_fly_zone\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-ban\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"updateAction\"]]],null,{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"update\",[22,[\"model\"]],\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-check\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"continue\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"control_boundry_zoom\"],[8],[0,\"\\n  \"],[6,\"button\"],[10,\"id\",\"boundry_zoom_button\"],[10,\"class\",\"btn btn-default btn-xs\"],[11,\"disabled\",[20,\"noProperty\"]],[3,\"action\",[[21,0,[]],\"boundry_zoom\",\"click\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-crosshairs\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_tabs_container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"map_list_tab\"],[10,\"class\",\"tab\"],[3,\"action\",[[21,0,[]],\"toggle_tabs\",\"#map_list_container\",\"#map_shot_list_container\"]],[8],[0,\"\\n    Map Details\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"shotlist_tab\"],[10,\"class\",\"tab selected\"],[3,\"action\",[[21,0,[]],\"toggle_tabs\",\"#map_shot_list_container\",\"#map_list_container\"]],[8],[0,\"\\n    Shot List\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_list_container\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"id\",\"map_list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"features\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"mission-plan-map-feature\",null,[[\"feature\",\"shot_list\"],[[21,1,[]],[22,[\"model\",\"shot_list\"]]]]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_shot_list_container\"],[8],[0,\"\\n  \"],[1,[26,\"mission-shotlist\",null,[[\"model\"],[[22,[\"model\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_canvas\"],[8],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"info-window-node\"],[8],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-plan-map.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "NKAO33GK", "block": "{\"symbols\":[\"feature\"],\"statements\":[[6,\"div\"],[10,\"id\",\"map_ui_container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"search-location\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"search-field-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\",\"placeholder\"],[\"text\",[22,[\"location\"]],\"form-control controls search-field\",\"Enter Location\"]]],false],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"search-locate\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"geo_locate\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-compass\"],[10,\"title\",\"Locate Me\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"right\"],[10,\"title\",\"Use your current location\"],[8],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"search-drawer\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"map-search-undo\"],[8],[0,\"\\n        \"],[6,\"small\"],[8],[0,\"Location changed\"],[9],[0,\"\\n        \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"small\"],[3,\"action\",[[21,0,[]],\"undo_search\"]],[8],[0,\"UNDO\"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"map-client-url\"],[8],[0,\"\\n        \"],[1,[26,\"input-readonly-select-all\",null,[[\"value\"],[[22,[\"clientMapUrl\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"action-buttons\"],[11,\"class\",[27,[[26,\"unless\",[[22,[\"noLocation\"]],\"enabled\"],null]]]],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"updateAction\"]]],null,{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success controls\"],[10,\"title\",\"Update\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"update\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-check\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success controls\"],[10,\"title\",\"Continue\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"continue\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"feature-buttons\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"add_property_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-primary  btn-sm feature\\n          \",[26,\"unless\",[[22,[\"noLocation\"]],\"enabled\"],null]]]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_property\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-object-ungroup\"],[8],[9],[0,\" PROPERTY AREA\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"point_of_interest_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-secondary  btn-sm feature \",[26,\"unless\",[[22,[\"noProperty\"]],\"enabled\"],null]]]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_point_of_interest\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-star\"],[8],[9],[0,\" POINT OF INTEREST\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"no_fly_zone_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[11,\"class\",[27,[\"btn btn-danger  btn-sm feature \",[26,\"unless\",[[22,[\"noProperty\"]],\"enabled\"],null]]]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_no_fly_zone\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-ban\"],[8],[9],[0,\" NO FLY ZONE\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"id\",\"shot_list_button\"],[8],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-sm \"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"show_shot_list\",\"click\"]],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-ban\"],[8],[9],[0,\" SHOT LIST\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"small_device_controls_container\"],[8],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn help enabled\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"toggle_help\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-question-circle\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-primary\"],[11,\"disabled\",[20,\"noLocation\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_property\",\"click\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-object-ungroup\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-warning\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_point_of_interest\",\"click\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-star\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-danger\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"add_no_fly_zone\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-ban\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"updateAction\"]]],null,{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"update\",[22,[\"model\"]],\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-check\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"button\"],[10,\"class\",\"btn btn-success\"],[11,\"disabled\",[20,\"noProperty\"]],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"continue\",\"click\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"control_boundry_zoom\"],[8],[0,\"\\n  \"],[6,\"button\"],[10,\"id\",\"boundry_zoom_button\"],[10,\"class\",\"btn btn-default btn-xs\"],[11,\"disabled\",[20,\"noProperty\"]],[3,\"action\",[[21,0,[]],\"boundry_zoom\",\"click\"]],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-crosshairs\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_tabs_container\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"map_list_tab\"],[10,\"class\",\"tab\"],[3,\"action\",[[21,0,[]],\"toggle_tabs\",\"#map_list_container\",\"#map_shot_list_container\"]],[8],[0,\"\\n    Map Details\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"id\",\"shotlist_tab\"],[10,\"class\",\"tab selected\"],[3,\"action\",[[21,0,[]],\"toggle_tabs\",\"#map_shot_list_container\",\"#map_list_container\"]],[8],[0,\"\\n    Shot List\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_list_container\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"id\",\"map_list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"features\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"mission-plan-map-feature\",null,[[\"feature\",\"shot_list\"],[[21,1,[]],[22,[\"model\",\"shot_list\"]]]]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_shot_list_container\"],[8],[0,\"\\n  \"],[1,[26,\"mission-shotlist\",null,[[\"model\"],[[22,[\"model\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"map_canvas\"],[8],[9],[0,\"\\n\"],[6,\"div\"],[10,\"id\",\"info-window-node\"],[8],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-plan-map.hbs" } });
 });
 define("admin/templates/components/mission-plan-shot-select", ["exports"], function (exports) {
   "use strict";
@@ -14730,7 +16646,7 @@ define("admin/templates/components/mission-shotlist-assets", ["exports"], functi
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "BdwMIfDJ", "block": "{\"symbols\":[\"shot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"row panel-group\"],[10,\"id\",\"accordion\"],[10,\"role\",\"tablist\"],[10,\"aria-multiselectable\",\"true\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"shots\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"model\",\"mission\",\"archived_at\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"regenerate-zip\"],[8],[0,\"\\n        Zip file created: \"],[1,[26,\"moment-format\",[[22,[\"model\",\"mission\",\"archived_at\"]],\"MM/DD/YY, h:mm a\"],[[\"timeZone\"],[[22,[\"mission\",\"location\",\"timezone_id\"]]]]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"buttons-block\"],[8],[0,\"\\n          \"],[6,\"a\"],[11,\"href\",[27,[[22,[\"model\",\"mission\",\"archive_url\"]]]]],[10,\"class\",\"btn-primary btn-sm\"],[8],[0,\"\\n              DOWNLOAD ZIP FILE\\n          \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"archivesGenerating\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"btn regenerating btn-xs\"],[8],[0,\"\\n              REGENERATING...\\n              \"],[6,\"img\"],[10,\"class\",\"spinner\"],[10,\"src\",\"/assets/images/spinner.gif\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"btn-secondary btn-sm\"],[3,\"action\",[[21,0,[]],\"regenerateZip\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n              REGENERATE ZIP FILE\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"each\",[[22,[\"model\",\"mission\",\"shots\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"mission-shotlist-shot-assets\",null,[[\"shot\",\"model\",\"onfileadd\",\"onstartupload\",\"shareCreateAction\",\"selectedShot\"],[[21,1,[]],[22,[\"model\"]],\"addAsset\",\"startUpload\",\"shareShareable\",\"filterByShot\"]]],false],[0,\"\\n\"]],\"parameters\":[1]},null]],\"parameters\":[]},{\"statements\":[[0,\"    No shots were found for this mission.\\n    Please add some shots before uploading assets.\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-shotlist-assets.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "NNrVfUaX", "block": "{\"symbols\":[\"shot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"row panel-group\"],[10,\"id\",\"accordion\"],[10,\"role\",\"tablist\"],[10,\"aria-multiselectable\",\"true\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"shots\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"mission-assets-meta\",null,[[\"mission\",\"shareCreateAction\"],[[22,[\"model\",\"mission\"]],\"shareShareable\"]]],false],[0,\"\\n\"],[4,\"if\",[[22,[\"showAssetProcesses\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"missions/asset-processes\",null,[[\"model\",\"className\",\"reprocessShot\"],[[22,[\"model\"]],\"processes\",\"reprocessShot\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"div\"],[10,\"class\",\"shotlist-help\"],[8],[6,\"span\"],[8],[0,\"Click on each shotlist bucket to view details and upload assets\"],[9],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"shots\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"mission-shotlist-shot-assets\",null,[[\"shot\",\"model\",\"onBusy\",\"showProcessingStatus\",\"onfileadd\",\"onstartupload\",\"shareCreateAction\",\"selectedShot\"],[[21,1,[]],[22,[\"model\"]],[22,[\"onBusy\"]],[22,[\"showAssetProcesses\"]],\"addAsset\",\"startUpload\",\"shareShareable\",\"filterByShot\"]]],false],[0,\"\\n\"]],\"parameters\":[1]},null]],\"parameters\":[]},{\"statements\":[[0,\"    No shots were found for this mission.\\n    Please add some shots before uploading assets.\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-shotlist-assets.hbs" } });
 });
 define("admin/templates/components/mission-shotlist-shot-assets", ["exports"], function (exports) {
   "use strict";
@@ -14738,7 +16654,7 @@ define("admin/templates/components/mission-shotlist-shot-assets", ["exports"], f
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "z45gFk5n", "block": "{\"symbols\":[\"imageProxy\",\"image\",\"video\",\"panorama\",\"queue\"],\"statements\":[[6,\"div\"],[10,\"class\",\"panel-heading\"],[10,\"role\",\"tab\"],[11,\"id\",[27,[\"heading\",[22,[\"shot\",\"id\"]]]]],[8],[0,\"\\n  \"],[6,\"a\"],[10,\"role\",\"button\"],[10,\"data-toggle\",\"collapse\"],[10,\"data-parent\",\"#accordion\"],[11,\"href\",[27,[\"#collapse\",[22,[\"shot\",\"id\"]]]]],[10,\"aria-expanded\",\"false\"],[11,\"aria-controls\",[27,[\"collapse\",[22,[\"shot\",\"id\"]]]]],[3,\"action\",[[21,0,[]],\"selectedShot\",[22,[\"shot\"]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"panel-title\"],[8],[0,\"\\n        \"],[1,[22,[\"shot\",\"shot_type\",\"name\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"hasMissingGps\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"d-inline-block gps-data-missing\"],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\" Missing GPS Meta Data\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"div\"],[10,\"class\",\"asset-list\"],[8],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"fa fa-image\"],[8],[9],[0,\"\\n      \"],[1,[26,\"pluralize\",[[22,[\"shot\",\"imageCount\"]],\"image\"],null],false],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"fa fa-video-camera\"],[8],[9],[0,\"\\n      \"],[1,[26,\"pluralize\",[[22,[\"shot\",\"videos\",\"length\"]],\"video\"],null],false],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"panoramas\",\"length\"]]],null,{\"statements\":[[0,\"        \"],[6,\"span\"],[10,\"class\",\"fa fa-image\"],[8],[9],[0,\"\\n        \"],[1,[26,\"pluralize\",[[22,[\"shot\",\"panoramas\",\"length\"]],\"panorama\"],null],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[6,\"div\"],[8],[0,\"Click to view details and upload assets for this shot\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[11,\"id\",[27,[\"collapse\",[22,[\"shot\",\"id\"]]]]],[10,\"class\",\"panel-collapse collapse\"],[10,\"role\",\"tabpanel\"],[11,\"aria-labelledby\",[27,[\"heading\",[22,[\"shot\",\"id\"]]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"panel-body\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"clearfix ember-view asset-uploader\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"imageCount\"]]],null,{\"statements\":[[0,\"        \"],[6,\"a\"],[11,\"id\",[27,[\"upload-download-\",[20,\"shot_id\"]]]],[10,\"class\",\"btn btn-lg btn-default button button-mg-right button-width\"],[3,\"action\",[[21,0,[]],\"downloadShotArchive\"]],[8],[0,\"\\n          \"],[6,\"img\"],[10,\"src\",\"/assets/images/download.svg\"],[8],[9],[0,\" Download ZIP File\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-lg btn-default button button-width\"],[3,\"action\",[[21,0,[]],\"promoteAll\"]],[8],[0,\"Promote All\"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"asset-uploader\",null,[[\"for\",\"class\",\"shot_id\",\"extensions\",\"onfileadd\",\"onstartupload\",\"uploadedCount\"],[\"upload-asset\",\"clearfix\",[22,[\"shot\",\"id\"]],\"mov mp4 jpg jpeg tif tiff png zip\",\"addAsset\",\"startUpload\",[22,[\"model\",\"mission\",\"assetsCount\"]]]],{\"statements\":[],\"parameters\":[5]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"pilot_comment\"]]],null,{\"statements\":[[0,\"      Pilot comments: \"],[1,[22,[\"shot\",\"pilot_comment\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row asset-panoramas\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12 list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"shot\",\"panoramas\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix \",[26,\"if\",[[21,4,[\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-globe\"],[8],[9],[0,\"\\n              \"],[1,[21,4,[\"id\"]],false],[0,\" \"],[1,[26,\"unless\",[[21,4,[\"isShareable\"]],\"(processing)\"],null],false],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"promote-asset\"],[3,\"action\",[[21,0,[]],\"toggleSourceType\",[21,4,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                  \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"unless\",[[21,4,[\"final\"]],\"fa-bullhorn\",\"fa-hand-peace-o\"],null]]]],[8],[0,\"\\n                  \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"class\"],[[21,4,[]],\"shareShareable\",\"pano-share\"]]],false],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"pano-edit\"],[3,\"action\",[[21,0,[]],\"editPanorama\",[21,4,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-pencil\"],[8],[9],[9],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,4,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n\"]],\"parameters\":[4]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row asset-videos\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"shot\",\"videos\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n\"],[4,\"if\",[[21,3,[\"processing\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix \",[26,\"if\",[[21,3,[\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-film\"],[8],[9],[0,\"\\n              \"],[1,[21,3,[\"name\"]],false],[0,\" (processing)\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,3,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix\\n              \",[26,\"if\",[[21,3,[\"isDeleted\"]],\"deleting-asset\"],null],\"\\n              \",[26,\"if\",[[21,3,[\"final\"]],\"asset-final\"],null]]]],[3,\"action\",[[21,0,[]],\"viewAsset\",[21,3,[]]]],[8],[0,\"\\n\"],[4,\"if\",[[21,3,[\"viewing\"]]],null,{\"statements\":[[0,\"            \"],[6,\"div\"],[10,\"class\",\"asset-viewer\"],[8],[0,\"\\n\"],[4,\"video-js\",null,[[\"poster\",\"autoplay\",\"preload\"],[[21,3,[\"thumbnail\"]],true,\"metadata\"]],{\"statements\":[[0,\"                \"],[1,[26,\"video-js-source\",null,[[\"src\",\"type\"],[[21,3,[\"version_urls\",\"hls\"]],\"application/x-mpegURL\"]]],false],[0,\"\\n                \"],[1,[26,\"video-js-source\",null,[[\"src\",\"type\"],[[21,3,[\"version_urls\",\"mp4_high\"]],\"video/mp4\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-film\"],[8],[9],[0,\"\\n              \"],[1,[21,3,[\"name\"]],false],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"            \"],[6,\"div\"],[11,\"class\",[27,[\"actions \",[26,\"if\",[[21,3,[\"viewing\"]],\"viewing\"],null]]]],[8],[0,\"\\n\"],[4,\"if\",[[21,3,[\"downloadUrl\"]]],null,{\"statements\":[[0,\"              \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"embeddable\"],[[21,3,[]],\"shareShareable\",true]]],false],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"download-asset\"],[3,\"action\",[[21,0,[]],\"downloadAsset\",[21,3,[\"downloadUrl\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-download\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"              \"],[6,\"a\"],[10,\"class\",\"promote-asset\"],[3,\"action\",[[21,0,[]],\"toggleSourceType\",[21,3,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"unless\",[[21,3,[\"final\"]],\"fa-bullhorn\",\"fa-hand-peace-o\"],null]]]],[8],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,3,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row asset-images\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12 processing\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"imagesProcessing\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix \",[26,\"if\",[[21,2,[\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-picture-o\"],[8],[9],[0,\" \"],[1,[21,2,[\"name\"]],false],[0,\" (processing)\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"      \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"galleryImages\",\"length\"]]],null,{\"statements\":[[4,\"photo-swipe\",null,[[\"items\",\"options\"],[[22,[\"galleryImages\"]],[22,[\"galleryOptions\"]]]],{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"col-xs-6 col-md-3 asset visual\\n              \",[26,\"if\",[[21,1,[\"record\",\"isDeleted\"]],\"deleting-asset\"],null]]]],[8],[0,\"\\n            \"],[6,\"div\"],[11,\"class\",[27,[\"image \",[26,\"if\",[[21,1,[\"record\",\"final\"]],\"asset-final\"],null],\"\\n                \",[26,\"if\",[[21,1,[\"record\",\"isRawAndMissingGpsInfo\"]],\"asset-gps-data-missing\"],null]]]],[8],[0,\"\\n              \"],[6,\"img\"],[11,\"src\",[27,[[21,1,[\"msrc\"]]]]],[11,\"alt\",[27,[[21,1,[\"title\"]]]]],[10,\"class\",\"img-responsive\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n\\n            \"],[6,\"div\"],[10,\"class\",\"asset-warning\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"record\",\"missing_gps_info\"]]],null,{\"statements\":[[0,\"                \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\" \"],[6,\"span\"],[8],[0,\"Missing GPS Meta Data\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n\\n            \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"record\",\"downloadUrl\"]]],null,{\"statements\":[[0,\"                \"],[6,\"a\"],[10,\"class\",\"download-asset\"],[3,\"action\",[[21,0,[]],\"downloadAsset\",[21,1,[\"record\",\"downloadUrl\"]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-cloud-download\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"shareLink\"],[[21,1,[\"record\"]],\"shareShareable\",[21,1,[\"record\",\"shareLink\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"              \"],[6,\"a\"],[10,\"class\",\"promote-asset\"],[3,\"action\",[[21,0,[]],\"toggleSourceType\",[21,1,[\"record\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"unless\",[[21,1,[\"record\",\"final\"]],\"fa-bullhorn\",\"fa-hand-peace-o\"],null]]]],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,1,[\"record\"]],[21,1,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-shotlist-shot-assets.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "AlAN3YUC", "block": "{\"symbols\":[\"photoswipe\",\"imageProxy\",\"index\",\"image\",\"video\",\"panorama\"],\"statements\":[[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"panel-heading\"],[10,\"role\",\"tab\"],[11,\"id\",[27,[\"heading\",[22,[\"shot\",\"id\"]]]]],[8],[0,\"\\n  \"],[6,\"a\"],[10,\"role\",\"button\"],[10,\"data-toggle\",\"collapse\"],[10,\"data-parent\",\"#accordion\"],[11,\"href\",[27,[\"#collapse\",[22,[\"shot\",\"id\"]]]]],[10,\"aria-expanded\",\"false\"],[11,\"aria-controls\",[27,[\"collapse\",[22,[\"shot\",\"id\"]]]]],[3,\"action\",[[21,0,[]],\"selectedShot\",[22,[\"shot\"]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"panel-title\"],[8],[0,\"\\n        \"],[1,[22,[\"shot\",\"shot_type\",\"name\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"d-inline-block gps-data-missing\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"hasMissingGps\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\" Missing GPS Meta Data\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"shot\",\"hasLowResolution\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\" Low Resolution\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"asset-list\"],[8],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"fa fa-image\"],[8],[9],[0,\"\\n      \"],[1,[26,\"pluralize\",[[22,[\"shot\",\"imageCount\"]],\"image\"],null],false],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"fa fa-video-camera\"],[8],[9],[0,\"\\n      \"],[1,[26,\"pluralize\",[[22,[\"shot\",\"videos\",\"length\"]],\"video\"],null],false],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"panoramas\",\"length\"]]],null,{\"statements\":[[0,\"        \"],[6,\"span\"],[10,\"class\",\"fa fa-image\"],[8],[9],[0,\"\\n        \"],[1,[26,\"pluralize\",[[22,[\"shot\",\"panoramas\",\"length\"]],\"panorama\"],null],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"shot\",\"shot_type\",\"camera_requirement\"]]],null,{\"statements\":[[0,\"        \"],[6,\"span\"],[10,\"class\",\"fa fa-bell-o\"],[8],[9],[0,\" Requires: \"],[1,[26,\"titleize\",[[22,[\"shot\",\"shot_type\",\"camera_requirement\"]]],null],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[26,\"and\",[[22,[\"shot\",\"hasPostProcess\"]],[22,[\"showProcessingStatus\"]]],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[11,\"class\",[27,[\"process-state \",[22,[\"shot\",\"post_processing_status\"]]]]],[8],[0,\"\\n          \"],[1,[26,\"either\",[[22,[\"shot\",\"verboseProcessStatus\"]],\"queued\"],null],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[11,\"id\",[27,[\"collapse\",[22,[\"shot\",\"id\"]]]]],[10,\"class\",\"panel-collapse collapse\"],[10,\"role\",\"tabpanel\"],[11,\"aria-labelledby\",[27,[\"heading\",[22,[\"shot\",\"id\"]]]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"panel-body\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"clearfix ember-view asset-uploader buttons-block\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-action btn-primary btn-sm\"],[3,\"action\",[[21,0,[]],\"promoteAll\"]],[8],[0,\"PROMOTE ALL\"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"dropdown d-inline-block\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary action-menu dropdown-toggle btn-sm\"],[10,\"id\",\"dropdownMenu1\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"true\"],[10,\"type\",\"button\"],[8],[0,\"\\n          ACTIONS\\n          \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[10,\"aria-labelledby\",\"dropdownMenu\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"imageCount\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[0,\"\\n              \"],[6,\"a\"],[11,\"id\",[27,[\"upload-download-\",[20,\"shot_id\"]]]],[3,\"action\",[[21,0,[]],\"downloadShotArchive\"]],[8],[0,\"\\n                Download ZIP File\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[6,\"li\"],[8],[0,\"\\n            \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"toggleShowUploader\"]],[8],[0,\"\\n              Upload Files\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"hasPanos\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[0,\"\\n              \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"resetPano\",[22,[\"shot\",\"firstPano\",\"id\"]]]],[8],[0,\"\\n                Restitch Panorama\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"shot\",\"shot_type\",\"isPanoStitching\"]]],null,{\"statements\":[[0,\"              \"],[6,\"li\"],[8],[0,\"\\n                \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"processPano\",[22,[\"shot\",\"firstPano\",\"id\"]]]],[8],[0,\"\\n                  Process Panorama\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"showUploader\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"asset-uploader\",null,[[\"for\",\"class\",\"shot_id\",\"extensions\",\"onfileadd\",\"onstartupload\",\"uploadedCount\"],[\"upload-asset\",\"clearfix\",[22,[\"shot\",\"id\"]],\"mov mp4 jpg jpeg tif tiff png zip\",\"addAsset\",\"startUpload\",[22,[\"model\",\"mission\",\"assetsCount\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"pilot_comment\"]]],null,{\"statements\":[[0,\"      Pilot comments: \"],[1,[22,[\"shot\",\"pilot_comment\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"shot\",\"isProcessing\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[11,\"class\",[27,[\"placeholder aseet-is-processing \",[22,[\"shot\",\"shot_type\",\"post_process_type\"]]]]],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"placeholder-wrapper\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"loader-animation\"],[8],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"note\"],[8],[0,\"Processing...\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row asset-panoramas\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12 list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"shot\",\"panoramas\"]]],null,{\"statements\":[[4,\"unless\",[[22,[\"shot\",\"isProcessing\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix \",[26,\"if\",[[21,6,[\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-globe\"],[8],[9],[0,\"\\n              \"],[1,[21,6,[\"id\"]],false],[0,\" \"],[4,\"if\",[[22,[\"shot\",\"processingFailed\"]]],null,{\"statements\":[[0,\" (error) \"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"is-not\",[[21,6,[\"isShareable\"]]],null]],null,{\"statements\":[[0,\" (processing)\"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n\"],[4,\"unless\",[[22,[\"shot\",\"processingFailed\"]]],null,{\"statements\":[[0,\"                \"],[6,\"a\"],[10,\"class\",\"promote-asset\"],[3,\"action\",[[21,0,[]],\"toggleSourceType\",[21,6,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                    \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"unless\",[[21,6,[\"final\"]],\"fa-bullhorn\",\"fa-hand-peace-o\"],null]]]],[8],[0,\"\\n                    \"],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"class\"],[[21,6,[]],\"shareShareable\",\"pano-share\"]]],false],[0,\"\\n                \"],[6,\"a\"],[10,\"class\",\"pano-edit\"],[3,\"action\",[[21,0,[]],\"editPanorama\",[21,6,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-pencil\"],[8],[9],[9],[0,\"\\n                \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,6,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[6]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row asset-videos\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"shot\",\"videos\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n\"],[4,\"if\",[[21,5,[\"processing\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix \",[26,\"if\",[[21,5,[\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-film\"],[8],[9],[0,\"\\n              \"],[1,[21,5,[\"name\"]],false],[0,\" (processing)\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,5,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix\\n              \",[26,\"if\",[[21,5,[\"isDeleted\"]],\"deleting-asset\"],null],\"\\n              \",[26,\"if\",[[21,5,[\"final\"]],\"asset-final\"],null]]]],[3,\"action\",[[21,0,[]],\"viewAsset\",[21,5,[]]]],[8],[0,\"\\n\"],[4,\"if\",[[21,5,[\"viewing\"]]],null,{\"statements\":[[0,\"            \"],[6,\"div\"],[10,\"class\",\"asset-viewer\"],[8],[0,\"\\n\"],[4,\"video-js\",null,[[\"poster\",\"autoplay\",\"preload\"],[[21,5,[\"thumbnail\"]],true,\"metadata\"]],{\"statements\":[[0,\"                \"],[1,[26,\"video-js-source\",null,[[\"src\",\"type\"],[[21,5,[\"version_urls\",\"hls\"]],\"application/x-mpegURL\"]]],false],[0,\"\\n                \"],[1,[26,\"video-js-source\",null,[[\"src\",\"type\"],[[21,5,[\"version_urls\",\"mp4_high\"]],\"video/mp4\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-film\"],[8],[9],[0,\"\\n              \"],[1,[21,5,[\"name\"]],false],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"            \"],[6,\"div\"],[11,\"class\",[27,[\"actions \",[26,\"if\",[[21,5,[\"viewing\"]],\"viewing\"],null]]]],[8],[0,\"\\n\"],[4,\"if\",[[21,5,[\"downloadUrl\"]]],null,{\"statements\":[[0,\"              \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"embeddable\"],[[21,5,[]],\"shareShareable\",true]]],false],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"download-asset\"],[3,\"action\",[[21,0,[]],\"downloadAsset\",[21,5,[\"downloadUrl\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-download\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"              \"],[6,\"a\"],[10,\"class\",\"promote-asset\"],[3,\"action\",[[21,0,[]],\"toggleSourceType\",[21,5,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"unless\",[[21,5,[\"final\"]],\"fa-bullhorn\",\"fa-hand-peace-o\"],null]]]],[8],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,5,[]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row asset-images\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-12 processing\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"imagesProcessing\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[11,\"class\",[27,[\"asset inline clearfix \",[26,\"if\",[[21,4,[\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-picture-o\"],[8],[9],[0,\" \"],[1,[21,4,[\"name\"]],false],[0,\" (processing)\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n            \"],[6,\"a\"],[10,\"class\",\"delete-asset pull-right\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,4,[]],[21,4,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"      \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"galleryImages\",\"length\"]]],null,{\"statements\":[[4,\"photo-swipe\",null,[[\"items\"],[[22,[\"galleryImages\"]]]],{\"statements\":[[4,\"each\",[[22,[\"galleryImages\"]]],null,{\"statements\":[[0,\"            \"],[6,\"div\"],[11,\"class\",[27,[\"col-xs-6 col-md-3 asset visual\\n                \",[26,\"if\",[[21,2,[\"record\",\"isDeleted\"]],\"deleting-asset\"],null]]]],[8],[0,\"\\n              \"],[6,\"div\"],[11,\"class\",[27,[\"image \",[26,\"if\",[[21,2,[\"record\",\"final\"]],\"asset-final\"],null],\"\\n                  \",[26,\"if\",[[21,2,[\"record\",\"isRawAndMissingGpsInfo\"]],\"asset-gps-data-missing\"],null]]]],[8],[0,\"\\n                \"],[6,\"img\"],[11,\"src\",[21,2,[\"msrc\"]]],[11,\"alt\",[27,[[21,2,[\"title\"]]]]],[10,\"class\",\"img-responsive\"],[3,\"action\",[[21,0,[]],[21,1,[\"actions\",\"open\"]],[26,\"hash\",null,[[\"index\"],[[21,3,[]]]]]]],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\\n              \"],[6,\"div\"],[10,\"class\",\"asset-warning\"],[8],[0,\"\\n\"],[4,\"if\",[[21,2,[\"record\",\"missing_gps_info\"]]],null,{\"statements\":[[0,\"                  \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\" \"],[6,\"span\"],[8],[0,\"Missing GPS Meta Data\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"              \"],[9],[0,\"\\n\\n              \"],[6,\"div\"],[10,\"class\",\"asset-warning\"],[8],[0,\"\\n\"],[4,\"if\",[[21,2,[\"record\",\"isLowResolution\"]]],null,{\"statements\":[[0,\"                  \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\" \"],[6,\"span\"],[8],[0,\"Low Resolution\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"              \"],[9],[0,\"\\n\\n              \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n\"],[4,\"if\",[[21,2,[\"record\",\"downloadUrl\"]]],null,{\"statements\":[[0,\"                  \"],[6,\"a\"],[10,\"class\",\"download-asset\"],[3,\"action\",[[21,0,[]],\"downloadAsset\",[21,2,[\"record\",\"downloadUrl\"]]],[[\"bubbles\"],[false]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-cloud-download\"],[8],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"shareLink\"],[[21,2,[\"record\"]],\"shareShareable\",[21,2,[\"record\",\"shareLink\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"                \"],[6,\"a\"],[10,\"class\",\"promote-asset\"],[3,\"action\",[[21,0,[]],\"toggleSourceType\",[21,2,[\"record\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                  \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"unless\",[[21,2,[\"record\",\"final\"]],\"fa-bullhorn\",\"fa-hand-peace-o\"],null]]]],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,2,[\"record\"]],[21,2,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                  \"],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[2,3]},null]],\"parameters\":[1]},null]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-shotlist-shot-assets.hbs" } });
 });
 define("admin/templates/components/mission-shotlist-shot", ["exports"], function (exports) {
   "use strict";
@@ -14746,7 +16662,7 @@ define("admin/templates/components/mission-shotlist-shot", ["exports"], function
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "vmu48VXs", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n  \"],[1,[22,[\"model\",\"shot_type\",\"name\"]],false],[0,\"\\n  \"],[4,\"link-to\",[\"templates.shots.edit\",[22,[\"model\",\"shot_type\",\"id\"]]],[[\"class\"],[\"shot-link\"]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"shot-type-description\"],[8],[1,[22,[\"model\",\"shot_type\",\"description\"]],false],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"instructions-label\"],[8],[6,\"b\"],[8],[0,\"Additional Instructions for this Shot\"],[9],[0,\" (These will only display on this mission):\"],[9],[0,\"\\n\"],[1,[26,\"simple-mde\",null,[[\"value\",\"change\"],[[22,[\"model\",\"instructions\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"instructions\"]]],null]],null]]]],false],[0,\"\\n\"],[6,\"button\"],[10,\"class\",\"btn btn-xs btn-success\"],[3,\"action\",[[21,0,[]],\"update\",[22,[\"model\"]]]],[8],[0,\"update\"],[9],[0,\"\\n\"],[6,\"button\"],[10,\"class\",\"btn btn-xs btn-danger\"],[3,\"action\",[[21,0,[]],\"remove\",[22,[\"model\"]]]],[8],[0,\"remove\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-shotlist-shot.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "iR/dLE2l", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"title\"],[8],[0,\"\\n  \"],[1,[22,[\"model\",\"shot_type\",\"name\"]],false],[0,\"\\n  \"],[4,\"link-to\",[\"templates.shots.edit\",[22,[\"model\",\"shot_type\",\"id\"]]],[[\"class\"],[\"shot-link\"]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"shot-type-description\"],[8],[1,[22,[\"model\",\"shot_type\",\"description\"]],false],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"instructions-label\"],[8],[6,\"b\"],[8],[0,\"Additional Instructions for this Shot\"],[9],[0,\" (These will only display on this mission):\"],[9],[0,\"\\n\"],[1,[26,\"simple-mde\",null,[[\"value\",\"change\"],[[22,[\"model\",\"instructions\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"instructions\"]]],null]],null]]]],false],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"shot-actions\"],[8],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm\"],[3,\"action\",[[21,0,[]],\"update\",[22,[\"model\"]]]],[8],[0,\"update\"],[9],[0,\"\\n  \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary btn-sm\"],[3,\"action\",[[21,0,[]],\"remove\",[22,[\"model\"]]]],[8],[0,\"remove\"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-shotlist-shot.hbs" } });
 });
 define("admin/templates/components/mission-shotlist", ["exports"], function (exports) {
   "use strict";
@@ -14770,7 +16686,7 @@ define("admin/templates/components/mission-status-rewind-button", ["exports"], f
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "Q1MJjjSF", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"model\",\"status\"]],\"confirmed\"],null]],null,{\"statements\":[[6,\"i\"],[10,\"class\",\"fa fa-arrow-left\"],[8],[9],[0,\" Created\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-status-rewind-button.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "+vgy9zBD", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"model\",\"status\"]],\"confirmed\"],null]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"arrow-wrapper\"],[8],[0,\"\\n    \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-left\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"text-wrapper\"],[8],[0,\"Created\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-status-rewind-button.hbs" } });
 });
 define("admin/templates/components/mission-status-update-button", ["exports"], function (exports) {
   "use strict";
@@ -14778,7 +16694,7 @@ define("admin/templates/components/mission-status-update-button", ["exports"], f
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "2rdC/SaT", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[22,[\"nextStatus\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"statusDisabledTooltip\"]]],null,{\"statements\":[[0,\"\\t\\t\"],[6,\"div\"],[10,\"class\",\"next disabled\"],[10,\"disabled\",\"disabled\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[11,\"title\",[20,\"statusDisabledTooltip\"]],[8],[0,\"\\n\\t\\t\\t\"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[6,\"a\"],[8],[1,[20,\"nextStatus\"],false],[9],[0,\"\\n\\t\\t\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"\\t\\t\"],[6,\"div\"],[10,\"class\",\"next\"],[8],[0,\"\\n\\t\\t\\t\"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[6,\"a\"],[8],[1,[20,\"nextStatus\"],false],[9],[0,\"\\n\\t\\t\"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-status-update-button.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "xL31S+Iv", "block": "{\"symbols\":[],\"statements\":[[4,\"if\",[[22,[\"nextStatus\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"statusDisabledTooltip\"]]],null,{\"statements\":[[0,\"\\t\\t\"],[6,\"div\"],[10,\"class\",\"next disabled\"],[10,\"disabled\",\"disabled\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[11,\"title\",[20,\"statusDisabledTooltip\"]],[8],[0,\"\\n\\t\\t\\t\"],[6,\"div\"],[10,\"class\",\"arrow-wrapper\"],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"text-wrapper\"],[8],[6,\"a\"],[8],[1,[20,\"nextStatus\"],false],[9],[9],[0,\"\\n\\t\\t\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"\\t\\t\"],[6,\"div\"],[10,\"class\",\"next\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"arrow-wrapper\"],[8],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"text-wrapper\"],[8],[6,\"a\"],[8],[1,[20,\"nextStatus\"],false],[9],[9],[0,\"\\n\\t\\t\"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-status-update-button.hbs" } });
 });
 define("admin/templates/components/mission-weather-forecast", ["exports"], function (exports) {
   "use strict";
@@ -14794,7 +16710,39 @@ define("admin/templates/components/mission-weather", ["exports"], function (expo
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "LZcb6FOy", "block": "{\"symbols\":[\"data\",\"index\",\"forecast\",\"data\",\"index\",\"forecast\"],\"statements\":[[6,\"div\"],[10,\"class\",\"weather-header\"],[8],[0,\"\\n  \"],[6,\"span\"],[8],[0,\"Weather Forecast\"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"forecasts\",\"length\"]],1],null]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"forecasts\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"mission-weather item\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"mission-weather-header\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n            \"],[1,[26,\"moment-format\",[[21,4,[\"time\"]],\"dddd MM/DD\"],[[\"timeZone\"],[[22,[\"mission\",\"location\",\"timezone_id\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"mission-weather-content\"],[8],[0,\"\\n\"],[4,\"each\",[[21,4,[\"forecast\"]]],null,{\"statements\":[[0,\"            \"],[1,[26,\"mission-weather-forecast\",null,[[\"mission\",\"time\",\"icon\",\"temperature\",\"precipProbability\",\"cloudCover\",\"windSpeed\"],[[22,[\"mission\"]],[21,6,[\"datetime\"]],[21,6,[\"icon\"]],[21,6,[\"temperature\"]],[21,6,[\"precipProbability\"]],[21,6,[\"cloudCover\"]],[21,6,[\"windSpeed\"]]]]],false],[0,\"\\n\"]],\"parameters\":[6]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[4,5]},null],[0,\"  \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"id\",\"weather-carousel\"],[10,\"class\",\"carousel slide d-inline-block\"],[10,\"data-ride\",\"carousel\"],[10,\"data-interval\",\"false\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"carousel-inner\"],[10,\"role\",\"listbox\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"forecasts\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[11,\"class\",[27,[\"mission-weather item item-\",[21,2,[]],\" \",[26,\"if\",[[26,\"is-equal\",[[21,2,[]],[22,[\"startIndex\"]]],null],\"active\"],null]]]],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"mission-weather-header\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showArrows\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"href\",\"#weather-carousel\"],[10,\"data-target\",\"#weather-carousel\"],[10,\"data-slide-to\",\"0\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa playback-icon mr-5 fa-step-backward\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[11,\"class\",[27,[\"left \",[26,\"if\",[[26,\"is-equal\",[[21,2,[]],0],null],\"v-hidden\"],null]]]],[10,\"href\",\"#weather-carousel\"],[10,\"role\",\"button\"],[10,\"data-slide\",\"prev\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa arrow-icon fa-angle-left\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n              \"],[1,[26,\"moment-format\",[[21,1,[\"time\"]],\"dddd MM/DD\"],[[\"timeZone\"],[[22,[\"mission\",\"location\",\"timezone_id\"]]]]],false],[0,\"\\n            \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showArrows\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[11,\"class\",[27,[\"right \",[26,\"if\",[[26,\"is-equal\",[[21,2,[]],[22,[\"endIndex\"]]],null],\"v-hidden\"],null]]]],[10,\"href\",\"#weather-carousel\"],[10,\"role\",\"button\"],[10,\"data-slide\",\"next\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa arrow-icon fa-angle-right\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[10,\"href\",\"#weather-carousel\"],[10,\"data-target\",\"#weather-carousel\"],[11,\"data-slide-to\",[27,[[20,\"endIndex\"]]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa playback-icon ml-5 fa-step-forward\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n\\n          \"],[6,\"div\"],[10,\"class\",\"mission-weather-content\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"forecast\"]]],null,{\"statements\":[[0,\"              \"],[1,[26,\"mission-weather-forecast\",null,[[\"mission\",\"time\",\"icon\",\"temperature\",\"precipProbability\",\"cloudCover\",\"windSpeed\"],[[22,[\"mission\"]],[21,3,[\"datetime\"]],[21,3,[\"icon\"]],[21,3,[\"temperature\"]],[21,3,[\"precipProbability\"]],[21,3,[\"cloudCover\"]],[21,3,[\"windSpeed\"]]]]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1,2]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-weather.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "0FNKvvjD", "block": "{\"symbols\":[\"data\",\"index\",\"forecast\",\"data\",\"index\",\"forecast\"],\"statements\":[[6,\"div\"],[10,\"class\",\"weather-header\"],[8],[0,\"\\n  \"],[6,\"span\"],[8],[0,\"Weather Forecast\"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"forecasts\",\"length\"]],1],null]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"forecasts\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"mission-weather item\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"mission-weather-header d-inline-block\"],[8],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n            \"],[1,[26,\"moment-format\",[[21,4,[\"time\"]],\"dddd MM/DD\"],[[\"timeZone\"],[[22,[\"mission\",\"location\",\"timezone_id\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"col-md-8 sunset\"],[8],[0,\"\\n            \"],[1,[26,\"sun-calculations\",[[21,4,[\"time\"]],[22,[\"mission\",\"location\",\"timezone_id\"]],[22,[\"mission\",\"location\",\"latitude\"]],[22,[\"mission\",\"location\",\"longitude\"]]],null],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"mission-weather-content\"],[8],[0,\"\\n\"],[4,\"each\",[[21,4,[\"forecast\"]]],null,{\"statements\":[[0,\"            \"],[1,[26,\"mission-weather-forecast\",null,[[\"mission\",\"time\",\"icon\",\"temperature\",\"precipProbability\",\"cloudCover\",\"windSpeed\"],[[22,[\"mission\"]],[21,6,[\"datetime\"]],[21,6,[\"icon\"]],[21,6,[\"temperature\"]],[21,6,[\"precipProbability\"]],[21,6,[\"cloudCover\"]],[21,6,[\"windSpeed\"]]]]],false],[0,\"\\n\"]],\"parameters\":[6]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[4,5]},null],[0,\"  \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"id\",\"weather-carousel\"],[10,\"class\",\"carousel slide d-inline-block\"],[10,\"data-ride\",\"carousel\"],[10,\"data-interval\",\"false\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"carousel-inner\"],[10,\"role\",\"listbox\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"forecasts\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[11,\"class\",[27,[\"mission-weather item item-\",[21,2,[]],\" \",[26,\"if\",[[26,\"is-equal\",[[21,2,[]],[22,[\"startIndex\"]]],null],\"active\"],null]]]],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"mission-weather-header\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showArrows\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"href\",\"#weather-carousel\"],[10,\"data-target\",\"#weather-carousel\"],[10,\"data-slide-to\",\"0\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa playback-icon mr-5 fa-step-backward\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[11,\"class\",[27,[\"left \",[26,\"if\",[[26,\"is-equal\",[[21,2,[]],0],null],\"v-hidden\"],null]]]],[10,\"href\",\"#weather-carousel\"],[10,\"role\",\"button\"],[10,\"data-slide\",\"prev\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa arrow-icon fa-angle-left\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n              \"],[1,[26,\"moment-format\",[[21,1,[\"time\"]],\"dddd MM/DD\"],[[\"timeZone\"],[[22,[\"mission\",\"location\",\"timezone_id\"]]]]],false],[0,\"\\n            \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showArrows\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[11,\"class\",[27,[\"right \",[26,\"if\",[[26,\"is-equal\",[[21,2,[]],[22,[\"endIndex\"]]],null],\"v-hidden\"],null]]]],[10,\"href\",\"#weather-carousel\"],[10,\"role\",\"button\"],[10,\"data-slide\",\"next\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa arrow-icon fa-angle-right\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[10,\"href\",\"#weather-carousel\"],[10,\"data-target\",\"#weather-carousel\"],[11,\"data-slide-to\",[27,[[20,\"endIndex\"]]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa playback-icon ml-5 fa-step-forward\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[6,\"div\"],[10,\"class\",\"d-inline-block pull-right\"],[8],[0,\"\\n              \"],[6,\"span\"],[10,\"class\",\"col-md-12 sunset\"],[8],[0,\"\\n                \"],[1,[26,\"sun-calculations\",[[21,1,[\"time\"]],[22,[\"mission\",\"location\",\"timezone_id\"]],[22,[\"mission\",\"location\",\"latitude\"]],[22,[\"mission\",\"location\",\"longitude\"]]],null],false],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n          \"],[6,\"div\"],[10,\"class\",\"mission-weather-content\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"forecast\"]]],null,{\"statements\":[[0,\"              \"],[1,[26,\"mission-weather-forecast\",null,[[\"mission\",\"time\",\"icon\",\"temperature\",\"precipProbability\",\"cloudCover\",\"windSpeed\"],[[22,[\"mission\"]],[21,3,[\"datetime\"]],[21,3,[\"icon\"]],[21,3,[\"temperature\"]],[21,3,[\"precipProbability\"]],[21,3,[\"cloudCover\"]],[21,3,[\"windSpeed\"]]]]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1,2]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/mission-weather.hbs" } });
+});
+define("admin/templates/components/missions/asset-processes", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "GfbB0otc", "block": "{\"symbols\":[\"shot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-sm-12 processes-label\"],[8],[0,\"Current Processes: \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive no-padding-bottom processes-table\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"shotsWithProcesses\"]]],null,{\"statements\":[[0,\"            \"],[6,\"tr\"],[8],[0,\"\\n              \"],[6,\"td\"],[10,\"class\",\"process-name\"],[10,\"style\",\"text-transform:capitalize;\"],[8],[0,\" \"],[1,[21,1,[\"shot_type\",\"postProcessName\"]],false],[0,\"...\"],[9],[0,\"\\n              \"],[6,\"td\"],[11,\"class\",[27,[\"process-status \",[26,\"if\",[[21,1,[\"processingFailed\"]],\"error\"],null]]]],[8],[0,\" \"],[1,[26,\"either\",[[21,1,[\"verboseProcessStatus\"]],\"queued\"],null],false],[0,\" \"],[9],[0,\"\\n              \"],[6,\"td\"],[10,\"class\",\"process-timestamp\"],[8],[1,[26,\"moment-format\",[[21,1,[\"activity_logs\",\"firstObject\",\"created_at\"]],\"MM/DD/YY, h:mm A\"],null],false],[0,\" \"],[9],[0,\"\\n              \"],[6,\"td\"],[10,\"class\",\"process-action\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"processingFailed\"]]],null,{\"statements\":[[0,\"                  \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary btn-xs\"],[3,\"action\",[[21,0,[]],\"reprocess\",[21,1,[]]]],[8],[0,\"\\n                    reprocess\\n                  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/missions/asset-processes.hbs" } });
+});
+define("admin/templates/components/missions/mission-payment-view", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "s/63ZGvE", "block": "{\"symbols\":[\"payment\"],\"statements\":[[6,\"div\"],[10,\"class\",\"mission-payment-view\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"header-row\"],[8],[0,\"\\n    \"],[6,\"h4\"],[10,\"class\",\"name\"],[8],[0,\"Payment\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"body-row\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"mission\",\"client\",\"invoiceable\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"no-card\"],[8],[0,\"Client will pay for this mission by invoice.\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"mission\",\"isFree\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"no-card\"],[8],[0,\"Mission has price of $0.\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"hasHistory\"]]],null,{\"statements\":[[4,\"each\",[[22,[\"mission_payments\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"mission-payment\"],[8],[0,\"\\n          \"],[6,\"div\"],[8],[1,[21,1,[\"credit_card\",\"brand\"]],false],[0,\" ****\"],[1,[21,1,[\"credit_card\",\"last_4\"]],false],[9],[0,\"\\n          \"],[6,\"div\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[0,\" / \"],[1,[26,\"format-dollar\",[[21,1,[\"price\"]]],null],false],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"timestamp\"],[8],[1,[26,\"moment-format\",[[21,1,[\"paid_at\"]],\"MM/DD/YY, h:mm a\"],null],false],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"payment-info\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"payment_id\"]]],null,{\"statements\":[[0,\"            \"],[6,\"a\"],[11,\"href\",[27,[[20,\"stripeLink\"],[21,1,[\"payment_id\"]]]]],[10,\"target\",\"_blank\"],[8],[1,[26,\"titleize\",[[21,1,[\"payment_processor\"]]],null],false],[0,\" / \"],[1,[21,1,[\"payment_id\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[1,[26,\"titleize\",[[21,1,[\"payment_processor\"]]],null],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"hasCard\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"mission-payment\"],[8],[0,\"\\n        \"],[6,\"div\"],[8],[1,[22,[\"mission\",\"credit_card\",\"brand\"]],false],[0,\" ****\"],[1,[22,[\"mission\",\"credit_card\",\"last_4\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[8],[0,\"Not Paid / \"],[1,[26,\"format-dollar\",[[22,[\"mission\",\"price\"]]],null],false],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"no-card\"],[8],[0,\"No card on record. Customer will have to enter it in their dashboard.\"],[9],[0,\"\\n    \"]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/missions/mission-payment-view.hbs" } });
+});
+define("admin/templates/components/missions/payment-reminder-modal", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "2CbGHzqg", "block": "{\"symbols\":[],\"statements\":[[4,\"modal-dialog\",null,[[\"translucentOverlay\",\"close\"],[true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"payment-modal\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"modal-body\"],[8],[0,\"\\n\"],[4,\"unless\",[[22,[\"loading\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"modal-header\"],[8],[0,\"\\n          No credit card attached to this mission\\n        \"],[9],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/infog_no_credit_card_on_file@2x.png\"],[8],[9],[0,\"\\n        An email will be sent to the customer asking them to provide the payment\\n        information on the pay wall. The mission will be left in Awaiting Payment.\\n        \"],[6,\"div\"],[10,\"class\",\"buttons\"],[8],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn-primary\"],[3,\"action\",[[21,0,[]],\"processReminder\"]],[8],[0,\"PROCESS\"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"loading-pane loading-data\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"box\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"sk-circle\"],[8],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"spinner\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect1\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect2\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect3\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect4\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect5\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/missions/payment-reminder-modal.hbs" } });
+});
+define("admin/templates/components/missions/process-payment-modal", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "4qldlNLJ", "block": "{\"symbols\":[\"error\"],\"statements\":[[4,\"modal-dialog\",null,[[\"translucentOverlay\",\"close\"],[true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"payment-modal\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"modal-body\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"status\"]],\"processing\"],null]],null,{\"statements\":[[0,\"        Processing the mission payment\\n        \"],[6,\"div\"],[10,\"class\",\"loading-pane loading-data\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"box\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"sk-circle\"],[8],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"spinner\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect1\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect2\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect3\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect4\"],[8],[9],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"rect5\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"status\"]],\"success\"],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"modal-header\"],[8],[0,\"\\n          Transaction was successful\\n        \"],[9],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/infog_payment_successful@2x.png\"],[8],[9],[0,\"\\n        \"],[1,[26,\"format-dollar\",[[22,[\"mission\",\"price\"]]],null],false],[0,\" was charged on \"],[1,[22,[\"mission\",\"credit_card\",\"brand\"]],false],[0,\" ending \"],[1,[22,[\"mission\",\"credit_card\",\"last_4\"]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"buttons\"],[8],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn-primary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n            GO BACK\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"status\"]],\"error\"],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"modal-header\"],[8],[0,\"\\n          Oops! Something went wrong\\n        \"],[9],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/infog_payment_failed@2x.png\"],[8],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"error-list\"],[8],[0,\"\\n          There were errors below charging \"],[1,[22,[\"mission\",\"credit_card\",\"brand\"]],false],[0,\" ending \"],[1,[22,[\"mission\",\"credit_card\",\"last_4\"]],false],[0,\"\\n          \"],[6,\"ul\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"errors\"]]],null,{\"statements\":[[0,\"              \"],[6,\"li\"],[8],[1,[21,1,[\"detail\"]],false],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        An email has been sent to \"],[1,[22,[\"client\",\"email\"]],false],[0,\" to let them know that\\n        there’s an issue with their credit card. They’ll be prompted to enter another card\\n        at the paywall.\\n        \"],[6,\"p\"],[8],[9],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[6,\"p\"],[8],[0,\"The mission will remain in Awaiting Payment status until then.\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"buttons\"],[8],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn-primary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n            DISMISS\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"mission\",\"isFree\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"modal-header\"],[8],[0,\"\\n            The mission price is $0\\n          \"],[9],[0,\"\\n          \"],[6,\"img\"],[10,\"src\",\"/assets/images/infog_no_credit_card_on_file@2x.png\"],[8],[9],[0,\"\\n          \"],[6,\"div\"],[8],[0,\"\\n            The mission will be moved forward to Complete, and their credit card will not be charged.\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"buttons\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn-primary\"],[3,\"action\",[[21,0,[]],\"processPayment\"]],[8],[0,\"PROCESS\"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"modal-header\"],[8],[0,\"\\n            Process transaction?\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"format-dollar\",[[22,[\"mission\",\"price\"]]],null],false],[0,\" will be charged to \"],[1,[22,[\"mission\",\"credit_card\",\"brand\"]],false],[0,\" ending \"],[1,[22,[\"mission\",\"credit_card\",\"last_4\"]],false],[0,\"\\n          \"],[6,\"img\"],[10,\"src\",\"/assets/images/infog_charging_payment@3x.png\"],[8],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"buttons buttons-no-margin-top\"],[8],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn-primary\"],[3,\"action\",[[21,0,[]],\"processPayment\"]],[8],[0,\"PROCESS\"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"      \"]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/missions/process-payment-modal.hbs" } });
 });
 define("admin/templates/components/modal-dialog-custom", ["exports"], function (exports) {
   "use strict";
@@ -14810,7 +16758,7 @@ define("admin/templates/components/onboarding/badge-modal", ["exports"], functio
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "yhzNnCmm", "block": "{\"symbols\":[],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"close\",\"appendedClasses\",\"translucentOverlay\",\"hasOverlay\",\"fullScreen\"],[[26,\"action\",[[21,0,[]],\"close\"],null],\"badge-modal full-screen-modal\",true,true,\"true\"]],{\"statements\":[[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"container-fluid\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n      \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"Assign Onboarding\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\" close-modal\"],[8],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedAllPilots\"]]],null,{\"statements\":[[0,\"          \"],[6,\"strong\"],[8],[1,[20,\"totalCount\"],false],[0,\" pilots\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"strong\"],[8],[1,[22,[\"selectedPilots\",\"length\"]],false],[0,\" pilots\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"        \"],[6,\"span\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedBadge\",\"has_requirements\"]]],null,{\"statements\":[[0,\"          selected to take \"],[6,\"strong\"],[8],[1,[22,[\"selectedBadge\",\"name\"]],false],[9],[0,\" onboarding badge.\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\"]]],null,{\"statements\":[[0,\"          selected to receive \"],[6,\"strong\"],[8],[1,[22,[\"selectedBadge\",\"name\"]],false],[9],[0,\" badge.\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"           selected to take this onboarding.\\n        \"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"successMessage\"]]],null,{\"statements\":[[0,\"          \"],[6,\"span\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n            \"],[6,\"img\"],[10,\"src\",\"/assets/images/green-check.svg\"],[10,\"class\",\"green-checkmark\"],[8],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n              \"],[6,\"strong\"],[8],[1,[20,\"successMessage\"],false],[9],[0,\"\\n              \"],[6,\"i\"],[8],[1,[20,\"successSubMessage\"],false],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"inviteConfirmation\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"red-border-button pull-right\"],[3,\"action\",[[21,0,[]],\"confirmInvitePilots\"]],[8],[0,\"CONFIRM\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"check-if\",[[22,[\"selectedAllPilots\"]],\"||\",[22,[\"selectedPilots\",\"length\"]]],null]],null,{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\",\"has_requirements\"]]],null,{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"turquoise-button pull-right\"],[3,\"action\",[[21,0,[]],\"invitePilots\"]],[8],[0,\"INVITE\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\"]]],null,{\"statements\":[[0,\"                \"],[6,\"button\"],[10,\"class\",\"turquoise-button pull-right\"],[3,\"action\",[[21,0,[]],\"invitePilots\"]],[8],[0,\"ASSIGN\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"turquoise-button pull-right disabled\"],[10,\"disabled\",\"disabled\"],[8],[0,\"INVITE\"],[9],[0,\"\\n            \"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"          \"],[6,\"div\"],[10,\"class\",\"turquoise-border-button pull-right\"],[3,\"action\",[[21,0,[]],\"cancelInvitePilots\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row badge-selection\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Badge\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"optionLabelPath\",\"optionValuePath\",\"prompt\"],[[22,[\"badges\"]],[22,[\"selectedBadge\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selectedBadge\"]]],null]],null],\"name\",\"id\",\"Select Badge\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedBadge\",\"has_requirements\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n          \"],[6,\"p\"],[8],[0,\"This onboarding requires pilots to complete the steps in order below:\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedBadge\",\"mindflash_series_name\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-6 requirement-wrapper\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-caret-right\"],[8],[9],[0,\"Mindflash online training:\"],[9],[0,\"\\n            \"],[6,\"p\"],[10,\"class\",\"requirement\"],[8],[1,[22,[\"selectedBadge\",\"mindflash_series_name\"]],false],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"selectedBadge\",\"checkr_package_name\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-6 requirement-wrapper\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-caret-right\"],[8],[9],[0,\"Background check:\"],[9],[0,\"\\n            \"],[6,\"p\"],[10,\"class\",\"requirement\"],[8],[1,[22,[\"selectedBadge\",\"checkr_package_name\"]],false],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"selectedBadge\",\"training_package_name\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-6 requirement-wrapper\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-caret-right\"],[8],[9],[0,\"Training mission:\"],[9],[0,\"\\n            \"],[6,\"p\"],[10,\"class\",\"requirement\"],[8],[1,[22,[\"selectedBadge\",\"training_package_name\"]],false],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n          \"],[6,\"span\"],[8],[0,\"This badge does not have any onboarding requirements.\"],[9],[0,\"\\n          \"],[4,\"link-to\",[\"badges.edit\",[22,[\"selectedBadge\",\"id\"]]],[[\"class\"],[\"btn turquoise-border-button edit-badge\"]],{\"statements\":[[0,\"EDIT BADGE\"]],\"parameters\":[]},null],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"  \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/onboarding/badge-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "FEsLDtTo", "block": "{\"symbols\":[],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"close\",\"appendedClasses\",\"translucentOverlay\",\"hasOverlay\",\"fullScreen\"],[[26,\"action\",[[21,0,[]],\"close\"],null],\"badge-modal full-screen-modal\",true,true,\"true\"]],{\"statements\":[[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"container-fluid\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n      \"],[6,\"h3\"],[10,\"class\",\"title\"],[8],[0,\"Assign Onboarding\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\" close-modal\"],[8],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedAllPilots\"]]],null,{\"statements\":[[0,\"          \"],[6,\"strong\"],[8],[1,[20,\"totalCount\"],false],[0,\" pilots\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"strong\"],[8],[1,[22,[\"selectedPilots\",\"length\"]],false],[0,\" pilots\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"        \"],[6,\"span\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedBadge\",\"has_requirements\"]]],null,{\"statements\":[[0,\"          selected to take \"],[6,\"strong\"],[8],[1,[22,[\"selectedBadge\",\"name\"]],false],[9],[0,\" onboarding badge.\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\"]]],null,{\"statements\":[[0,\"          selected to receive \"],[6,\"strong\"],[8],[1,[22,[\"selectedBadge\",\"name\"]],false],[9],[0,\" badge.\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"           selected to take this onboarding.\\n        \"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"successMessage\"]]],null,{\"statements\":[[0,\"          \"],[6,\"span\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n            \"],[6,\"img\"],[10,\"src\",\"/assets/images/green-check.svg\"],[10,\"class\",\"green-checkmark\"],[8],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n              \"],[6,\"strong\"],[8],[1,[20,\"successMessage\"],false],[9],[0,\"\\n              \"],[6,\"i\"],[8],[1,[20,\"successSubMessage\"],false],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"inviteConfirmation\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"btn btn-warning btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"confirmInvitePilots\"]],[8],[0,\"CONFIRM\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"check-if\",[[22,[\"selectedAllPilots\"]],\"||\",[22,[\"selectedPilots\",\"length\"]]],null]],null,{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\",\"has_requirements\"]]],null,{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"invitePilots\"]],[8],[0,\"INVITE\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\"]]],null,{\"statements\":[[0,\"                \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"invitePilots\"]],[8],[0,\"ASSIGN\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm pull-right disabled\"],[10,\"disabled\",\"disabled\"],[8],[0,\"INVITE\"],[9],[0,\"\\n            \"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"          \"],[6,\"div\"],[10,\"class\",\"btn btn-secondary btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"cancelInvitePilots\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row badge-selection\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Badge\"],[9],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"optionLabelPath\",\"optionValuePath\",\"prompt\"],[[22,[\"badges\"]],[22,[\"selectedBadge\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selectedBadge\"]]],null]],null],\"name\",\"id\",\"Select Badge\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedBadge\",\"has_requirements\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n          \"],[6,\"p\"],[8],[0,\"This onboarding requires pilots to complete the steps in order below:\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"selectedBadge\",\"mindflash_series_name\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-6 requirement-wrapper\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-caret-right\"],[8],[9],[0,\"Mindflash online training:\"],[9],[0,\"\\n            \"],[6,\"p\"],[10,\"class\",\"requirement\"],[8],[1,[22,[\"selectedBadge\",\"mindflash_series_name\"]],false],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"selectedBadge\",\"checkr_package_name\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-6 requirement-wrapper\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-caret-right\"],[8],[9],[0,\"Background check:\"],[9],[0,\"\\n            \"],[6,\"p\"],[10,\"class\",\"requirement\"],[8],[1,[22,[\"selectedBadge\",\"checkr_package_name\"]],false],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"selectedBadge\",\"training_package_name\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-6 requirement-wrapper\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-caret-right\"],[8],[9],[0,\"Training mission:\"],[9],[0,\"\\n            \"],[6,\"p\"],[10,\"class\",\"requirement\"],[8],[1,[22,[\"selectedBadge\",\"training_package_name\"]],false],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"selectedBadge\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n          \"],[6,\"span\"],[8],[0,\"This badge does not have any onboarding requirements.\"],[9],[0,\"\\n          \"],[4,\"link-to\",[\"badges.edit\",[22,[\"selectedBadge\",\"id\"]]],[[\"class\"],[\"btn btn-secondary btn-sm edit-badge\"]],{\"statements\":[[0,\"EDIT BADGE\"]],\"parameters\":[]},null],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"  \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/onboarding/badge-modal.hbs" } });
 });
 define("admin/templates/components/onboarding/filter-pilots", ["exports"], function (exports) {
   "use strict";
@@ -14818,7 +16766,7 @@ define("admin/templates/components/onboarding/filter-pilots", ["exports"], funct
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "0V8VflQE", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"refine filter-pilots\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"panelMode\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"panelMode\"]],\"drones\"],null]],null,{\"statements\":[[0,\"      \"],[1,[26,\"onboarding/pilot-drone-filter\",null,[[\"selectedDrones\",\"selectedCameras\",\"droneIds\",\"cameraIds\",\"drones\",\"cameras\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedDrones\"]],[22,[\"selectedCameras\"]],[22,[\"droneIds\"]],[22,[\"cameraIds\"]],[22,[\"drones\"]],[22,[\"cameras\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[26,\"is-equal\",[[22,[\"panelMode\"]],\"devices\"],null]],null,{\"statements\":[[0,\"      \"],[1,[26,\"onboarding/pilot-device-filter\",null,[[\"selectedDevices\",\"devices\",\"deviceIds\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedDevices\"]],[22,[\"devices\"]],[22,[\"deviceIds\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"header-row\"],[8],[0,\"\\n      \"],[6,\"h2\"],[8],[0,\"Refine\"],[9],[0,\"\\n      \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"onboarding/pilot-location-filter\",null,[[\"distance\",\"lat\",\"lon\",\"locationTitle\",\"setPanel\",\"cacheObjects\"],[[22,[\"distance\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"locationTitle\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"dropdown-refine\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"refine-header\"],[3,\"action\",[[21,0,[]],\"setPanel\",\"drones\",\"Drones\"]],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"header-title\"],[8],[0,\"Drone Systems (\"],[1,[22,[\"selectedDrones\",\"length\"]],false],[0,\")\"],[9],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-chevron-right\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"dropdown-refine\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"refine-header\"],[3,\"action\",[[21,0,[]],\"setPanel\",\"devices\",\"Devices\"]],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"header-title\"],[8],[0,\"Devices (\"],[1,[22,[\"selectedDevices\",\"length\"]],false],[0,\")\"],[9],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-chevron-right\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"onboarding/pilot-license-filter\",null,[[\"selectedLicenses\",\"licenses\",\"licenseIds\",\"licenseTitle\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedLicenses\"]],[22,[\"licenses\"]],[22,[\"licenseIds\"]],[22,[\"licenseTitle\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\\n    \"],[1,[26,\"onboarding/pilot-badge-filter\",null,[[\"selectedBadges\",\"badges\",\"pilotBadgeBadgeIds\",\"pilotBadgeStatuses\",\"pilotBadgeStatusIds\",\"selectPilotBadgeStatuses\",\"pilotWithoutBadges\",\"pilotBadgeInclude\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedBadges\"]],[22,[\"badges\"]],[22,[\"pilotBadgeBadgeIds\"]],[22,[\"pilotBadgeStatuses\"]],[22,[\"pilotBadgeStatusIds\"]],[22,[\"selectPilotBadgeStatuses\"]],[22,[\"pilotWithoutBadges\"]],[22,[\"pilotBadgeInclude\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/onboarding/filter-pilots.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "55eXDDFZ", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"refine filter-pilots\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"panelMode\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"panelMode\"]],\"drones\"],null]],null,{\"statements\":[[0,\"      \"],[1,[26,\"onboarding/pilot-drone-filter\",null,[[\"selectedDrones\",\"selectedCameras\",\"droneIds\",\"cameraIds\",\"drones\",\"cameras\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedDrones\"]],[22,[\"selectedCameras\"]],[22,[\"droneIds\"]],[22,[\"cameraIds\"]],[22,[\"drones\"]],[22,[\"cameras\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[26,\"is-equal\",[[22,[\"panelMode\"]],\"devices\"],null]],null,{\"statements\":[[0,\"      \"],[1,[26,\"onboarding/pilot-device-filter\",null,[[\"selectedDevices\",\"devices\",\"deviceIds\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedDevices\"]],[22,[\"devices\"]],[22,[\"deviceIds\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"header-row\"],[8],[0,\"\\n      \"],[6,\"h2\"],[8],[0,\"Refine\"],[9],[0,\"\\n      \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/X.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"onboarding/pilot-location-filter\",null,[[\"distance\",\"lat\",\"lon\",\"locationTitle\",\"setPanel\",\"cacheObjects\"],[[22,[\"distance\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"locationTitle\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"dropdown-refine\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"refine-header\"],[3,\"action\",[[21,0,[]],\"setPanel\",\"drones\",\"Drones\"]],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"header-title\"],[8],[0,\"Drone Systems (\"],[1,[22,[\"selectedDrones\",\"length\"]],false],[0,\")\"],[9],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-chevron-right\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"dropdown-refine\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"refine-header\"],[3,\"action\",[[21,0,[]],\"setPanel\",\"devices\",\"Devices\"]],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"header-title\"],[8],[0,\"Devices (\"],[1,[22,[\"selectedDevices\",\"length\"]],false],[0,\")\"],[9],[0,\"\\n        \"],[6,\"i\"],[10,\"class\",\"fa fa-chevron-right\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"onboarding/pilot-equipment-filter\",null,[[\"selectedPilotEquipment\",\"pilotEquipment\",\"pilotEquipmentIds\",\"pilotEquipmentTitle\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedPilotEquipment\"]],[22,[\"pilotEquipment\"]],[22,[\"pilotEquipmentIds\"]],[22,[\"pilotEquipmentTitle\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\\n    \"],[1,[26,\"onboarding/pilot-license-filter\",null,[[\"selectedLicenses\",\"licenses\",\"licenseIds\",\"licenseTitle\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedLicenses\"]],[22,[\"licenses\"]],[22,[\"licenseIds\"]],[22,[\"licenseTitle\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\\n    \"],[1,[26,\"onboarding/pilot-badge-filter\",null,[[\"selectedBadges\",\"badges\",\"pilotBadgeBadgeIds\",\"pilotBadgeStatuses\",\"pilotBadgeStatusIds\",\"selectPilotBadgeStatuses\",\"pilotWithoutBadges\",\"pilotBadgeInclude\",\"setPanel\",\"cacheObjects\"],[[22,[\"selectedBadges\"]],[22,[\"badges\"]],[22,[\"pilotBadgeBadgeIds\"]],[22,[\"pilotBadgeStatuses\"]],[22,[\"pilotBadgeStatusIds\"]],[22,[\"selectPilotBadgeStatuses\"]],[22,[\"pilotWithoutBadges\"]],[22,[\"pilotBadgeInclude\"]],\"setPanel\",\"cacheObjects\"]]],false],[0,\"\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/onboarding/filter-pilots.hbs" } });
 });
 define("admin/templates/components/onboarding/pilot-badge-filter", ["exports"], function (exports) {
   "use strict";
@@ -14843,6 +16791,14 @@ define("admin/templates/components/onboarding/pilot-drone-filter", ["exports"], 
     value: true
   });
   exports.default = Ember.HTMLBars.template({ "id": "kbrkIU0t", "block": "{\"symbols\":[\"camera\",\"drone\"],\"statements\":[[6,\"div\"],[10,\"class\",\"panel-header\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"panel-back\"],[8],[0,\"\\n    \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setPanel\"]],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-chevron-left\"],[8],[9],[0,\"\\n      \"],[6,\"span\"],[10,\"class\",\"panel-title\"],[8],[0,\"Back\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"panel-clear\"],[8],[0,\"\\n    \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clear\"]],[8],[0,\"Clear\"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"panel-body\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"panel-section-title\"],[8],[0,\"\\n    Accepted Drones\\n  \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"drones\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"checkbox-item\",null,[[\"selections\",\"model\",\"checked\",\"includeManufacturer\"],[[22,[\"selectedDrones\"]],[21,2,[]],[26,\"includes\",[[22,[\"droneIds\"]],[21,2,[\"id\"]]],null],true]]],false],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"panel-section-title\"],[8],[0,\"\\n    Accepted Cameras\\n  \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"cameras\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"checkbox-item\",null,[[\"selections\",\"model\",\"checked\"],[[22,[\"selectedCameras\"]],[21,1,[]],[26,\"includes\",[[22,[\"cameraIds\"]],[21,1,[\"id\"]]],null]]]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/onboarding/pilot-drone-filter.hbs" } });
+});
+define("admin/templates/components/onboarding/pilot-equipment-filter", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "WYxOHg5b", "block": "{\"symbols\":[\"pilotEquipmentItem\"],\"statements\":[[4,\"collapsible-sidebar-item\",null,[[\"title\"],[[22,[\"pilotEquipmentTitle\"]]]],{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"pilot-equipment-data\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"pilotEquipment\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"checkbox-item\",null,[[\"selections\",\"model\",\"checked\"],[[22,[\"selectedPilotEquipment\"]],[21,1,[]],[26,\"includes\",[[22,[\"pilotEquipmentIds\"]],[21,1,[\"id\"]]],null]]]],false],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/onboarding/pilot-equipment-filter.hbs" } });
 });
 define("admin/templates/components/onboarding/pilot-license-filter", ["exports"], function (exports) {
   "use strict";
@@ -14876,13 +16832,37 @@ define("admin/templates/components/organization-package-checkbox", ["exports"], 
   });
   exports.default = Ember.HTMLBars.template({ "id": "rU1lgiVQ", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"organization-checkbox \",[20,\"checkboxClass\"]]]],[3,\"action\",[[21,0,[]],\"toggleChecked\"]],[8],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/organization-package-checkbox.hbs" } });
 });
+define("admin/templates/components/organizations/client-list", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "PIB1toOC", "block": "{\"symbols\":[\"client\"],\"statements\":[[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[10,\"class\",\"dronebase-table-header\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"clients\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[10,\"class\",\"row-link\"],[3,\"action\",[[21,0,[]],\"goToClient\",[21,1,[\"id\"]]]],[8],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[6,\"span\"],[11,\"class\",[27,[\"turquoise-text client-added-\",[21,1,[\"id\"]],\" \",[26,\"if\",[[21,1,[\"added\"]],\"toast-added\"],null]]]],[8],[0,\"\\n            added\\n          \"],[9],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"org-owner-managment\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"is_organization_owner\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"remove-from-owners\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"account-icon\"],[8],[9],[0,\" Organization Account Owner\\n                \"],[6,\"btn\"],[10,\"class\",\"btn btn-secondary btn-sm\"],[3,\"action\",[[21,0,[]],\"toggleOrgOwner\",[21,1,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                  Remove\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"add-as-owner\"],[8],[0,\"\\n                \"],[6,\"btn\"],[10,\"class\",\"btn btn-secondary btn-sm\"],[3,\"action\",[[21,0,[]],\"toggleOrgOwner\",[21,1,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                  Set as owner\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/organizations/client-list.hbs" } });
+});
+define("admin/templates/components/photo-swipe-meta-value", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "LWE4IGLj", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"meta\"],[8],[0,\"\\n  \"],[6,\"label\"],[8],[1,[20,\"label\"],false],[9],[0,\"\\n    \"],[6,\"span\"],[11,\"class\",[20,\"meta-class\"]],[8],[0,\"\\n      Unknown\\n    \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/photo-swipe-meta-value.hbs" } });
+});
+define("admin/templates/components/photo-swipe-meta", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "7XSD1I6G", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"pswp-meta\"],[8],[0,\"\\n\\n  \"],[1,[26,\"photo-swipe-meta-value\",null,[[\"meta-class\",\"label\"],[\"pswp-meta-taken-at\",\"Date Taken\"]]],false],[0,\"\\n  \"],[1,[26,\"photo-swipe-meta-value\",null,[[\"meta-class\",\"label\"],[\"pswp-meta-make\",\"Make\"]]],false],[0,\"\\n  \"],[1,[26,\"photo-swipe-meta-value\",null,[[\"meta-class\",\"label\"],[\"pswp-meta-model\",\"Model\"]]],false],[0,\"\\n  \"],[1,[26,\"photo-swipe-meta-value\",null,[[\"meta-class\",\"label\"],[\"pswp-meta-exposure-time\",\"Exposure Time\"]]],false],[0,\"\\n  \"],[1,[26,\"photo-swipe-meta-value\",null,[[\"meta-class\",\"label\"],[\"pswp-meta-exposure-bias\",\"Exposure Bias Value\"]]],false],[0,\"\\n  \"],[1,[26,\"photo-swipe-meta-value\",null,[[\"meta-class\",\"label\"],[\"pswp-meta-auto-white-balance\",\"White Balance\"]]],false],[0,\"\\n  \"],[1,[26,\"photo-swipe-meta-value\",null,[[\"meta-class\",\"label\"],[\"pswp-meta-dimensions\",\"Dimensions\"]]],false],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"warnings\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"asset-warning gps hidden\"],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[6,\"span\"],[10,\"class\",\"meta-warning\"],[8],[0,\"Missing GPS Meta Data\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"asset-warning resolution hidden\"],[8],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[6,\"span\"],[10,\"class\",\"meta-warning\"],[8],[0,\"Low resolution\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/photo-swipe-meta.hbs" } });
+});
 define("admin/templates/components/photo-swipe", ["exports"], function (exports) {
   "use strict";
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "TvI8HEwa", "block": "{\"symbols\":[\"item\",\"&default\"],\"statements\":[[4,\"if\",[[23,2]],null,{\"statements\":[[4,\"if\",[[22,[\"items\"]]],null,{\"statements\":[[4,\"each\",[[22,[\"items\"]]],null,{\"statements\":[[0,\"      \"],[6,\"a\"],[11,\"data-width\",[21,1,[\"w\"]]],[11,\"data-height\",[21,1,[\"h\"]]],[3,\"action\",[[21,0,[]],\"launchGallery\",[21,1,[]]]],[8],[0,\"\\n          \"],[13,2,[[21,1,[]]]],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[13,2],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},null],[2,\" Root element of PhotoSwipe. Must have class pswp. \"],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"pswp\"],[10,\"tabindex\",\"-1\"],[10,\"role\",\"dialog\"],[10,\"aria-hidden\",\"true\"],[8],[0,\"\\n\\n  \"],[2,\" Background of PhotoSwipe.\\n    It's a separate element, as animating opacity is faster than rgba(). \"],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"pswp__bg\"],[8],[9],[0,\"\\n\\n    \"],[2,\" Slides wrapper with overflow:hidden. \"],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"pswp__scroll-wrap\"],[8],[0,\"\\n\\n      \"],[2,\" Container that holds slides. PhotoSwipe keeps only 3 slides in DOM to save memory. \"],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pswp__container\"],[8],[0,\"\\n        \"],[2,\" don't modify these 3 pswp__item elements, data is added later on \"],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pswp__item\"],[8],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pswp__item\"],[8],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pswp__item\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[2,\" Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. \"],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pswp__ui pswp__ui--hidden\"],[8],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"pswp__top-bar\"],[8],[0,\"\\n\\n          \"],[2,\"  Controls are self-explanatory. Order can be changed. \"],[0,\"\\n\\n          \"],[6,\"div\"],[10,\"class\",\"pswp__counter\"],[8],[9],[0,\"\\n\\n\"],[4,\"unless\",[[22,[\"options\",\"hideClose\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--close\"],[10,\"title\",\"Close (Esc)\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"unless\",[[22,[\"options\",\"hideShare\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--share\"],[10,\"title\",\"Share\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"unless\",[[22,[\"options\",\"hideToggleFullScreen\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--fs\"],[10,\"title\",\"Toggle fullscreen\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"unless\",[[22,[\"options\",\"hideZoomInOut\"]]],null,{\"statements\":[[0,\"            \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--zoom\"],[10,\"title\",\"Zoom in/out\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n          \"],[2,\" Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR \"],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"pswp__preloader\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"pswp__preloader__icn\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"pswp__preloader__cut\"],[8],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"pswp__preloader__donut\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"pswp__share-modal pswp__share-modal--hidden pswp__single-tap\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"pswp__share-tooltip\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--arrow--left\"],[10,\"title\",\"Previous (arrow left)\"],[8],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--arrow--right\"],[10,\"title\",\"Next (arrow right)\"],[8],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"pswp__caption\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"pswp__caption__center\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/photo-swipe.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "m2lo8dhY", "block": "{\"symbols\":[\"&default\"],\"statements\":[[6,\"div\"],[10,\"class\",\"pswp\"],[10,\"tabindex\",\"-1\"],[10,\"role\",\"dialog\"],[10,\"aria-hidden\",\"true\"],[8],[0,\"\\n\\n\"],[0,\"    \"],[6,\"div\"],[10,\"class\",\"pswp__bg\"],[8],[9],[0,\"\\n\\n\"],[0,\"    \"],[6,\"div\"],[10,\"class\",\"pswp__scroll-wrap\"],[8],[0,\"\\n\\n\"],[0,\"        \"],[6,\"div\"],[10,\"class\",\"pswp__container\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"pswp__item\"],[8],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"pswp__item\"],[8],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"pswp__item\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n\"],[0,\"        \"],[6,\"div\"],[10,\"class\",\"pswp__ui pswp__ui--hidden\"],[8],[0,\"\\n\\n            \"],[6,\"div\"],[10,\"class\",\"pswp__top-bar\"],[8],[0,\"\\n\"],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"pswp__counter\"],[8],[9],[0,\"\\n\\n                \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--close\"],[10,\"title\",\"Close (Esc)\"],[8],[9],[0,\"\\n\\n                \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--share\"],[10,\"title\",\"Share\"],[8],[9],[0,\"\\n\\n                \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--fs\"],[10,\"title\",\"Toggle fullscreen\"],[8],[9],[0,\"\\n\\n                \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--zoom\"],[10,\"title\",\"Zoom in/out\"],[8],[9],[0,\"\\n\\n\"],[0,\"                \"],[6,\"div\"],[10,\"class\",\"pswp__preloader\"],[8],[0,\"\\n                    \"],[6,\"div\"],[10,\"class\",\"pswp__preloader__icn\"],[8],[0,\"\\n                      \"],[6,\"div\"],[10,\"class\",\"pswp__preloader__cut\"],[8],[0,\"\\n                        \"],[6,\"div\"],[10,\"class\",\"pswp__preloader__donut\"],[8],[9],[0,\"\\n                      \"],[9],[0,\"\\n                    \"],[9],[0,\"\\n                \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\\n            \"],[6,\"div\"],[10,\"class\",\"pswp__share-modal pswp__share-modal--hidden pswp__single-tap\"],[8],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"pswp__share-tooltip\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n\\n            \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--arrow--left\"],[10,\"title\",\"Previous (arrow left)\"],[8],[0,\"\\n            \"],[9],[0,\"\\n\\n            \"],[6,\"button\"],[10,\"class\",\"pswp__button pswp__button--arrow--right\"],[10,\"title\",\"Next (arrow right)\"],[8],[0,\"\\n            \"],[9],[0,\"\\n\\n            \"],[6,\"div\"],[10,\"class\",\"pswp__caption\"],[8],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"pswp__caption__center\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n\\n            \"],[1,[20,\"photo-swipe-meta\"],false],[0,\"\\n\\n        \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[13,1,[[21,0,[]]]],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/photo-swipe.hbs" } });
 });
 define("admin/templates/components/pilot-approval-button", ["exports"], function (exports) {
   "use strict";
@@ -14914,7 +16894,7 @@ define("admin/templates/components/pilot-dispatch-row", ["exports"], function (e
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "KrJDDeEa", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"row \",[26,\"if\",[[22,[\"autoDispatch\"]],\"disable-from-click\"],null]]]],[3,\"action\",[[21,0,[]],\"toggleIncludePilot\"],[[\"allowedKeys\",\"bubbles\"],[\"shift\",false]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"pilot-details\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"checkbox-spacing\"],[8],[0,\"\\n\"],[4,\"unless\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"invited\"]]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/checked_box.svg\"],[10,\"class\",\"checkbox-image\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/uncheck_box.svg\"],[10,\"class\",\"checkbox-image\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"pilot-name field-label\"],[8],[0,\"\\n          \"],[1,[22,[\"pilot\",\"first_name\"]],false],[0,\" \"],[1,[22,[\"pilot\",\"last_name\"]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"value\",\"readonly\",\"class\"],[[22,[\"pilot\",\"email\"]],true,\"email-input\"]]],false],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[1,[22,[\"pilot\",\"city\"]],false],[0,\" \"],[1,[22,[\"pilot\",\"postal_code\"]],false],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n\"],[4,\"link-to\",[\"pilots.pilot\",[22,[\"pilot\",\"id\"]]],[[\"bubbles\",\"target\",\"class\"],[false,\"_blank\",\"full-profile-link\"]],{\"statements\":[[0,\"          See Full Profile\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"showPilotScore\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"pilot-score\"],[8],[0,\"Pilot match: \"],[1,[26,\"format-float\",[[22,[\"pilot\",\"score\"]],4],null],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"pilot\",\"pilot_licenses\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Licenses:\"],[9],[0,\" \"],[1,[20,\"licenseList\"],false],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"pilot\",\"drones\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Drones:\"],[9],[0,\" \"],[1,[20,\"droneList\"],false],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"pilot\",\"camerasArray\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Cameras:\"],[9],[0,\" \"],[1,[20,\"cameraList\"],false],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Availability:\"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"pilot\",\"is_available_weekdays\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"is_available_weekends\"]]],null,{\"statements\":[[0,\"        Weekdays and Weekends\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        Weekdays\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"is_available_weekends\"]]],null,{\"statements\":[[0,\"        Weekends\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        No Availability Selected\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"    \"],[6,\"br\"],[8],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"mission\",\"scheduled_at_start\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Scheduling:\"],[9],[0,\"\\n      \"],[1,[22,[\"pilot\",\"pilot_search_metum\",\"active_missions\"]],false],[0,\"\\n      Missions Accepted for this date\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n      \"],[1,[22,[\"pilot\",\"pilot_search_metum\",\"invitations\"]],false],[0,\"\\n      Missions Notified for this date\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-3 text-right\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"invite-info\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"pilot\",\"justInvited\"]]],null,{\"statements\":[[0,\"        This pilot was just invited\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_date\"]]],null,{\"statements\":[[0,\"        Pilot invited on\\n        \"],[1,[26,\"moment-format\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_date\"]],\"MM/DD/YY h:mma\"],null],false],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n      \"]],\"parameters\":[]},null]],\"parameters\":[]}],[4,\"if\",[[22,[\"pilot\",\"justInvited\"]]],null,{\"statements\":[],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_payout\"]]],null,{\"statements\":[[0,\"        Invitation Price:\\n        \"],[1,[26,\"format-dollar\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_payout\"]]],null],false],[0,\"\\n      \"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n    \"],[6,\"b\"],[8],[1,[26,\"format-distance\",[[22,[\"pilot\",\"distance\"]]],null],false],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/pilot-dispatch-row.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "/ujSghlp", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"row \",[26,\"if\",[[22,[\"autoDispatch\"]],\"disable-from-click\"],null]]]],[3,\"action\",[[21,0,[]],\"toggleIncludePilot\"],[[\"allowedKeys\",\"bubbles\"],[\"shift\",false]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"pilot-details\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"checkbox-spacing\"],[8],[0,\"\\n\"],[4,\"unless\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"invited\"]]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/checked_box.svg\"],[10,\"class\",\"checkbox-image\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/uncheck_box.svg\"],[10,\"class\",\"checkbox-image\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"div\"],[8],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"pilot-name field-label\"],[8],[0,\"\\n          \"],[1,[22,[\"pilot\",\"first_name\"]],false],[0,\" \"],[1,[22,[\"pilot\",\"last_name\"]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"value\",\"readonly\",\"class\"],[[22,[\"pilot\",\"email\"]],true,\"email-input\"]]],false],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[1,[22,[\"pilot\",\"city\"]],false],[0,\" \"],[1,[22,[\"pilot\",\"postal_code\"]],false],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n\"],[4,\"link-to\",[\"pilots.pilot\",[22,[\"pilot\",\"id\"]]],[[\"bubbles\",\"target\",\"class\"],[false,\"_blank\",\"full-profile-link\"]],{\"statements\":[[0,\"          See Full Profile\\n\"]],\"parameters\":[]},null],[0,\"        \"],[6,\"div\"],[10,\"class\",\"pilot-score\"],[8],[0,\"Pilot match: \"],[1,[26,\"format-float\",[[22,[\"pilot\",\"score\"]],4],null],false],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"pilot\",\"pilot_licenses\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Licenses:\"],[9],[0,\" \"],[1,[20,\"licenseList\"],false],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"pilot\",\"drones\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Drones:\"],[9],[0,\" \"],[1,[20,\"droneList\"],false],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"pilot\",\"camerasArray\",\"length\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Cameras:\"],[9],[0,\" \"],[1,[20,\"cameraList\"],false],[0,\"\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Availability:\"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"pilot\",\"is_available_weekdays\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"is_available_weekends\"]]],null,{\"statements\":[[0,\"        Weekdays and Weekends\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        Weekdays\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"is_available_weekends\"]]],null,{\"statements\":[[0,\"        Weekends\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        No Availability Selected\\n\"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"    \"],[6,\"br\"],[8],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"mission\",\"scheduled_at_start\"]]],null,{\"statements\":[[0,\"      \"],[6,\"span\"],[10,\"class\",\"field-label\"],[8],[0,\"Scheduling:\"],[9],[0,\"\\n      \"],[1,[22,[\"pilot\",\"pilot_search_metum\",\"active_missions\"]],false],[0,\"\\n      Missions Accepted for this date\\n      \"],[6,\"br\"],[8],[9],[0,\"\\n      \"],[1,[22,[\"pilot\",\"pilot_search_metum\",\"invitations\"]],false],[0,\"\\n      Missions Notified for this date\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-3 text-right\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"invite-info\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"pilot\",\"justInvited\"]]],null,{\"statements\":[[0,\"        This pilot was just invited\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_date\"]]],null,{\"statements\":[[0,\"        Pilot invited on\\n        \"],[1,[26,\"moment-format\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_date\"]],\"MM/DD/YY h:mma\"],null],false],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n      \"]],\"parameters\":[]},null]],\"parameters\":[]}],[4,\"if\",[[22,[\"pilot\",\"justInvited\"]]],null,{\"statements\":[],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_payout\"]]],null,{\"statements\":[[0,\"        Invitation Price:\\n        \"],[1,[26,\"format-dollar\",[[22,[\"pilot\",\"pilot_search_metum\",\"invitation_payout\"]]],null],false],[0,\"\\n      \"]],\"parameters\":[]},null]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n    \"],[6,\"b\"],[8],[1,[26,\"format-distance\",[[22,[\"pilot\",\"distance\"]]],null],false],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/pilot-dispatch-row.hbs" } });
 });
 define("admin/templates/components/pilot-dispatch", ["exports"], function (exports) {
   "use strict";
@@ -14922,7 +16902,7 @@ define("admin/templates/components/pilot-dispatch", ["exports"], function (expor
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "mEXZ8A3U", "block": "{\"symbols\":[\"np\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table table-borderless\"],[8],[0,\"\\n    \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"orderedNotifiedPilots\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"pilot\",\"id\"]]],[[\"bubbles\",\"target\"],[false,\"_blank\"]],{\"statements\":[[1,[21,1,[\"pilot\",\"fullName\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[21,1,[\"status\"]],false],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[21,1,[\"status\"]],\"accepted\"],null]],null,{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-danger btn-xs pull-right\"],[10,\"title\",\"Pilot cancelled mission\"],[3,\"action\",[[21,0,[]],\"pilotCancelled\",[22,[\"model\"]]]],[8],[0,\"cancel\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[26,\"format-dollar\",[[21,1,[\"estimated_payout\"]]],null],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"td\"],[10,\"class\",\"text-right\"],[8],[0,\"\\n            \"],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY hh:mma\"],null],false],[0,\"\\n          \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"canReInvite\"]]],null,{\"statements\":[[0,\"          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"invitationDispatchInProgress\"]]],null,{\"statements\":[[0,\"              \"],[6,\"span\"],[10,\"disabled\",\"disabled\"],[10,\"class\",\"btn btn-xs btn-default pull-right disabled\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Can't manually send invitations while they are being automatically dispatched.\"],[8],[0,\"\\n                re-invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-xs btn-default pull-right\"],[10,\"title\",\"Pilot cancelled mission\"],[3,\"action\",[[21,0,[]],\"reInvite\",[21,1,[]]]],[8],[0,\"\\n                re-invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/pilot-dispatch.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "Df1j57gp", "block": "{\"symbols\":[\"np\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table table-borderless\"],[8],[0,\"\\n    \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"orderedNotifiedPilots\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"pilot\",\"id\"]]],[[\"bubbles\",\"target\"],[false,\"_blank\"]],{\"statements\":[[1,[21,1,[\"pilot\",\"fullName\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[21,1,[\"status\"]],false],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[21,1,[\"status\"]],\"accepted\"],null]],null,{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-danger btn-xs pull-right\"],[10,\"title\",\"Pilot cancelled mission\"],[3,\"action\",[[21,0,[]],\"pilotCancelled\",[22,[\"model\"]]]],[8],[0,\"cancel\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[26,\"format-dollar\",[[21,1,[\"estimated_payout\"]]],null],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"td\"],[10,\"class\",\"text-right\"],[8],[0,\"\\n            \"],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY hh:mma\"],null],false],[0,\"\\n          \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"canReInvite\"]]],null,{\"statements\":[[0,\"          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"invitationDispatchInProgress\"]]],null,{\"statements\":[[0,\"              \"],[6,\"span\"],[10,\"disabled\",\"disabled\"],[10,\"class\",\"btn btn-xs btn-secondary pull-right disabled\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"Can't manually send invitations while they are being automatically dispatched.\"],[8],[0,\"\\n                re-invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-xs btn-secondary pull-right\"],[10,\"title\",\"Pilot cancelled mission\"],[3,\"action\",[[21,0,[]],\"reInvite\",[21,1,[]]]],[8],[0,\"\\n                re-invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/pilot-dispatch.hbs" } });
 });
 define("admin/templates/components/pilot-drone-view", ["exports"], function (exports) {
   "use strict";
@@ -14978,7 +16958,15 @@ define("admin/templates/components/pilot-search-autocomplete", ["exports"], func
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "S6vUK/Gd", "block": "{\"symbols\":[\"result\",\"dist\",\"thisMaxResult\"],\"statements\":[[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12 search-query\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"query\"]],\"form-control input-lg\",[22,[\"placeholder\"]]]]],false],[0,\"\\n      \"],[6,\"img\"],[10,\"src\",\"/assets/images/search.svg\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row bottom-buffer top-buffer-lg\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-4 checkbox-filter\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"mb-2\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"hasLicenses\"]],\"Licensed Only\"]]],false],[0,\" Licensed\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"mb-2\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"hasDrones\"]],\"With Only\"]]],false],[0,\" Has a drone\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"isScheduled\"]]],null,{\"statements\":[[0,\"          \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"availableForRelativeMission\"]],\"available_for_relative_mission\"]]],false],[0,\"\\n              Available on Scheduled Date\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[1,[26,\"input\",null,[[\"type\",\"disabled\",\"checked\",\"name\"],[\"checkbox\",\"disabled\",[22,[\"availableForRelativeMission\"]],\"available_for_relative_mission\"]]],false],[0,\"\\n              Available on Scheduled Date\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"mb-2\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"noDronebasePilots\"]],\"Filter Dronebase Pilots\"]]],false],[0,\" Filter Dronebase Pilots\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-8 badge-container\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Special Onboarding\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"d-inline-block ml-3 clear-button\"],[8],[0,\"\\n          \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clearBadgeId\"]],[8],[0,\"clear\"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[1,[26,\"select-custom\",null,[[\"selectClass\",\"selectName\",\"reset\",\"assignSelectedObject\",\"useSendAction\",\"optionLabelPath\",\"content\",\"selection\",\"prompt\",\"action\"],[\"form-control input-lg\",\"badge-filter\",false,true,true,\"name\",[22,[\"badges\"]],[22,[\"selectedBadge\"]],\"Choose option\",\"setBadgeId\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row bottom-buffer-lg top-buffer\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12 equipments\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row bottom-buffer-lg\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n         \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n           \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Preset Filters\"],[9],[0,\"\\n           \"],[6,\"div\"],[10,\"class\",\"d-inline-block ml-3 clear-button\"],[8],[0,\"\\n             \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clearFilter\"]],[8],[0,\"clear\"],[9],[0,\"\\n           \"],[9],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"selectClass\",\"selectName\",\"reset\",\"assignSelectedObject\",\"useSendAction\",\"optionLabelPath\",\"content\",\"prompt\",\"action\"],[\"form-control input-lg\",\"preset-search-filter\",false,true,true,\"name\",[22,[\"model\",\"presetSearchFilters\"]],\"Choose option\",\"setPresetFilter\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Min. Camera Resolution\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMegaPixels\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"12\"],[8],[0,\"Choose option\"],[9],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"20\"],[8],[0,\"20mp\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[1,[26,\"drones-devices-equipment-selection\",null,[[\"model\",\"drones\",\"selectedDrones\",\"selectedCameras\",\"selectedDevices\",\"selectedEquipment\"],[[22,[\"model\"]],[22,[\"drones\"]],[22,[\"selectedDrones\"]],[22,[\"selectedCameras\"]],[22,[\"selectedDevices\"]],[22,[\"selectedEquipment\"]]]]],false],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row sort-by\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showDispatchSorting\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n            \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Sort By\"],[9],[0,\"\\n            \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setSortBy\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"sort-pilots-by form-control input-lg\"],[8],[0,\"\\n              \"],[6,\"option\"],[10,\"value\",\"distance\"],[8],[0,\"\\n                Distance\\n              \"],[9],[0,\"\\n              \"],[6,\"option\"],[10,\"value\",\"score\"],[8],[0,\"\\n                Best match\\n              \"],[9],[0,\"\\n              \"],[6,\"option\"],[10,\"value\",\"score_auto_dispatch\"],[8],[0,\"\\n                Best match - Auto Dispatch\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Max. Result Count\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMaxResults\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[10,\"value\",\"24\"],[10,\"selected\",\"\"],[8],[0,\"24\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"each\",[[22,[\"maxResultsOptions\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"maxResults\"]],[21,3,[]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,3,[]]],[10,\"selected\",\"\"],[8],[1,[21,3,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,3,[]]],[8],[1,[21,3,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[3]},null]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Max. Pilot Distance\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setDistance\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[10,\"value\",\"100\"],[10,\"selected\",\"\"],[8],[0,\"100\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"each\",[[22,[\"distances\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"distance\"]],[21,2,[]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,2,[]]],[10,\"selected\",\"\"],[8],[1,[21,2,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,2,[]]],[8],[1,[21,2,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[2]},null]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pilot-results-header\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Results count: \"],[1,[22,[\"pilotList\",\"length\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"invite-button\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"state\"]],\"error\"],null]],null,{\"statements\":[[0,\"            \"],[6,\"span\"],[10,\"class\",\"error\"],[8],[1,[20,\"message\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"state\"]],\"success\"],null]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/green-check.svg\"],[10,\"class\",\"green-checkmark\"],[8],[9],[0,\"\\n            \"],[1,[20,\"message\"],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"numPilotsInvited\"]]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/green-check.svg\"],[10,\"class\",\"green-checkmark\"],[8],[9],[0,\"\\n            You've invited \"],[1,[20,\"numPilotsInvited\"],false],[0,\" \"],[1,[26,\"if\",[[26,\"is-equal\",[[22,[\"numPilotsInvited\"]],1],null],\"pilot\",\"pilots\"],null],false],[0,\"!\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"turquoise-button\"],[3,\"action\",[[21,0,[]],\"autoDispatchPilots\"]],[8],[0,\"AUTO DISPATCH\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"numPilotsToInvite\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"num-selected-pilots\"],[8],[1,[20,\"numPilotsToInvite\"],false],[0,\" \"],[1,[26,\"if\",[[26,\"is-equal\",[[22,[\"numPilotsToInvite\"]],1],null],\"Pilot\",\"Pilots\"],null],false],[0,\" Selected\"],[9],[0,\"\\n\"],[4,\"unless\",[[22,[\"confirmInvite\"]]],null,{\"statements\":[[0,\"                \"],[6,\"button\"],[10,\"class\",\"turquoise-button\"],[3,\"action\",[[21,0,[]],\"invitePilots\"]],[8],[0,\"INVITE\"],[9],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"gray-text-button\"],[3,\"action\",[[21,0,[]],\"clearInvites\"]],[8],[0,\"CLEAR\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[6,\"button\"],[10,\"class\",\"red-border-button\"],[3,\"action\",[[21,0,[]],\"confirmInvitePilots\"]],[8],[0,\"CONFIRM\"],[9],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"gray-text-button\"],[3,\"action\",[[21,0,[]],\"cancelInvitePilots\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"disabled-button\"],[10,\"disabled\",\"\"],[8],[0,\"INVITE\"],[9],[0,\"\\n            \"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"pilotList\",\"length\"]]],null,{\"statements\":[[0,\"        \"],[6,\"ul\"],[10,\"class\",\"pilot-list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"pilotList\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[0,\"\\n              \"],[1,[26,\"pilot-dispatch-row\",null,[[\"autoDispatch\",\"mission\",\"pilot\",\"toggleIncludePilot\"],[[22,[\"autoDispatch\"]],[22,[\"model\",\"mission\"]],[21,1,[]],\"toggleIncludePilot\"]]],false],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/pilot-search-autocomplete.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "ze3LUoBf", "block": "{\"symbols\":[\"result\",\"dist\",\"thisMaxResult\"],\"statements\":[[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12 search-query\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"query\"]],\"form-control input-lg\",[22,[\"placeholder\"]]]]],false],[0,\"\\n      \"],[6,\"img\"],[10,\"src\",\"/assets/images/search.svg\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row bottom-buffer top-buffer-lg\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-4 checkbox-filter\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"mb-2\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"hasLicenses\"]],\"Licensed Only\"]]],false],[0,\" Licensed\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"mb-2\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"hasDrones\"]],\"With Only\"]]],false],[0,\" Has a drone\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"isScheduled\"]]],null,{\"statements\":[[0,\"          \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"availableForRelativeMission\"]],\"available_for_relative_mission\"]]],false],[0,\"\\n              Available on Scheduled Date\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[1,[26,\"input\",null,[[\"type\",\"disabled\",\"checked\",\"name\"],[\"checkbox\",\"disabled\",[22,[\"availableForRelativeMission\"]],\"available_for_relative_mission\"]]],false],[0,\"\\n              Available on Scheduled Date\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"mb-2\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"name\"],[\"checkbox\",[22,[\"noDronebasePilots\"]],\"Filter Dronebase Pilots\"]]],false],[0,\" Filter Dronebase Pilots\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-8 badge-container\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Special Onboarding\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"d-inline-block ml-3 clear-button\"],[8],[0,\"\\n          \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clearBadgeId\"]],[8],[0,\"clear\"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[1,[26,\"select-custom\",null,[[\"selectClass\",\"selectName\",\"reset\",\"assignSelectedObject\",\"useSendAction\",\"optionLabelPath\",\"content\",\"selection\",\"prompt\",\"action\"],[\"form-control input-lg\",\"badge-filter\",false,true,true,\"name\",[22,[\"badges\"]],[22,[\"selectedBadge\"]],\"Choose option\",\"setBadgeId\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row bottom-buffer-lg top-buffer\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12 equipments\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row bottom-buffer-lg\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n         \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n           \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Preset Filters\"],[9],[0,\"\\n           \"],[6,\"div\"],[10,\"class\",\"d-inline-block ml-3 clear-button\"],[8],[0,\"\\n             \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"clearFilter\"]],[8],[0,\"clear\"],[9],[0,\"\\n           \"],[9],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"selectClass\",\"selectName\",\"reset\",\"assignSelectedObject\",\"useSendAction\",\"optionLabelPath\",\"content\",\"prompt\",\"action\"],[\"form-control input-lg\",\"preset-search-filter\",false,true,true,\"name\",[22,[\"model\",\"presetSearchFilters\"]],\"Choose option\",\"setPresetFilter\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Min. Camera Resolution\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMegaPixels\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"12\"],[8],[0,\"Choose option\"],[9],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"20\"],[8],[0,\"20mp\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[1,[26,\"drones-devices-equipment-selection\",null,[[\"model\",\"drones\",\"selectedDrones\",\"selectedCameras\",\"selectedDevices\",\"selectedEquipment\"],[[22,[\"model\"]],[22,[\"drones\"]],[22,[\"selectedDrones\"]],[22,[\"selectedCameras\"]],[22,[\"selectedDevices\"]],[22,[\"selectedEquipment\"]]]]],false],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row sort-by\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Sort By\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setSortBy\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"sort-pilots-by form-control input-lg\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"distance\"],[8],[0,\"\\n              Distance\\n            \"],[9],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"score\"],[8],[0,\"\\n              Best match\\n            \"],[9],[0,\"\\n            \"],[6,\"option\"],[10,\"value\",\"score_auto_dispatch\"],[8],[0,\"\\n              Best match - Auto Dispatch\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Max. Result Count\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMaxResults\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[10,\"value\",\"24\"],[10,\"selected\",\"\"],[8],[0,\"24\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"each\",[[22,[\"maxResultsOptions\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"maxResults\"]],[21,3,[]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,3,[]]],[10,\"selected\",\"\"],[8],[1,[21,3,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,3,[]]],[8],[1,[21,3,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[3]},null]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Max. Pilot Distance\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setDistance\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[10,\"value\",\"100\"],[10,\"selected\",\"\"],[8],[0,\"100\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"each\",[[22,[\"distances\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"distance\"]],[21,2,[]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,2,[]]],[10,\"selected\",\"\"],[8],[1,[21,2,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                  \"],[6,\"option\"],[11,\"value\",[21,2,[]]],[8],[1,[21,2,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[2]},null]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pilot-results-header\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Results count: \"],[1,[22,[\"pilotList\",\"length\"]],false],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"invite-button\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"state\"]],\"error\"],null]],null,{\"statements\":[[0,\"            \"],[6,\"span\"],[10,\"class\",\"error\"],[8],[1,[20,\"message\"],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"state\"]],\"success\"],null]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/green-check.svg\"],[10,\"class\",\"green-checkmark\"],[8],[9],[0,\"\\n            \"],[1,[20,\"message\"],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"numPilotsInvited\"]]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"src\",\"/assets/images/green-check.svg\"],[10,\"class\",\"green-checkmark\"],[8],[9],[0,\"\\n            You've invited \"],[1,[20,\"numPilotsInvited\"],false],[0,\" \"],[1,[26,\"if\",[[26,\"is-equal\",[[22,[\"numPilotsInvited\"]],1],null],\"pilot\",\"pilots\"],null],false],[0,\"!\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"autoDispatch\"]]],null,{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"autoDispatchPilots\"]],[8],[0,\"AUTO DISPATCH\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"numPilotsToInvite\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"num-selected-pilots\"],[8],[1,[20,\"numPilotsToInvite\"],false],[0,\" \"],[1,[26,\"if\",[[26,\"is-equal\",[[22,[\"numPilotsToInvite\"]],1],null],\"Pilot\",\"Pilots\"],null],false],[0,\" Selected\"],[9],[0,\"\\n\"],[4,\"unless\",[[22,[\"confirmInvite\"]]],null,{\"statements\":[[0,\"                \"],[6,\"button\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"invitePilots\"]],[8],[0,\"INVITE\"],[9],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"btn btn-info\"],[3,\"action\",[[21,0,[]],\"clearInvites\"]],[8],[0,\"CLEAR\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[6,\"button\"],[10,\"class\",\"btn btn-warning\"],[3,\"action\",[[21,0,[]],\"confirmInvitePilots\"]],[8],[0,\"CONFIRM\"],[9],[0,\"\\n                \"],[6,\"div\"],[10,\"class\",\"btn btn-info\"],[3,\"action\",[[21,0,[]],\"cancelInvitePilots\"]],[8],[0,\"CANCEL\"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"button\"],[10,\"class\",\"btn btn-primary disabled\"],[10,\"disabled\",\"\"],[8],[0,\"INVITE\"],[9],[0,\"\\n            \"]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"          \"]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"pilotList\",\"length\"]]],null,{\"statements\":[[0,\"        \"],[6,\"ul\"],[10,\"class\",\"pilot-list\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"pilotList\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[0,\"\\n              \"],[1,[26,\"pilot-dispatch-row\",null,[[\"autoDispatch\",\"mission\",\"pilot\",\"toggleIncludePilot\"],[[22,[\"autoDispatch\"]],[22,[\"model\",\"mission\"]],[21,1,[]],\"toggleIncludePilot\"]]],false],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/pilot-search-autocomplete.hbs" } });
+});
+define("admin/templates/components/pl-uploader", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "Xeq8kgBI", "block": "{\"symbols\":[\"&default\"],\"statements\":[[13,1,[[22,[\"queue\"]],[22,[\"dropzone\"]]]],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/pl-uploader.hbs" } });
 });
 define("admin/templates/components/radio-button", ["exports"], function (exports) {
   "use strict";
@@ -15002,7 +16990,7 @@ define("admin/templates/components/reschedule-modal", ["exports"], function (exp
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "Oe2zRnNE", "block": "{\"symbols\":[\"reason\"],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\",\"appendedClasses\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null],\"small-modal reschedule-modal\"]],{\"statements\":[[0,\"\\n\"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n  \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"reschedule-modal-content\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n        Edit Flight Date\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"big-title border-bottom\"],[8],[0,\"Reschedule\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"\\n          Reason (Required):\\n        \"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setRescheduleReason\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"select-custom\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"disabled\",\"\"],[10,\"selected\",\"\"],[8],[0,\"\\n              Choose option\\n            \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"rescheduleReasons\"]]],null,{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,1,[\"id\"]]],[8],[0,\"\\n              \"],[1,[21,1,[\"short\"]],false],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"\\n          Details:\\n        \"],[9],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"missionReschedule\",\"notes\"]],\"form-control\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"priceZero\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setRescheduleChoice\",\"clear\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\" Clear scheduled date/time\\n        \"],[9],[0,\"\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"priceZero\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setRescheduleChoice\",\"reschedule\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\" Set a new date/time\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"rescheduleChoice\"]],\"reschedule\"],null]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[1,[26,\"schedule-inputs\",null,[[\"mission\",\"showReschedule\",\"selectedStart\",\"selectedEnd\",\"scheduleError\",\"class\"],[[22,[\"model\",\"mission\"]],[22,[\"rescheduleAllowed\"]],[22,[\"selectedStart\"]],[22,[\"selectedEnd\"]],[22,[\"scheduleError\"]],\"mission-schedule {{if model.mission.is Scheduled \\\"disabled\\\"}}\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"modal-footer\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"form-group text-center\"],[8],[0,\"\\n    \"],[6,\"a\"],[11,\"class\",[27,[\"btn save-reschedule turquoise-button \",[26,\"unless\",[[22,[\"canSave\"]],\"disabled\"],null]]]],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n      Save\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/reschedule-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "Qm8GwnxF", "block": "{\"symbols\":[\"reason\"],\"statements\":[[4,\"modal-dialog-custom\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\",\"appendedClasses\",\"fullScreen\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null],\"reschedule-modal full-screen-modal\",\"true\"]],{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"container-fluid reschedule-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"full-screen-modal-toprow\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n            Reschedule\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"close-modal\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n        \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Reason (Required):\\n          \"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setRescheduleReason\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-md select-custom\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"disabled\",\"\"],[10,\"selected\",\"\"],[8],[0,\"\\n              Choose option\\n            \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"rescheduleReasons\"]]],null,{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,1,[\"id\"]]],[8],[0,\"\\n              \"],[1,[21,1,[\"short\"]],false],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"\\n            Details:\\n          \"],[9],[0,\"\\n            \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"missionReschedule\",\"notes\"]],\"form-control\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-8\"],[8],[0,\"\\n          \"],[1,[26,\"radio-group\",null,[[\"options\",\"groupId\",\"checkedValue\",\"changed\"],[[22,[\"rescheduleOptions\"]],\"rescheduleChoice\",[22,[\"model\",\"asset_type\"]],[26,\"action\",[[21,0,[]],\"setRescheduleChoice\"],null]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"rescheduleChoice\"]],\"reschedule\"],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n            \"],[1,[26,\"schedule-inputs\",null,[[\"mission\",\"showReschedule\",\"selectedStart\",\"selectedEnd\",\"scheduleError\",\"class\"],[[22,[\"model\",\"mission\"]],[22,[\"rescheduleAllowed\"]],[22,[\"selectedStart\"]],[22,[\"selectedEnd\"]],[22,[\"scheduleError\"]],\"mission-schedule\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[1,[26,\"scheduler-mission-details\",null,[[\"model\"],[[22,[\"model\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[26,\"is-equal\",[[22,[\"rescheduleChoice\"]],\"pilotAvailability\"],null]],null,{\"statements\":[[0,\"        \"],[1,[26,\"busy-modal\",null,[[\"busy\"],[[26,\"is-not\",[[22,[\"model\",\"currDays\",\"length\"]]],null]]]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-md-12 top-seperator\"],[8],[0,\"\\n          \"],[1,[26,\"available-timeslot-selector\",null,[[\"model\",\"selectAction\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"setSelected\"],null]]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group row buttons-block\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n        CANCEL\\n      \"],[9],[0,\"\\n      \"],[6,\"a\"],[11,\"class\",[27,[\"btn btn-primary \",[26,\"unless\",[[22,[\"canSave\"]],\"disabled\"],null]]]],[11,\"disabled\",[26,\"is-not\",[[22,[\"canSave\"]]],null]],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n        CONFIRM\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/reschedule-modal.hbs" } });
 });
 define("admin/templates/components/reshoot-edit-box", ["exports"], function (exports) {
   "use strict";
@@ -15010,7 +16998,7 @@ define("admin/templates/components/reshoot-edit-box", ["exports"], function (exp
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "jAtrZFEG", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[11,\"class\",[27,[[26,\"if\",[[22,[\"isReshoot\"]],\"is-reshoot-box\",\"has-reshoot-box\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"isReshoot\"]]],null,{\"statements\":[[0,\"      \"],[6,\"strong\"],[8],[0,\"This is a reshoot of\\n\"],[4,\"link-to\",[\"missions.edit\",[22,[\"mission\",\"parent_id\"]]],null,{\"statements\":[[0,\"          \"],[1,[22,[\"mission\",\"parent_id\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"strong\"],[8],[0,\"This mission required a reshoot\\n\"],[4,\"link-to\",[\"missions.edit\",[22,[\"mission\",\"reshoot_mission_id\"]]],null,{\"statements\":[[0,\"          \"],[1,[22,[\"mission\",\"reshoot_mission_id\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[6,\"span\"],[8],[0,\"\\n      \"],[1,[26,\"moment-format\",[[22,[\"mission\",\"statusTimeStamp\"]],\"MM/DD/YY, hh:mm a\"],[[\"timeZone\"],[[22,[\"mission\",\"location\",\"timezone_id\"]]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"table\"],[8],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Reason:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n        \"],[1,[22,[\"displayedMission\",\"rejection_reason\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Details:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n        \"],[1,[22,[\"displayedMission\",\"rejection_notes\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Admin:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n        \"],[1,[22,[\"displayedMission\",\"rejection_admin\",\"fullName\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"isReshoot\"]]],null,{\"statements\":[[0,\"    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Previous Pilot:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"pilots.pilot.missions\",[22,[\"displayedMission\",\"pilot\",\"id\"]]],[[\"target\"],[\"_blank\"]],{\"statements\":[[0,\"          \"],[1,[22,[\"displayedMission\",\"pilot\",\"fullName\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"isReshoot\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"displayedMission\",\"pilot\"]]],null,{\"statements\":[[0,\"            \"],[1,[26,\"email-notify\",null,[[\"mission\",\"pilot\"],[[22,[\"mission\"]],[22,[\"displayedMission\",\"pilot\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/reshoot-edit-box.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "qugRx8lX", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[11,\"class\",[27,[[26,\"if\",[[22,[\"isReshoot\"]],\"is-reshoot-box\",\"has-reshoot-box\"],null]]]],[8],[0,\"\\n  \"],[6,\"div\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"isReshoot\"]]],null,{\"statements\":[[0,\"      \"],[6,\"strong\"],[8],[0,\"This is a reshoot of\\n\"],[4,\"link-to\",[\"missions.edit\",[22,[\"mission\",\"parent_id\"]]],null,{\"statements\":[[0,\"          \"],[1,[22,[\"mission\",\"parent_id\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[6,\"strong\"],[8],[0,\"This mission required a reshoot\\n\"],[4,\"link-to\",[\"missions.edit\",[22,[\"mission\",\"reshoot_mission_id\"]]],null,{\"statements\":[[0,\"          \"],[1,[22,[\"mission\",\"reshoot_mission_id\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[9],[0,\"\\n  \"],[6,\"table\"],[8],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Reason:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n        \"],[1,[22,[\"displayedMission\",\"rejection_reason\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Details:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n        \"],[1,[22,[\"displayedMission\",\"rejection_notes\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Admin:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n        \"],[1,[22,[\"displayedMission\",\"rejection_admin\",\"fullName\"]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"isReshoot\"]]],null,{\"statements\":[[0,\"    \"],[6,\"tr\"],[8],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-label\"],[8],[0,\"\\n        Previous Pilot:\\n      \"],[9],[0,\"\\n      \"],[6,\"td\"],[10,\"class\",\"table-content\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"pilots.pilot.missions\",[22,[\"displayedMission\",\"pilot\",\"id\"]]],[[\"target\"],[\"_blank\"]],{\"statements\":[[0,\"          \"],[1,[22,[\"displayedMission\",\"pilot\",\"fullName\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"isReshoot\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"displayedMission\",\"pilot\"]]],null,{\"statements\":[[0,\"            \"],[1,[26,\"email-notify\",null,[[\"mission\",\"pilot\"],[[22,[\"mission\"]],[22,[\"displayedMission\",\"pilot\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/reshoot-edit-box.hbs" } });
 });
 define("admin/templates/components/reshoot-modal", ["exports"], function (exports) {
   "use strict";
@@ -15018,7 +17006,7 @@ define("admin/templates/components/reshoot-modal", ["exports"], function (export
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "G7IuhCrh", "block": "{\"symbols\":[\"reason\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"reshoot-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Create Reshoot Mission\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Reason\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setRejectionReason\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-md\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"disabled\",\"\"],[10,\"selected\",\"\"],[8],[0,\"\\n              Choose reason\\n            \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"rejectionReasons\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,1,[\"slug\"]]],[8],[0,\"\\n                \"],[1,[21,1,[\"name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Details\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"rejectionNotes\"]],\"form-control\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"top-buffer\"],[8],[0,\"\\n            (optional, for internal use only)\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Price\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"priceZero\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setPriceZero\",\"parent\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            Set old mission to $0 and reshoot mission to full price\\n          \"],[9],[0,\"\\n          \"],[6,\"br\"],[8],[9],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"priceZero\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setPriceZero\",\"reshoot\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            Set reshoot mission to $0 and old mission to full price\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Shot List\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"copyShots\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setCopyShots\",true],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            Use same shot list for reshoot mission\\n          \"],[9],[0,\"\\n          \"],[6,\"br\"],[8],[9],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"copyShots\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setCopyShots\",false],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            I will set the shot list manually\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group text-center\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n          Cancel\\n        \"],[9],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"reshoot\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n          Create New Mission\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/reshoot-modal.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "7VFtNgNN", "block": "{\"symbols\":[\"reason\"],\"statements\":[[4,\"modal-dialog\",null,[[\"hasOverlay\",\"translucentOverlay\",\"close\"],[true,true,[26,\"action\",[[21,0,[]],\"close\"],null]]],{\"statements\":[[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"class\",\"modal-close\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n    \"],[6,\"img\"],[10,\"src\",\"/assets/images/X.svg\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"reshoot-modal-content\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-horizontal\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"h3\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n          Create Reshoot Mission\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Reason\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setRejectionReason\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-md\"],[8],[0,\"\\n            \"],[6,\"option\"],[10,\"disabled\",\"\"],[10,\"selected\",\"\"],[8],[0,\"\\n              Choose reason\\n            \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"rejectionReasons\"]]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,1,[\"slug\"]]],[8],[0,\"\\n                \"],[1,[21,1,[\"name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Details\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"rejectionNotes\"]],\"form-control\"]]],false],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"top-buffer\"],[8],[0,\"\\n            (optional, for internal use only)\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Price\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"priceZero\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setPriceZero\",\"parent\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            Set old mission to $0 and reshoot mission to full price\\n          \"],[9],[0,\"\\n          \"],[6,\"br\"],[8],[9],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"priceZero\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setPriceZero\",\"reshoot\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            Set reshoot mission to $0 and old mission to full price\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"col-sm-2\"],[8],[0,\"\\n          Shot List\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-10\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"copyShots\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setCopyShots\",true],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            Use same shot list for reshoot mission\\n          \"],[9],[0,\"\\n          \"],[6,\"br\"],[8],[9],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"checkbox-label\"],[8],[0,\"\\n            \"],[6,\"input\"],[10,\"name\",\"copyShots\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setCopyShots\",false],null]],[10,\"type\",\"radio\"],[8],[9],[0,\"\\n            I will set the shot list manually\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[0,\"\\n            Required\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group text-center buttons-block\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary\"],[3,\"action\",[[21,0,[]],\"close\"]],[8],[0,\"\\n          Cancel\\n        \"],[9],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"reshoot\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n          Create New Mission\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\" \"],[0,\"\\n  \"],[9],[0,\" \"],[0,\"\\n\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/reshoot-modal.hbs" } });
 });
 define("admin/templates/components/schedule-inputs", ["exports"], function (exports) {
   "use strict";
@@ -15027,6 +17015,14 @@ define("admin/templates/components/schedule-inputs", ["exports"], function (expo
     value: true
   });
   exports.default = Ember.HTMLBars.template({ "id": "cxrZZWTA", "block": "{\"symbols\":[\"time\",\"time\"],\"statements\":[[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-6  schedule-mission-date-field\"],[8],[0,\"\\n    \"],[6,\"label\"],[10,\"class\",\"search-field schedule\"],[8],[0,\"Start Date\"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"placeholder\",\"value\"],[\"text\",[26,\"concat\",[\"form-control disabled\",[26,\"if\",[[22,[\"showReschedule\"]],\" hidden\"],null]],null],\"\",[22,[\"scheduledStartDate\"]]]]],false],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"placeholder\",\"value\"],[\"text\",[26,\"concat\",[\"form-control schedule-mission-date-field startDatePicker\",[26,\"if\",[[26,\"is-not\",[[22,[\"showReschedule\"]]],null],\" hidden\"],null]],null],\"\",[22,[\"scheduledStartDate\"]]]]],false],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n    \"],[6,\"label\"],[10,\"class\",\"search-field schedule\"],[8],[0,\"Start Time\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"time scheduleTimeDatePicker\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showReschedule\"]]],null,{\"statements\":[[0,\"      \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setStartTime\"],[[\"value\"],[\"target.value\"]]]],[11,\"class\",[27,[\"select-custom \",[26,\"if\",[[22,[\"scheduleError\"]],\"error\"],null]]]],[8],[0,\"\\n        \"],[6,\"option\"],[10,\"value\",\"\"],[8],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"availableTimes\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"scheduledStartTime\"]],[21,2,[]]],null]],null,{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,2,[]]],[10,\"selected\",\"\"],[8],[1,[21,2,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"option\"],[11,\"value\",[21,2,[]]],[8],[1,[21,2,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[2]},null],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"      \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"placeholder\",\"value\"],[\"text\",\"form-control disabled\",\"\",[22,[\"scheduledStartTime\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-6  schedule-mission-date-field\"],[8],[0,\"\\n    \"],[6,\"label\"],[10,\"class\",\"search-field schedule\"],[8],[0,\"End Date\"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"placeholder\",\"value\"],[\"text\",[26,\"concat\",[\"form-control disabled\",[26,\"if\",[[22,[\"showReschedule\"]],\" hidden\"],null]],null],\"\",[22,[\"scheduledEndDate\"]]]]],false],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"placeholder\",\"value\"],[\"text\",[26,\"concat\",[\"form-control schedule-mission-date-field endDatePicker\",[26,\"if\",[[26,\"is-not\",[[22,[\"showReschedule\"]]],null],\" hidden\"],null]],null],\"\",[22,[\"scheduledEndDate\"]]]]],false],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n    \"],[6,\"label\"],[10,\"class\",\"search-field schedule\"],[8],[0,\"End Time\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"time scheduleTimeDatePicker\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showReschedule\"]]],null,{\"statements\":[[0,\"        \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setEndTime\"],[[\"value\"],[\"target.value\"]]]],[11,\"class\",[27,[\"select-custom \",[26,\"if\",[[22,[\"scheduleError\"]],\"error\"],null]]]],[8],[0,\"\\n          \"],[6,\"option\"],[10,\"value\",\"\"],[8],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"availableTimes\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"scheduledEndTime\"]],[21,1,[]]],null]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,1,[]]],[10,\"selected\",\"\"],[8],[1,[21,1,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,1,[]]],[8],[1,[21,1,[]],false],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n        \"],[4,\"if\",[[22,[\"scheduleError\"]]],null,{\"statements\":[[0,\" \"],[6,\"div\"],[10,\"class\",\"error-message\"],[8],[1,[20,\"scheduleError\"],false],[9]],\"parameters\":[]},null],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"placeholder\",\"value\"],[\"text\",\"form-control disabled\",\"\",[22,[\"scheduledEndTime\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/schedule-inputs.hbs" } });
+});
+define("admin/templates/components/scheduler-mission-details", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "Ed/Rft+8", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-5\"],[8],[0,\"\\n  \"],[6,\"h4\"],[10,\"class\",\"title\"],[8],[0,\"Mission details\"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"header-label\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"and\",[[22,[\"model\",\"mission\",\"package\",\"timeframe_start\"]],[22,[\"model\",\"mission\",\"package\",\"timeframe_end\"]]],null]],null,{\"statements\":[[0,\"      \"],[6,\"p\"],[8],[0,\"Time Window: \"],[1,[26,\"format-hour\",[[22,[\"model\",\"mission\",\"package\",\"timeframe_start\"]]],null],false],[0,\"-\"],[1,[26,\"format-hour\",[[22,[\"model\",\"mission\",\"package\",\"timeframe_end\"]]],null],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"p\"],[8],[0,\"Duration: \"],[1,[26,\"pluralize\",[[26,\"either\",[[22,[\"model\",\"mission\",\"durationInHours\"]],[22,[\"model\",\"mission\",\"package\",\"missionDurationHours\"]]],null],\"hour\"],null],false],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"package\",\"slaDays\"]]],null,{\"statements\":[[0,\"      \"],[6,\"p\"],[8],[0,\"SLA: \"],[1,[26,\"pluralize\",[[22,[\"model\",\"mission\",\"package\",\"slaDays\"]],\"day\"],null],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"p\"],[8],[0,\"Client weather requirement: \"],[1,[22,[\"model\",\"mission\",\"cloud_reqs_verbose\"]],false],[0,\" \"],[6,\"img\"],[10,\"src\",\"/assets/images/weather/clear-day-turquoise.svg\"],[8],[9],[0,\"\\n\"],[4,\"if\",[[26,\"check-if\",[[22,[\"model\",\"mission\",\"cloud_reqs\"]],\"!=\",\"less_than_10\"],null]],null,{\"statements\":[[0,\"        \"],[6,\"img\"],[10,\"src\",\"/assets/images/weather/partly-cloudy-day-turquoise.svg\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[26,\"eq\",[[22,[\"model\",\"mission\",\"cloud_reqs\"]],\"less_than_100\"],null]],null,{\"statements\":[[0,\"        \"],[6,\"img\"],[10,\"src\",\"/assets/images/weather/cloudy-turquoise.svg\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/scheduler-mission-details.hbs" } });
 });
 define("admin/templates/components/search-input-delayed", ["exports"], function (exports) {
   "use strict";
@@ -15042,7 +17038,7 @@ define("admin/templates/components/select-custom", ["exports"], function (export
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "Md5SsV6R", "block": "{\"symbols\":[\"item\"],\"statements\":[[6,\"select\"],[11,\"class\",[20,\"selectClass\"]],[11,\"name\",[20,\"selectName\"]],[11,\"disabled\",[20,\"disabled\"]],[3,\"action\",[[21,0,[]],\"changeValue\"],[[\"on\"],[\"change\"]]],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"prompt\"]]],null,{\"statements\":[[0,\"    \"],[6,\"option\"],[11,\"disabled\",[26,\"if\",[[22,[\"promptDisabled\"]],\"disabled\"],null]],[11,\"selected\",[26,\"is-not\",[[22,[\"selection\"]]],null]],[8],[0,\"\\n      \"],[1,[20,\"prompt\"],false],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"each\",[[22,[\"content\"]]],null,{\"statements\":[[0,\"    \"],[6,\"option\"],[11,\"value\",[27,[[26,\"read-path\",[[21,1,[]],[22,[\"optionValuePath\"]]],null]]]],[11,\"selected\",[26,\"is-equal\",[[21,1,[]],[22,[\"selection\"]]],null]],[8],[0,\"\\n      \"],[1,[26,\"read-path\",[[21,1,[]],[22,[\"optionLabelPath\"]]],null],false],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/select-custom.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "utAzxfhm", "block": "{\"symbols\":[\"item\"],\"statements\":[[6,\"select\"],[11,\"class\",[20,\"selectClass\"]],[11,\"name\",[20,\"selectName\"]],[11,\"disabled\",[20,\"disabled\"]],[3,\"action\",[[21,0,[]],\"changeValue\"],[[\"on\"],[\"change\"]]],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"prompt\"]]],null,{\"statements\":[[0,\"    \"],[6,\"option\"],[11,\"disabled\",[26,\"if\",[[22,[\"promptDisabled\"]],\"disabled\"],null]],[11,\"selected\",[26,\"is-not\",[[22,[\"selection\"]]],null]],[8],[0,\"\\n      \"],[1,[20,\"prompt\"],false],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"each\",[[22,[\"content\"]]],null,{\"statements\":[[0,\"    \"],[6,\"option\"],[11,\"value\",[27,[[26,\"read-path\",[[21,1,[]],[22,[\"optionValuePath\"]]],null]]]],[11,\"selected\",[26,\"is-equal-id\",[[21,1,[]],[22,[\"selection\"]]],null]],[8],[0,\"\\n      \"],[1,[26,\"read-path\",[[21,1,[]],[22,[\"optionLabelPath\"]]],null],false],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/select-custom.hbs" } });
 });
 define("admin/templates/components/select-enum", ["exports"], function (exports) {
   "use strict";
@@ -15050,7 +17046,7 @@ define("admin/templates/components/select-enum", ["exports"], function (exports)
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "H4qXeEov", "block": "{\"symbols\":[\"item\"],\"statements\":[[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selection\"]]],null]],[[\"value\"],[\"target.value\"]]]],[11,\"class\",[20,\"selectClass\"]],[8],[0,\"\\n  \"],[6,\"option\"],[10,\"disabled\",\"\"],[11,\"selected\",[26,\"is-not\",[[22,[\"selection\"]]],null]],[8],[1,[20,\"prompt\"],false],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"content\"]]],null,{\"statements\":[[0,\"  \"],[6,\"option\"],[11,\"value\",[21,1,[\"value\"]]],[11,\"selected\",[26,\"is-equal\",[[21,1,[\"value\"]],[22,[\"selection\"]]],null]],[8],[0,\"\\n    \"],[1,[21,1,[\"name\"]],false],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/select-enum.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "uC0yZAP5", "block": "{\"symbols\":[\"error\",\"item\"],\"statements\":[[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"selection\"]]],null]],[[\"value\"],[\"target.value\"]]]],[11,\"class\",[20,\"selectClass\"]],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"prompt\"]]],null,{\"statements\":[[0,\"    \"],[6,\"option\"],[10,\"value\",\"\"],[11,\"disabled\",[26,\"if\",[[22,[\"promptDisabled\"]],\"disabled\"],null]],[11,\"selected\",[26,\"is-not\",[[22,[\"selection\"]]],null]],[8],[0,\"\\n      \"],[1,[20,\"prompt\"],false],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"each\",[[22,[\"content\"]]],null,{\"statements\":[[0,\"  \"],[6,\"option\"],[11,\"value\",[21,2,[\"value\"]]],[11,\"selected\",[26,\"is-equal\",[[21,2,[\"value\"]],[22,[\"selection\"]]],null]],[8],[0,\"\\n    \"],[1,[21,2,[\"name\"]],false],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"modelErrors\"]]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[1,[21,1,[\"message\"]],false],[9],[0,\"\\n\"]],\"parameters\":[1]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/select-enum.hbs" } });
 });
 define("admin/templates/components/shot-type-form", ["exports"], function (exports) {
   "use strict";
@@ -15058,7 +17054,7 @@ define("admin/templates/components/shot-type-form", ["exports"], function (expor
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "SY9waAxH", "block": "{\"symbols\":[],\"statements\":[[6,\"form\"],[10,\"class\",\"form shot-type-form\"],[3,\"action\",[[21,0,[]],\"save_shot_type\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"Shot Title\"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\"],[[22,[\"model\",\"name\"]],\"name\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-3 field-description \"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[0,\"Required!\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[1,[22,[\"model\",\"errors\",\"name\",\"firstObject\",\"message\"]],false],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"shotNameError\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[0,\" \"],[1,[20,\"shotNameError\"],false],[0,\" \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"strong\"],[8],[0,\"Shot Title\"],[9],[0,\" is displayed on the Mission Available Email and Available Mission Page.\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"Shot Description\"],[9],[0,\"\\n      \"],[1,[26,\"simple-mde\",null,[[\"value\",\"change\"],[[22,[\"model\",\"description\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"description\"]]],null]],null]]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-3 field-description \"],[8],[0,\"\\n    \"],[6,\"strong\"],[8],[0,\"Shot Description\"],[9],[0,\" will be displayed on Available Mission Details Page.\\n  \"],[9],[0,\"\\n\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[6,\"label\"],[8],[0,\"Video Url\"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\"],[[22,[\"model\",\"video\"]],\"video\",\"form-control input-lg\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-3 field-description \"],[8],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[4,\"link-to\",[\"templates.shots.index\"],[[\"class\"],[\"btn btn-default\"]],{\"statements\":[[0,\"Cancel\"]],\"parameters\":[]},null],[0,\" \"],[6,\"input\"],[11,\"value\",[20,\"buttonText\"]],[10,\"class\",\"btn btn-success\"],[10,\"type\",\"submit\"],[8],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/shot-type-form.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "ZUJp6M8G", "block": "{\"symbols\":[],\"statements\":[[6,\"form\"],[10,\"class\",\"form shot-type-form\"],[3,\"action\",[[21,0,[]],\"save_shot_type\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row group\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Shot Title\"],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\"],[[22,[\"model\",\"name\"]],\"name\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-3 field-description \"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"errors\",\"name\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[0,\"Required!\\n        \"],[6,\"br\"],[8],[9],[0,\"\\n        \"],[1,[22,[\"model\",\"errors\",\"name\",\"firstObject\",\"message\"]],false],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"shotNameError\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[0,\" \"],[1,[20,\"shotNameError\"],false],[0,\" \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"strong\"],[8],[0,\"Shot Title\"],[9],[0,\" is displayed on the Mission Available Email and Available Mission Page.\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row group\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-3\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Asset Type\"],[9],[0,\"\\n          \"],[1,[26,\"radio-group\",null,[[\"options\",\"groupId\",\"checkedValue\",\"changed\"],[[22,[\"assetTypes\"]],\"asset_type\",[22,[\"model\",\"asset_type\"]],[26,\"action\",[[21,0,[]],\"changeAssetType\"],null]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Number of Shots\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-12 form-inline\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\",\"placeholder\"],[[22,[\"model\",\"min\"]],\"min\",\"form-control input-lg\",\"Min\"]]],false],[0,\" - \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\",\"placeholder\"],[[22,[\"model\",\"max\"]],\"max\",\"form-control input-lg form-inline\",\"Max\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-3 field-description \"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"errors\",\"min\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[0,\"Required!\\n          \"],[6,\"br\"],[8],[9],[0,\"\\n          \"],[1,[22,[\"model\",\"errors\",\"min\",\"firstObject\",\"message\"]],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"errors\",\"max\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"error\"],[8],[0,\"Required!\\n          \"],[6,\"br\"],[8],[9],[0,\"\\n          \"],[1,[22,[\"model\",\"errors\",\"max\",\"firstObject\",\"message\"]],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row group\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Camera Requirement\"],[9],[0,\"\\n        \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"cameraRequirementOptions\"]],[22,[\"model\",\"camera_requirement\"]],\"Camera Requirement\",\"form-control input-md\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row group\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group wysywyg\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Shot Description\"],[9],[0,\"\\n        \"],[1,[26,\"simple-mde\",null,[[\"value\",\"change\"],[[22,[\"model\",\"description\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"description\"]]],null]],null]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-3 field-description \"],[8],[0,\"\\n      \"],[6,\"strong\"],[8],[0,\"Shot Description\"],[9],[0,\" will be displayed on Available Mission Details Page.\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row group\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Video Url\"],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"class\"],[[22,[\"model\",\"video\"]],\"video\",\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-3 field-description \"],[8],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row group\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[8],[0,\"Post Process Type\"],[9],[0,\"\\n        \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"selectName\",\"action\",\"optionLabelPath\",\"optionValuePath\",\"promptDisabled\",\"prompt\"],[[22,[\"processTypes\"]],[22,[\"model\",\"post_process_type\"]],\"program-select\",[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"post_process_type\"]]],null]],null],\"name\",\"value\",true,\"Select post process\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"row group\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"col-md-12 buttons-block\"],[8],[0,\"\\n      \"],[4,\"link-to\",[\"templates.shots.index\"],[[\"class\"],[\"btn btn-secondary\"]],{\"statements\":[[0,\"Cancel\"]],\"parameters\":[]},null],[0,\"\\n      \"],[6,\"input\"],[11,\"value\",[20,\"buttonText\"]],[10,\"class\",\"btn btn-primary\"],[10,\"type\",\"submit\"],[8],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/shot-type-form.hbs" } });
 });
 define("admin/templates/components/sortable-column", ["exports"], function (exports) {
   "use strict";
@@ -15082,7 +17078,7 @@ define("admin/templates/components/template-form", ["exports"], function (export
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "lNWghQT3", "block": "{\"symbols\":[\"shot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n    \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save_template\"],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"placeholder\",\"class\"],[[22,[\"template\",\"name\"]],\"name\",\"Template Name\",\"form-control input-lg\"]]],false],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"name-error\"],[8],[0,\"Required, 3-75 characters\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[1,[26,\"select-custom\",null,[[\"prompt\",\"optionLabelPath\",\"content\",\"assignSelectedObject\",\"useSendAction\",\"action\",\"reset\"],[\"Add Shot\",\"name\",[22,[\"sortedShotTypes\"]],true,true,\"add_shot\",true]]],false],[0,\"\\n\\n\"],[4,\"each\",[[22,[\"reversedShotList\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"shot form-group\"],[8],[0,\"\\n          \"],[6,\"h4\"],[8],[6,\"strong\"],[8],[1,[21,1,[\"shot_type\",\"name\"]],false],[9],[9],[0,\"\\n          \"],[1,[21,1,[\"shot_type\",\"description\"]],false],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"placeholder\",\"class\"],[[21,1,[\"instructions\"]],\"Description\",\"form-control\"]]],false],[0,\"\\n          \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"remove_shot\",[21,1,[]]]],[8],[0,\"remove\"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"\\n      \"],[6,\"button\"],[10,\"class\",\"btn btn-success\"],[3,\"action\",[[21,0,[]],\"save_template\"]],[8],[0,\"Submit\"],[9],[0,\"\\n      \"],[4,\"link-to\",[\"templates.index\"],[[\"class\"],[\"btn btn-default\"]],{\"statements\":[[0,\"Cancel\"]],\"parameters\":[]},null],[0,\"\\n\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/template-form.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "2K3bj9nj", "block": "{\"symbols\":[\"shot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n    \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save_template\"],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"value\",\"name\",\"placeholder\",\"class\"],[[22,[\"template\",\"name\"]],\"name\",\"Template Name\",\"form-control input-lg\"]]],false],[0,\"\\n        \"],[6,\"span\"],[10,\"class\",\"name-error\"],[8],[0,\"Required, 3-75 characters\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[1,[26,\"select-custom\",null,[[\"prompt\",\"optionLabelPath\",\"content\",\"assignSelectedObject\",\"useSendAction\",\"action\",\"reset\"],[\"Add Shot\",\"name\",[22,[\"sortedShotTypes\"]],true,true,\"add_shot\",true]]],false],[0,\"\\n\\n\"],[4,\"each\",[[22,[\"reversedShotList\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"shot form-group\"],[8],[0,\"\\n          \"],[6,\"h4\"],[8],[6,\"strong\"],[8],[1,[21,1,[\"shot_type\",\"name\"]],false],[9],[9],[0,\"\\n          \"],[1,[21,1,[\"shot_type\",\"description\"]],false],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"placeholder\",\"class\"],[[21,1,[\"instructions\"]],\"Description\",\"form-control\"]]],false],[0,\"\\n          \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"remove_shot\",[21,1,[]]]],[8],[0,\"remove\"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"buttons-block\"],[8],[0,\"\\n        \"],[4,\"link-to\",[\"templates.index\"],[[\"class\"],[\"btn btn-secondary\"]],{\"statements\":[[0,\"Cancel\"]],\"parameters\":[]},null],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-primary\"],[3,\"action\",[[21,0,[]],\"save_template\"]],[8],[0,\"Submit\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/template-form.hbs" } });
 });
 define("admin/templates/components/textarea-trigger-save", ["exports"], function (exports) {
   "use strict";
@@ -15091,6 +17087,14 @@ define("admin/templates/components/textarea-trigger-save", ["exports"], function
     value: true
   });
   exports.default = Ember.HTMLBars.template({ "id": "11Ougy2n", "block": "{\"symbols\":[\"&default\"],\"statements\":[[13,1],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/textarea-trigger-save.hbs" } });
+});
+define("admin/templates/components/waiver-form", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "UVlSFOOv", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"col-lg-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix edit-waiver\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"waiver\",\"id\"]]],null,{\"statements\":[[0,\"        \"],[6,\"h3\"],[10,\"class\",\"pull-left\"],[8],[0,\"Edit Airport Waiver\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[6,\"h3\"],[10,\"class\",\"pull-left\"],[8],[0,\"Add New Airport Waiver\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"waivers form-group form-group-iconized\"],[8],[0,\"\\n    \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"waiver\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-8 airport-code\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Airport Code\"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"waiver\",\"id\"]]],null,{\"statements\":[[0,\"            \"],[6,\"h4\"],[8],[1,[22,[\"waiver\",\"external_airport_id\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"waiver\",\"external_airport_id\"]],\"form-control\",\"\"]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-8\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Status\"],[9],[0,\"\\n          \"],[1,[26,\"radio-group\",null,[[\"options\",\"groupId\",\"checkedValue\",\"changed\"],[[22,[\"waiverStatusOptions\"]],\"statusChoice\",[22,[\"waiver\",\"status\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"waiver\",\"status\"]]],null]],null]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-6\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"waiver-number-expiration\"],[8],[0,\"\\n            \"],[6,\"label\"],[8],[0,\"Waiver Number\"],[9],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"waiver\",\"number\"]],\"form-control\",\"\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"waiver-number-expiration\"],[8],[0,\"\\n            \"],[6,\"label\"],[8],[0,\"Expiration Date\"],[9],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"class\",\"placeholder\",\"value\"],[\"text\",\"form-control waiver-expiry-date-field expiresAtDateField\",\"\",[26,\"moment-format\",[[22,[\"waiver\",\"expires_at\"]],\"MM/DD/YYYY\"],null]]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-8\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Link to Waiver\"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"class\",\"placeholder\"],[[22,[\"waiver\",\"url\"]],\"form-control\",\"\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-8\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"waiver-actions buttons-block\"],[8],[0,\"\\n          \"],[4,\"link-to\",[\"waivers.index\"],[[\"class\"],[\"btn btn-secondary btn-sm\"]],{\"statements\":[[0,\"CANCEL\"]],\"parameters\":[]},null],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"SAVE\",\"btn btn-primary btn-sm\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/components/waiver-form.hbs" } });
 });
 define("admin/templates/components/weather-icon", ["exports"], function (exports) {
   "use strict";
@@ -15122,7 +17126,7 @@ define("admin/templates/global-assets", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "CjtdAPVo", "block": "{\"symbols\":[\"imageProxy\",\"queue\"],\"statements\":[[6,\"div\"],[10,\"class\",\"panel-body\"],[8],[0,\"\\n  \"],[6,\"p\"],[8],[0,\"This is the list of global assets that are available in the panorama\\n    editor.  You can upload additional global assets below.\"],[9],[0,\"\\n\\n\"],[4,\"asset-uploader\",null,[[\"for\",\"class\",\"shot_id\",\"extensions\",\"onfileadd\",\"onstartupload\",\"uploadedCount\"],[\"upload-asset\",\"clearfix\",1,\"mov mp4 jpg jpeg tif tiff png zip\",\"addAsset\",\"startUpload\",[22,[\"galleryImages\",\"length\"]]]],{\"statements\":[],\"parameters\":[2]},null],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row asset-images\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"galleryImages\",\"length\"]]],null,{\"statements\":[[4,\"photo-swipe\",null,[[\"items\",\"options\"],[[22,[\"galleryImages\"]],[22,[\"galleryOptions\"]]]],{\"statements\":[[0,\"        \"],[6,\"div\"],[11,\"class\",[27,[\"col-xs-2 col-md-1 asset visual\\n            \",[26,\"if\",[[21,1,[\"record\",\"isDeleted\"]],\"deleting-asset\"],null]]]],[8],[0,\"\\n          \"],[6,\"div\"],[11,\"class\",[27,[\"image \",[26,\"if\",[[21,1,[\"record\",\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n            \"],[6,\"img\"],[11,\"src\",[27,[[21,1,[\"msrc\"]]]]],[11,\"alt\",[27,[[21,1,[\"title\"]]]]],[10,\"class\",\"img-responsive\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"record\",\"downloadUrl\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"download-asset\"],[3,\"action\",[[21,0,[]],\"downloadAsset\",[21,1,[\"record\",\"downloadUrl\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-download\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,1,[\"record\"]],[21,1,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n              \"],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[1,[21,1,[\"title\"]],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/global-assets.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "qtuN/0c3", "block": "{\"symbols\":[\"photoswipe\",\"imageProxy\",\"index\",\"queue\"],\"statements\":[[6,\"div\"],[10,\"class\",\"panel-body\"],[8],[0,\"\\n  \"],[6,\"p\"],[8],[0,\"This is the list of global assets that are available in the panorama\\n    editor.  You can upload additional global assets below.\"],[9],[0,\"\\n\\n\"],[4,\"asset-uploader\",null,[[\"for\",\"class\",\"shot_id\",\"extensions\",\"onfileadd\",\"onstartupload\",\"uploadedCount\"],[\"upload-asset\",\"clearfix\",1,\"mov mp4 jpg jpeg tif tiff png zip\",\"addAsset\",\"startUpload\",[22,[\"galleryImages\",\"length\"]]]],{\"statements\":[],\"parameters\":[4]},null],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row asset-images\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"galleryImages\",\"length\"]]],null,{\"statements\":[[4,\"photo-swipe\",null,[[\"items\"],[[22,[\"galleryImages\"]]]],{\"statements\":[[4,\"each\",[[22,[\"galleryImages\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[11,\"class\",[27,[\"col-xs-2 col-md-1 asset visual\\n              \",[26,\"if\",[[21,2,[\"record\",\"isDeleted\"]],\"deleting-asset\"],null]]]],[8],[0,\"\\n            \"],[6,\"div\"],[11,\"class\",[27,[\"image \",[26,\"if\",[[21,2,[\"record\",\"final\"]],\"asset-final\"],null]]]],[8],[0,\"\\n              \"],[6,\"img\"],[11,\"src\",[21,2,[\"msrc\"]]],[11,\"alt\",[27,[[21,2,[\"title\"]]]]],[10,\"class\",\"img-responsive\"],[3,\"action\",[[21,0,[]],[21,1,[\"actions\",\"open\"]],[26,\"hash\",null,[[\"index\"],[[21,3,[]]]]]]],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"actions\"],[8],[0,\"\\n\"],[4,\"if\",[[21,2,[\"record\",\"downloadUrl\"]]],null,{\"statements\":[[0,\"                \"],[6,\"a\"],[10,\"class\",\"download-asset\"],[3,\"action\",[[21,0,[]],\"downloadAsset\",[21,2,[\"record\",\"downloadUrl\"]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                  \"],[6,\"i\"],[10,\"class\",\"fa fa-cloud-download\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"              \"],[6,\"a\"],[10,\"class\",\"delete-asset\"],[3,\"action\",[[21,0,[]],\"deleteAsset\",[21,2,[\"record\"]],[21,2,[]]],[[\"bubbles\"],[false]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[1,[21,2,[\"title\"]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[2,3]},null]],\"parameters\":[1]},null]],\"parameters\":[]},null],[0,\"  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/global-assets.hbs" } });
 });
 define("admin/templates/index", ["exports"], function (exports) {
   "use strict";
@@ -15162,7 +17166,7 @@ define("admin/templates/missions/creative-missions", ["exports"], function (expo
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "ziz+hTIe", "block": "{\"symbols\":[\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"status\",\"latitude\",\"longitude\",\"distance\",\"assets_late\",\"on_hold\",\"hideFilter\",\"clientMissions\"],[[22,[\"model\",\"missions\"]],[22,[\"status\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"assets_late\"]],[22,[\"on_hold\"]],[22,[\"hideFilter\"]],false]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list  \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Creative Missions\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\" Total: \"],[1,[22,[\"model\",\"missions\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"created_on\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Uploaded\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package.name\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Package\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"pilot.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Pilot Email\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Accepted\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Rejection Notes\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Review\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedMissions\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"pilot\",\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"city\"]],false],[0,\",\"],[1,[21,1,[\"location\",\"state\"]],false],[0,\",\\n                \"],[1,[21,1,[\"location\",\"country\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"accepted\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"rejection_notes\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"                  Review/Edit\"]],\"parameters\":[]},null],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/creative-missions.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "GtxmviZt", "block": "{\"symbols\":[\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"status\",\"latitude\",\"longitude\",\"distance\",\"assets_late\",\"on_hold\",\"hideFilter\",\"clientMissions\"],[[22,[\"model\",\"missions\"]],[22,[\"status\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"assets_late\"]],[22,[\"on_hold\"]],[22,[\"hideFilter\"]],false]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list  \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Creative Missions\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[20,\"activeCount\"],false],[0,\"/\"],[1,[22,[\"model\",\"missions\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"created_on\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Uploaded\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package.name\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Package\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"pilot.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Pilot Email\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Accepted\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Rejection Notes\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Review\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedMissions\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"pilot\",\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"city\"]],false],[0,\",\"],[1,[21,1,[\"location\",\"state\"]],false],[0,\",\\n                \"],[1,[21,1,[\"location\",\"country\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"accepted\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"rejection_notes\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"                  Review/Edit\"]],\"parameters\":[]},null],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/creative-missions.hbs" } });
 });
 define("admin/templates/missions/edit", ["exports"], function (exports) {
   "use strict";
@@ -15170,7 +17174,7 @@ define("admin/templates/missions/edit", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "I8ZwQ2mI", "block": "{\"symbols\":[\"activity\",\"image\",\"call_action\",\"flights\",\"authorization\",\"laanc\",\"laanc\",\"payout\",\"ticket\",\"ticket\",\"subscriber\"],\"statements\":[[4,\"if\",[[22,[\"pageReady\"]]],null,{\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"breadcrumb \",[26,\"if\",[[22,[\"model\",\"mission\",\"pusher_updated_at\"]],\"need-refresh\"],null]]]],[8],[0,\"\\n  \"],[4,\"link-to\",[\"missions\"],null,{\"statements\":[[1,[20,\"parentCrumb\"],false],[0,\" Mission\"]],\"parameters\":[]},null],[0,\" / \"],[4,\"link-to\",[\"missions.edit\",[22,[\"model\",\"mission\",\"id\"]]],null,{\"statements\":[[1,[22,[\"model\",\"mission\",\"id\"]],false]],\"parameters\":[]},null],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"pull-right viewers\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"pusherSubscribers\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[11,\"class\",[27,[\"pull-right admin-viewing \",[26,\"if\",[[26,\"is-equal\",[[26,\"initialize\",[[21,11,[]]],null],[26,\"initialize\",[[22,[\"model\",\"currentAdminName\"]]],null]],null],\"current\"],null]]]],[8],[0,\"\\n\"],[4,\"if\",[[26,\"check-if\",[[26,\"initialize\",[[21,11,[]]],null],\"!=\",[26,\"initialize\",[[22,[\"model\",\"currentAdminName\"]]],null]],null]],null,{\"statements\":[],\"parameters\":[]},null],[0,\"        \"],[6,\"span\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[11,\"title\",[21,11,[]]],[8],[1,[26,\"initialize\",[[21,11,[]]],null],false],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[11]},null],[0,\"  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"pusher_updated_at\"]]],null,{\"statements\":[[0,\"    \"],[6,\"p\"],[10,\"class\",\"pull-right\"],[8],[0,\"Last updated: \"],[1,[26,\"moment-format\",[[22,[\"model\",\"mission\",\"pusher_updated_at\"]],\"hh:mma MM/DD/YY\"],null],false],[0,\". You will need to \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"reload\",[22,[\"model\",\"mission\"]]]],[8],[0,\"refresh\"],[9],[0,\" to see changes.\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"p\"],[10,\"class\",\"pull-right\"],[8],[0,\"Last updated: \"],[1,[26,\"moment-format\",[[22,[\"model\",\"mission\",\"updated_at\"]],\"hh:mma MM/DD/YY\"],null],false],[9],[0,\"\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n  \"],[6,\"h4\"],[8],[1,[20,\"parentCrumb\"],false],[0,\" Mission\"],[9],[0,\"\\n  \"],[6,\"h4\"],[10,\"class\",\"mission-id\"],[8],[1,[22,[\"model\",\"mission\",\"id\"]],false],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"reference_id\"]]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"mission-reference-id\"],[8],[0,\"\\n      Reference ID: \"],[1,[22,[\"model\",\"mission\",\"reference_id\"]],false],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n  \"],[1,[26,\"client-details-view\",null,[[\"client\",\"missionNumber\"],[[22,[\"model\",\"client\"]],[22,[\"model\",\"mission\",\"id\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"reshootModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"reshoot-modal\",null,[[\"model\",\"close\",\"action\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleReshootModal\"],null],\"reshoot\"]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"holdMissionModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"holdMission-modal\",null,[[\"model\",\"close\",\"action\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleHoldMissionModal\"],null],\"hold\"]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"capacityModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"capacity-modal\",null,[[\"model\",\"close\",\"confirmAction\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleCapacityModal\"],null],\"saveSchedule\"]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"ratingModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"rating-modal\",null,[[\"model\",\"close\",\"action\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleRatingModal\"],null],\"rate\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"edit\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"edit\"]],[8],[0,\"Edit Mission\"],[9],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"activityLogs\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"activityLogs\"]],[8],[0,\"Activity Log\"],[9],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"edit\"],null]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n\"],[0,\"      \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]]],[8],[0,\"\\n        save\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary btn-sm dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n          \"],[6,\"span\"],[8],[0,\"ACTIONS\"],[9],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n\"],[4,\"unless\",[[22,[\"model\",\"mission\",\"hasReshoot\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"toggleReshootModal\"]],[8],[0,\"Reshoot\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"resume\",[22,[\"model\",\"mission\"]]]],[8],[0,\"Resume\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"toggleHoldMissionModal\"]],[8],[0,\"Hold\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"cancel\",[22,[\"model\",\"mission\"]]]],[8],[0,\"Cancel\"],[9],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[26,\"check-if\",[[22,[\"model\",\"mission\",\"zendesk_tickets\",\"length\"]],\">\",1],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"btn-group zendesk-tickets\"],[8],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn btn-info btn-sm dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n            \"],[6,\"span\"],[8],[0,\"ZENDESK TICKETS\"],[9],[0,\"\\n            \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"zendesk_tickets\"]]],null,{\"statements\":[[0,\"              \"],[6,\"li\"],[8],[0,\"\\n                \"],[6,\"a\"],[11,\"href\",[27,[[21,10,[\"url\"]]]]],[8],[0,\"\\n                  \"],[1,[26,\"titleize\",[[21,10,[\"user_type\"]]],null],false],[0,\" #\"],[1,[21,10,[\"id\"]],false],[0,\"\\n                \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[10]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"each\",[[22,[\"model\",\"mission\",\"zendesk_tickets\"]]],null,{\"statements\":[[0,\"          \"],[6,\"a\"],[11,\"href\",[27,[[21,9,[\"url\"]]]]],[10,\"class\",\"btn btn-sm btn-info\"],[8],[0,\"\\n            ZENDESK TICKET (\"],[1,[21,9,[\"user_type\"]],false],[0,\") #\"],[1,[21,9,[\"id\"]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[9]},null]],\"parameters\":[]}],[0,\"      \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n        \"],[4,\"link-to\",[\"missions.map\",[22,[\"model\",\"mission\",\"id\"]]],null,{\"statements\":[[0,\"Edit Map\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"isShareable\"]]],null,{\"statements\":[[0,\"          | \"],[1,[26,\"asset-share\",null,[[\"shareable\",\"shareCreateAction\",\"linkText\"],[[22,[\"mission\"]],\"shareShareable\",\"Share All\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"on-hold-section\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9 header\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"This mission is ON HOLD\"],[9],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"pull-right\"],[8],[1,[26,\"moment-format\",[[22,[\"model\",\"mission\",\"hold\",\"created_at\"]],\"MM/DD/YY hh:mm A\"],null],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Reason:\"],[9],[0,\"\\n          \"],[6,\"span\"],[8],[1,[22,[\"model\",\"mission\",\"hold\",\"reason\"]],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Details:\"],[9],[0,\"\\n          \"],[6,\"span\"],[8],[1,[22,[\"model\",\"mission\",\"hold\",\"reason_notes\"]],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Admin:\"],[9],[0,\"\\n          \"],[6,\"span\"],[8],[1,[22,[\"model\",\"mission\",\"hold\",\"held_by\"]],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9 resume-link underline-text\"],[8],[0,\"\\n          \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"resume\",[22,[\"model\",\"mission\"]]]],[8],[0,\"Resume Mission\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"clearfix\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Status\"],[9],[0,\"\\n    \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionValuePath\",\"optionLabelPath\",\"content\",\"selection\",\"assignSelectedObject\",\"disabled\",\"action\"],[\"value\",\"display_name\",[22,[\"statusesForSelect\"]],[22,[\"selectedStatus\"]],false,[22,[\"model\",\"mission\",\"isOnHold\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"status\"]]],null]],null]]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-3 disabled\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"disabled\",\"disabled\"],[10,\"title\",\"This mission is on hold. It must be resumed before you can take this action.\"],[8],[0,\"\\n            \"],[1,[26,\"mission-status-rewind-button\",null,[[\"model\",\"tagName\",\"class\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn\"]]],false],[0,\"\\n            \"],[1,[26,\"mission-status-update-button\",null,[[\"model\",\"tagName\",\"class\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-3 no-padding\"],[8],[0,\"\\n            \"],[1,[26,\"mission-status-rewind-button\",null,[[\"model\",\"tagName\",\"class\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn\"]]],false],[0,\"\\n            \"],[1,[26,\"mission-status-update-button\",null,[[\"model\",\"tagName\",\"class\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn\"]]],false],[0,\"\\n            \"],[1,[20,\"statusSubText\"],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[4,\"if\",[[22,[\"model\",\"mission\",\"hasReshoot\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n            \"],[1,[26,\"reshoot-edit-box\",null,[[\"mission\",\"displayedMission\",\"isReshoot\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"mission\"]],false]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"model\",\"mission\",\"isReshoot\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n            \"],[1,[26,\"reshoot-edit-box\",null,[[\"mission\",\"displayedMission\",\"isReshoot\",\"showInvitePilotLink\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"mission\",\"parent\"]],true,[22,[\"showInvitePilotLink\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Pilot\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]]],null,{\"statements\":[[0,\"              \"],[6,\"input\"],[10,\"name\",\"name\"],[11,\"value\",[27,[[22,[\"model\",\"mission\",\"pilot\",\"fullName\"]]]]],[10,\"disabled\",\"disabled\"],[10,\"class\",\"form-control input-lg\"],[10,\"type\",\"text\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"input\"],[10,\"name\",\"name\"],[10,\"value\",\"Pilot Has Not Accepted\"],[10,\"disabled\",\"disabled\"],[10,\"class\",\"form-control input-lg\"],[10,\"type\",\"text\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[11,\"class\",[27,[\"col-xs-3 \",[26,\"if\",[[26,\"either\",[[22,[\"model\",\"mission\",\"isOnHold\"]],[22,[\"model\",\"mission\",\"needsEstimatedPayout\"]]],null],\"disabled\"],null]]]],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showInvitePilotLink\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"This mission is on hold. It must be resumed before you can take this action.\"],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]],\"fa-edit\",\"fa-plus\"],null]]]],[8],[9],[0,\"\\n                invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"model\",\"mission\",\"needsEstimatedPayout\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"This mission has not had the estimated pilot payout set. You must set this before inviting a pilot.\"],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]],\"fa-edit\",\"fa-plus\"],null]]]],[8],[9],[0,\"\\n                invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"openModal\",\"pilots.modal\",[22,[\"model\"]]]],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]],\"fa-edit\",\"fa-plus\"],null]]]],[8],[9],[0,\"\\n                invite\\n              \"],[9],[0,\"\\n            \"]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]},null],[4,\"if\",[[22,[\"model\",\"mission\",\"pilot_invitations_dispatch\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"invitationDispatchInProgress\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"cancelAutoDispatch\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n                Cancel Auto-Dispatch\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[6,\"p\"],[10,\"class\",\"dispatch-info\"],[8],[1,[22,[\"model\",\"mission\",\"pilot_invitations_dispatch\",\"status\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[1,[26,\"pilot-dispatch\",null,[[\"model\",\"drones\",\"invitationDispatchInProgress\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"drones\"]],[22,[\"invitationDispatchInProgress\"]]]]],false],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-4\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Estimated Pilot Payout\"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"mission\",\"estimated_pilot_payout\"]],\"Estimated Pilot Payout\",[22,[\"model\",\"mission\",\"errors\",\"estimated_pilot_payout\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-5\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Estimated Editor Payout\"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"mission\",\"estimated_editor_payout\"]],\"Estimated Editor Payout\",[22,[\"model\",\"mission\",\"errors\",\"estimated_editor_payout\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-1\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"payoutPilot\"]]]]],false],[0,\" \"],[6,\"small\"],[8],[0,\"Pilot?\"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n          \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\"],[[22,[\"model\",\"payout\",\"amount\"]],\"Amount\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-5\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"payout\",\"notes\"]],\"Notes\",\"form-control input-lg\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"createPayout\",[22,[\"model\"]]]],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" Payout\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"table\"],[10,\"class\",\"table table-borderless\"],[8],[0,\"\\n            \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"missionPayoutsReverse\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[1,[21,8,[\"id\"]],false],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[1,[21,8,[\"notes\"]],false],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[6,\"strong\"],[8],[0,\"$\"],[1,[21,8,[\"amountInDollars\"]],false],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"text-right\"],[8],[0,\"\\n                    \"],[1,[26,\"moment-format\",[[21,8,[\"created_on\"]]],null],false],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[3,\"action\",[[21,0,[]],\"deletePayout\",[21,8,[]]]],[8],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[8]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Mission Price\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\"],[[22,[\"model\",\"mission\",\"price\"]],\"Mission Price\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Package\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"package\"]]]]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\"],[[22,[\"model\",\"packagesForSelect\"]],[22,[\"model\",\"mission\",\"package\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"package\"]]],null]],null],\"Select Package\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[0,\"\\n            \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"package\",\"isNew\"]],\"fa-plus\",\"fa-edit\"],null]]]],[8],[9],[0,\" custom\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"location\"]]]]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"textarea\",null,[[\"value\",\"class\",\"disabled\"],[[22,[\"model\",\"mission\",\"location\",\"formatted_address\"]],\"form-control input-lg mission-edit-location-textarea\",true]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"openModal\",\"clients.client.locations.modal\",[22,[\"model\"]]]],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-edit\"],[8],[9],[0,\" location\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Airspace\"],[9],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary btn-sm pull-right\"],[10,\"title\",\"Check Now\"],[3,\"action\",[[21,0,[]],\"checkAirspace\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n              Check Now\\n            \"],[9],[0,\"\\n          \"],[6,\"table\"],[10,\"class\",\"table airspace-info\"],[8],[0,\"\\n            \"],[6,\"thead\"],[8],[0,\"\\n              \"],[6,\"tr\"],[8],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"LAANC\"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[0,\"Facility / Description\"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"tbody\"],[8],[0,\"\\n              \"],[6,\"tr\"],[8],[0,\"\\n                \"],[6,\"td\"],[8],[0,\" \"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[6,\"a\"],[11,\"href\",[27,[\"https://app.airmap.io/geo?\",[22,[\"model\",\"mission\",\"location\",\"latitude\"]],\",\",[22,[\"model\",\"mission\",\"location\",\"longitude\"]],\",12.500000z\"]]],[10,\"target\",\"_blank\"],[8],[0,\"Airmap Link\"],[9],[9],[0,\"\\n              \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"advisories\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"\\n                    \"],[4,\"if\",[[21,7,[\"laanc_enabled\"]]],null,{\"statements\":[[0,\" Manual \"]],\"parameters\":[]},{\"statements\":[[0,\" No \"]],\"parameters\":[]}],[0,\"\\n\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[1,[21,7,[\"name\"]],false],[0,\" (\"],[1,[21,7,[\"code\"]],false],[0,\")\"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[7]},null],[4,\"each\",[[22,[\"model\",\"mission\",\"laanc_exemptions\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"Automatic\"],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[1,[21,6,[\"name\"]],false],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[6]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Authorizations\"],[9],[0,\"\\n\\n          \"],[6,\"table\"],[10,\"class\",\"table airspace-info\"],[8],[0,\"\\n            \"],[6,\"thead\"],[8],[0,\"\\n              \"],[6,\"tr\"],[8],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"Authority\"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"type\"],[8],[0,\"Name\"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[0,\"Message\"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"laanc_flights\"]]],null,{\"statements\":[[4,\"each\",[[21,4,[\"authorizations\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[1,[21,5,[\"authority_id\"]],false],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"type\"],[8],[1,[21,5,[\"authority_name\"]],false],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[1,[21,5,[\"message\"]],false],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[5]},null]],\"parameters\":[4]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[1,[26,\"mission-schedule\",null,[[\"model\",\"rescheduleFlightModal\",\"showCapacityModal\",\"reloadMission\",\"pilotNotAssigned\",\"saveAction\"],[[22,[\"model\"]],\"toggleRescheduleModal\",\"toggleCapacityModal\",\"reloadMission\",[22,[\"pilotNotAssigned\"]],\"saveSchedule\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"mission-weather\",null,[[\"mission\"],[[22,[\"model\",\"mission\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Account Rep\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"mission\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Production Rep\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"productionReps\"]],[22,[\"model\",\"mission\",\"productionRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"productionRep\"]]],null]],null],\"Select Production Rep\",\"fullName\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Operations Rep\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"operationReps\"]],[22,[\"model\",\"mission\",\"operationRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"operationRep\"]]],null]],null],\"Select Operation Rep\",\"fullName\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"salesforce_opportunity_id\"],[8],[0,\"Salesforce Opportunity ID\"],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"salesforce_opportunity_id\",[22,[\"model\",\"mission\",\"salesforce_opportunity_id\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"external_assets_url\"],[8],[0,\"External Asset Url (box, dropbox, etc..)\\n        \"],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"external_assets_url\",[22,[\"model\",\"mission\",\"external_assets_url\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"Internal Notes\"],[8],[0,\"\\n          Client Notes (Visible in Client Dashboard and via Partner API)\\n        \"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"client_notes\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"Internal Notes\"],[8],[0,\"Internal Notes\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"internal_notes\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"Internal Production Notes\"],[8],[0,\"\\n          Internal Production Notes\\n        \"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"internal_production_notes\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"showOnsiteContacts\"]]],null,{\"statements\":[[0,\"        \"],[6,\"span\"],[10,\"class\",\"header-text\"],[8],[0,\"Onsite Contact Info\"],[9],[0,\"\\n\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Call Action\"],[9],[0,\"\\n          \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"updateCallAction\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"call_actions\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[21,3,[\"id\"]],[22,[\"model\",\"mission\",\"onsite_contact\",\"call_action\"]]],null]],null,{\"statements\":[[0,\"                \"],[6,\"option\"],[11,\"value\",[21,3,[\"id\"]]],[10,\"selected\",\"\"],[8],[0,\"\\n                  \"],[1,[21,3,[\"name\"]],false],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[6,\"option\"],[11,\"value\",[21,3,[\"id\"]]],[8],[0,\"\\n                  \"],[1,[21,3,[\"name\"]],false],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[3]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"showContactNameAndPhone\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Contact Name\"],[9],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"onsite_contact_name\",[22,[\"model\",\"mission\",\"onsite_contact\",\"name\"]],\"form-control input-lg\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Contact Phone\"],[9],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"onsite_contact_phone\",[22,[\"mission\",\"onsite_contact\",\"phone\"]],\"form-control input-lg\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Contact Notes\"],[9],[0,\"\\n          \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"onsite_contact\",\"note\"]],\"form-control input-lg\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Pilot Instructions\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"instructions\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"mission\",\"disable_notifications\"]]]]],false],[0,\"\\n            Disable Notifications\\n            \"],[6,\"small\"],[8],[0,\"\\n              (Slack and email notifications for admin, client, and pilot.)\\n            \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Save\",\"btn btn-primary\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"show3pfa\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"mission-flight-app\",null,[[\"mission\",\"flightApps\",\"model\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"flightApps\"]],[22,[\"model\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"div\"],[8],[1,[26,\"collaborator-list\",null,[[\"mission\"],[[22,[\"mission\"]]]]],false],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"rescheduleModalVisible\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"reschedule-modal\",null,[[\"model\",\"close\",\"reloadMission\",\"action\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleRescheduleModal\"],null],\"reloadMission\",\"reschedule\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n    \"],[1,[26,\"creative-mission-meta-form\",null,[[\"model\",\"updateCreativeMissionMetaAction\"],[[22,[\"model\"]],\"updateCreativeMissionMeta\"]]],false],[0,\"\\n    \"],[1,[26,\"creative-mission-response\",null,[[\"model\"],[[22,[\"model\",\"mission\"]]]]],false],[0,\"\\n    \"],[1,[26,\"mission-shotlist-assets\",null,[[\"model\",\"filterByShot\",\"onfileadd\",\"onstartupload\",\"shareCreateAction\"],[[22,[\"model\"]],\"filterMap\",\"addAsset\",\"startUpload\",\"shareShareable\"]]],false],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"assetsClassified\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row panel rating-panel\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"pilot_rating\",\"value\"]]],null,{\"statements\":[[0,\"          \"],[6,\"p\"],[8],[0,\"The mission was rated\"],[9],[0,\"\\n\"],[4,\"each\",[[26,\"rating-stars\",[[22,[\"model\",\"mission\",\"pilot_rating\",\"value\"]]],null]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"class\",\"small-star\"],[11,\"src\",[27,[\"/assets/images/pilot_rating/\",[21,2,[]]]]],[8],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[6,\"a\"],[10,\"href\",\"\"],[10,\"class\",\"btn-primary btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"toggleRatingModal\"]],[8],[0,\"EDIT\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"p\"],[8],[0,\"Please rate pilot for this mission.\"],[9],[0,\"\\n          \"],[6,\"a\"],[10,\"href\",\"\"],[10,\"class\",\"btn-primary btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"toggleRatingModal\"]],[8],[0,\"RATE NOW\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"div\"],[10,\"class\",\"pilot-comments\"],[8],[0,\"\\n      Pilot comments for this mission: \"],[1,[22,[\"model\",\"mission\",\"pilot_comment\"]],false],[0,\"\\n    \"],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n    \"],[6,\"div\"],[8],[0,\"Image Mapping:\"],[9],[0,\"\\n    \"],[1,[26,\"mission-asset-map\",null,[[\"mission\",\"mapImageMarkers\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"filteredMapImages\"]]]]],false],[0,\"\\n  \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"activityLogs\"],null]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"activity-logs table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Date/Time\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Action\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"User\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Role\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Details\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"activity_logs\"]]],null,{\"statements\":[[0,\"            \"],[6,\"tr\"],[8],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[26,\"moment-format\",[[21,1,[\"created_at\"]],\"MM/DD/YY, h:mm A\"],null],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[26,\"titleize\",[[21,1,[\"action\"]]],null],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[21,1,[\"user_name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[21,1,[\"role\"]],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[21,1,[\"details\"]],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]}]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/edit.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "tGjz2/jh", "block": "{\"symbols\":[\"activity\",\"image\",\"call_action\",\"flights\",\"authorization\",\"laanc\",\"laanc\",\"payout\",\"ticket\",\"ticket\",\"subscriber\"],\"statements\":[[4,\"if\",[[22,[\"showPaymentModal\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"missions/process-payment-modal\",null,[[\"mission\",\"close\",\"client\"],[[22,[\"model\",\"mission\"]],[26,\"action\",[[21,0,[]],\"togglePaymentModal\"],null],[22,[\"model\",\"client\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[22,[\"showReminderModal\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"missions/payment-reminder-modal\",null,[[\"mission\",\"close\"],[[22,[\"model\",\"mission\"]],[26,\"action\",[[21,0,[]],\"toggleReminderModal\"],null]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"pageReady\"]]],null,{\"statements\":[[6,\"div\"],[11,\"class\",[27,[\"breadcrumb \",[26,\"if\",[[22,[\"model\",\"mission\",\"pusher_updated_at\"]],\"need-refresh\"],null]]]],[8],[0,\"\\n  \"],[6,\"a\"],[10,\"href\",\"/missions\"],[8],[1,[20,\"parentCrumb\"],false],[0,\" Mission \"],[9],[0,\" / \"],[4,\"link-to\",[\"missions.edit\",[22,[\"model\",\"mission\",\"id\"]]],null,{\"statements\":[[1,[22,[\"model\",\"mission\",\"id\"]],false]],\"parameters\":[]},null],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"pull-right viewers\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"pusherSubscribers\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[11,\"class\",[27,[\"pull-right admin-viewing \",[26,\"if\",[[26,\"is-equal\",[[26,\"initialize\",[[21,11,[]]],null],[26,\"initialize\",[[22,[\"model\",\"currentAdminName\"]]],null]],null],\"current\"],null]]]],[8],[0,\"\\n\"],[4,\"if\",[[26,\"check-if\",[[26,\"initialize\",[[21,11,[]]],null],\"!=\",[26,\"initialize\",[[22,[\"model\",\"currentAdminName\"]]],null]],null]],null,{\"statements\":[],\"parameters\":[]},null],[0,\"        \"],[6,\"span\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[11,\"title\",[21,11,[]]],[8],[1,[26,\"initialize\",[[21,11,[]]],null],false],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[11]},null],[0,\"  \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"pusher_updated_at\"]]],null,{\"statements\":[[0,\"    \"],[6,\"p\"],[10,\"class\",\"pull-right\"],[8],[0,\"Last updated: \"],[1,[26,\"moment-format\",[[22,[\"model\",\"mission\",\"pusher_updated_at\"]],\"hh:mma MM/DD/YY\"],null],false],[0,\". You will need to \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"reload\",[22,[\"model\",\"mission\"]]]],[8],[0,\"refresh\"],[9],[0,\" to see changes.\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[6,\"p\"],[10,\"class\",\"pull-right\"],[8],[0,\"Last updated: \"],[1,[26,\"moment-format\",[[22,[\"model\",\"mission\",\"updated_at\"]],\"hh:mma MM/DD/YY\"],null],false],[9],[0,\"\\n\"]],\"parameters\":[]}],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n  \"],[6,\"h4\"],[8],[1,[20,\"parentCrumb\"],false],[0,\" Mission\"],[9],[0,\"\\n  \"],[6,\"h4\"],[10,\"class\",\"mission-id\"],[8],[1,[22,[\"model\",\"mission\",\"id\"]],false],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"reference_id\"]]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"mission-reference-id\"],[8],[0,\"\\n      Reference ID: \"],[1,[22,[\"model\",\"mission\",\"reference_id\"]],false],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-xs-6\"],[8],[0,\"\\n  \"],[1,[26,\"client-details-view\",null,[[\"client\",\"missionNumber\"],[[22,[\"model\",\"client\"]],[22,[\"model\",\"mission\",\"id\"]]]]],false],[0,\"\\n  \"],[1,[26,\"missions/mission-payment-view\",null,[[\"mission\",\"mission_payments\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"mission\",\"mission_payments\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"reshootModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"reshoot-modal\",null,[[\"model\",\"close\",\"action\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleReshootModal\"],null],\"reshoot\"]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"holdMissionModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"holdMission-modal\",null,[[\"model\",\"close\",\"action\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleHoldMissionModal\"],null],\"hold\"]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"capacityModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"capacity-modal\",null,[[\"model\",\"close\",\"confirmAction\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleCapacityModal\"],null],\"saveSchedule\"]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"ratingModalVisible\"]]],null,{\"statements\":[[0,\"  \"],[1,[26,\"rating-modal\",null,[[\"model\",\"close\",\"action\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleRatingModal\"],null],\"rate\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]}],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"edit\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"edit\"]],[8],[0,\"Edit Mission\"],[9],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"activityLogs\"],null],\"active\"],null]],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"activityLogs\"]],[8],[0,\"Activity Log\"],[9],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"edit\"],null]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix page-actions-header\"],[8],[0,\"\\n\"],[0,\"      \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]]],[8],[0,\"\\n        save\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary btn-sm dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n          \"],[6,\"span\"],[8],[0,\"ACTIONS\"],[9],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n\"],[4,\"unless\",[[22,[\"model\",\"mission\",\"hasReshoot\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"toggleReshootModal\"]],[8],[0,\"Reshoot\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"resume\",[22,[\"model\",\"mission\"]]]],[8],[0,\"Resume\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"toggleHoldMissionModal\"]],[8],[0,\"Hold\"],[9],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"cancel\",[22,[\"model\",\"mission\"]]]],[8],[0,\"Cancel\"],[9],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"if\",[[26,\"check-if\",[[22,[\"model\",\"mission\",\"zendesk_tickets\",\"length\"]],\">\",1],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"btn-group zendesk-tickets\"],[8],[0,\"\\n          \"],[6,\"button\"],[10,\"class\",\"btn btn-info btn-sm dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n            \"],[6,\"span\"],[8],[0,\"ZENDESK TICKETS\"],[9],[0,\"\\n            \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"zendesk_tickets\"]]],null,{\"statements\":[[0,\"              \"],[6,\"li\"],[8],[0,\"\\n                \"],[6,\"a\"],[11,\"href\",[27,[[21,10,[\"url\"]]]]],[8],[0,\"\\n                  \"],[1,[26,\"titleize\",[[21,10,[\"user_type\"]]],null],false],[0,\" #\"],[1,[21,10,[\"id\"]],false],[0,\"\\n                \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[10]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"each\",[[22,[\"model\",\"mission\",\"zendesk_tickets\"]]],null,{\"statements\":[[0,\"          \"],[6,\"a\"],[11,\"href\",[27,[[21,9,[\"url\"]]]]],[10,\"class\",\"btn btn-sm btn-info\"],[8],[0,\"\\n            ZENDESK TICKET (\"],[1,[21,9,[\"user_type\"]],false],[0,\") #\"],[1,[21,9,[\"id\"]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[9]},null]],\"parameters\":[]}],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"on-hold-section\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9 header\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"This mission is ON HOLD\"],[9],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"pull-right\"],[8],[1,[26,\"moment-format\",[[22,[\"model\",\"mission\",\"hold\",\"created_at\"]],\"MM/DD/YY hh:mm A\"],null],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Reason:\"],[9],[0,\"\\n          \"],[6,\"span\"],[8],[1,[22,[\"model\",\"mission\",\"hold\",\"reason\"]],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Details:\"],[9],[0,\"\\n          \"],[6,\"span\"],[8],[1,[22,[\"model\",\"mission\",\"hold\",\"reason_notes\"]],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[8],[0,\"Admin:\"],[9],[0,\"\\n          \"],[6,\"span\"],[8],[1,[22,[\"model\",\"mission\",\"hold\",\"held_by\"]],false],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9 resume-link underline-text\"],[8],[0,\"\\n          \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"resume\",[22,[\"model\",\"mission\"]]]],[8],[0,\"Resume Mission\"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"clearfix\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Status\"],[9],[0,\"\\n    \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"optionValuePath\",\"optionLabelPath\",\"content\",\"selection\",\"assignSelectedObject\",\"disabled\",\"action\"],[\"value\",\"display_name\",[22,[\"statusesForSelect\"]],[22,[\"selectedStatus\"]],false,[22,[\"model\",\"mission\",\"isOnHold\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"status\"]]],null]],null]]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-3 disabled mission-service-button\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"disabled\",\"disabled\"],[10,\"title\",\"This mission is on hold. It must be resumed before you can take this action.\"],[8],[0,\"\\n            \"],[1,[26,\"mission-status-rewind-button\",null,[[\"model\",\"tagName\",\"class\",\"onBusy\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn btn-lg\",[26,\"action\",[[21,0,[]],\"fireBusy\"],null]]]],false],[0,\"\\n            \"],[1,[26,\"mission-status-update-button\",null,[[\"model\",\"tagName\",\"class\",\"onBusy\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn btn-lg\",[26,\"action\",[[21,0,[]],\"fireBusy\"],null]]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-3 no-padding mission-status-triggers mission-service-button\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showPaymentTransition\"]]],null,{\"statements\":[[0,\"            \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"pay\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"next\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-arrow-right\"],[8],[9],[6,\"a\"],[8],[0,\"Charge Card\"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"            \"],[1,[26,\"mission-status-rewind-button\",null,[[\"model\",\"tagName\",\"class\",\"onBusy\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn btn-lg\",[26,\"action\",[[21,0,[]],\"fireBusy\"],null]]]],false],[0,\"\\n            \"],[1,[26,\"mission-status-update-button\",null,[[\"model\",\"tagName\",\"class\",\"onBusy\"],[[22,[\"model\",\"mission\"]],\"a\",\"btn btn-lg\",[26,\"action\",[[21,0,[]],\"fireBusy\"],null]]]],false],[0,\"\\n            \"],[1,[20,\"statusSubText\"],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[4,\"if\",[[22,[\"model\",\"mission\",\"hasReshoot\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n            \"],[1,[26,\"reshoot-edit-box\",null,[[\"mission\",\"displayedMission\",\"isReshoot\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"mission\"]],false]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"model\",\"mission\",\"isReshoot\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n            \"],[1,[26,\"reshoot-edit-box\",null,[[\"mission\",\"displayedMission\",\"isReshoot\",\"showInvitePilotLink\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"mission\",\"parent\"]],true,[22,[\"showInvitePilotLink\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Pilot\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]]],null,{\"statements\":[[0,\"              \"],[6,\"input\"],[10,\"name\",\"name\"],[11,\"value\",[27,[[22,[\"model\",\"mission\",\"pilot\",\"fullName\"]]]]],[10,\"disabled\",\"disabled\"],[10,\"class\",\"form-control input-lg\"],[10,\"type\",\"text\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"input\"],[10,\"name\",\"name\"],[10,\"value\",\"Pilot Has Not Accepted\"],[10,\"disabled\",\"disabled\"],[10,\"class\",\"form-control input-lg\"],[10,\"type\",\"text\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[11,\"class\",[27,[\"col-xs-3 mission-status-triggers \",[26,\"if\",[[26,\"either\",[[22,[\"model\",\"mission\",\"isOnHold\"]],[22,[\"model\",\"mission\",\"needsEstimatedPayout\"]]],null],\"disabled\"],null],\" mission-service-button\"]]],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showInvitePilotLink\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"model\",\"mission\",\"isOnHold\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"This mission is on hold. It must be resumed before you can take this action.\"],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]],\"fa-edit\",\"fa-plus\"],null]]]],[8],[9],[0,\"\\n                Invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[22,[\"model\",\"mission\",\"needsEstimatedPayout\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[10,\"data-toggle\",\"tooltip\"],[10,\"data-placement\",\"top\"],[10,\"title\",\"This mission has not had the estimated pilot payout set. You must set this before inviting a pilot.\"],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]],\"fa-edit\",\"fa-plus\"],null]]]],[8],[9],[0,\"\\n                Invite\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"openModal\",\"pilots.modal\",[22,[\"model\"]]]],[8],[0,\"\\n                \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"mission\",\"pilot\"]],\"fa-edit\",\"fa-plus\"],null]]]],[8],[9],[0,\"\\n                Invite\\n              \"],[9],[0,\"\\n              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"autoDispatchInvites\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\"\\n                Auto Dispatch\\n              \"],[9],[0,\"\\n            \"]],\"parameters\":[]}]],\"parameters\":[]}]],\"parameters\":[]},null],[4,\"if\",[[22,[\"model\",\"mission\",\"pilot_invitations_dispatch\"]]],null,{\"statements\":[[4,\"if\",[[22,[\"invitationDispatchInProgress\"]]],null,{\"statements\":[[0,\"              \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"cancelAutoDispatch\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n                Cancel Auto-Dispatch\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[6,\"p\"],[10,\"class\",\"dispatch-info\"],[8],[1,[22,[\"model\",\"mission\",\"pilot_invitations_dispatch\",\"status\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[1,[26,\"pilot-dispatch\",null,[[\"model\",\"drones\",\"invitationDispatchInProgress\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"drones\"]],[22,[\"invitationDispatchInProgress\"]]]]],false],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-4\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Estimated Pilot Payout\"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"mission\",\"estimated_pilot_payout\"]],\"Estimated Pilot Payout\",[22,[\"model\",\"mission\",\"errors\",\"estimated_pilot_payout\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-5\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Estimated Editor Payout\"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"mission\",\"estimated_editor_payout\"]],\"Estimated Editor Payout\",[22,[\"model\",\"mission\",\"errors\",\"estimated_editor_payout\"]]]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-1\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"payoutPilot\"]]]]],false],[0,\" \"],[6,\"small\"],[8],[0,\"Pilot?\"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n          \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\"],[[22,[\"model\",\"payout\",\"amount\"]],\"Amount\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-5\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"payout\",\"notes\"]],\"Notes\",\"form-control input-lg\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3 mission-service-button\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"createPayout\",[22,[\"model\"]]]],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" Payout\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"table\"],[10,\"class\",\"table table-borderless\"],[8],[0,\"\\n            \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"missionPayoutsReverse\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[1,[21,8,[\"id\"]],false],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[1,[21,8,[\"notes\"]],false],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[6,\"strong\"],[8],[0,\"$\"],[1,[21,8,[\"amountInDollars\"]],false],[9],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"text-right\"],[8],[0,\"\\n                    \"],[1,[26,\"moment-format\",[[21,8,[\"created_on\"]]],null],false],[0,\"\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[8],[0,\"\\n                    \"],[6,\"i\"],[10,\"class\",\"fa fa-times\"],[3,\"action\",[[21,0,[]],\"deletePayout\",[21,8,[]]]],[8],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[8]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Mission Price\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"input-validated-dollars\",null,[[\"value\",\"placeholder\"],[[22,[\"model\",\"mission\",\"price\"]],\"Mission Price\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Package\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"package\"]]]]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\"],[[22,[\"model\",\"packagesForSelect\"]],[22,[\"model\",\"mission\",\"package\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"package\"]]],null]],null],\"Select Package\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3 mission-service-button\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[0,\"\\n            \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"package\",\"isNew\"]],\"fa-plus\",\"fa-edit\"],null]]]],[8],[9],[0,\" custom\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"location\"]]]]],false],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n            \"],[1,[26,\"textarea\",null,[[\"value\",\"class\",\"disabled\"],[[22,[\"model\",\"mission\",\"location\",\"formatted_address\"]],\"form-control input-lg mission-edit-location-textarea\",true]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-3 mission-service-button\"],[8],[0,\"\\n          \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"openModal\",\"clients.client.locations.modal\",[22,[\"model\"]]]],[8],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-edit\"],[8],[9],[0,\" location\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Airspace\"],[9],[0,\"\\n            \"],[6,\"button\"],[10,\"class\",\"btn btn-secondary btn-sm pull-right\"],[10,\"title\",\"Check Now\"],[3,\"action\",[[21,0,[]],\"checkAirspace\",[22,[\"model\",\"mission\"]]]],[8],[0,\"\\n              Check Now\\n            \"],[9],[0,\"\\n          \"],[6,\"table\"],[10,\"class\",\"table airspace-info\"],[8],[0,\"\\n            \"],[6,\"thead\"],[8],[0,\"\\n              \"],[6,\"tr\"],[8],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"LAANC\"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[0,\"Facility / Description\"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"tbody\"],[8],[0,\"\\n              \"],[6,\"tr\"],[8],[0,\"\\n                \"],[6,\"td\"],[8],[0,\" \"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[6,\"a\"],[11,\"href\",[27,[\"https://app.airmap.io/geo?\",[22,[\"model\",\"mission\",\"location\",\"latitude\"]],\",\",[22,[\"model\",\"mission\",\"location\",\"longitude\"]],\",12.500000z\"]]],[10,\"target\",\"_blank\"],[8],[0,\"Airmap Link\"],[9],[9],[0,\"\\n              \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"advisories\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"\\n                    \"],[4,\"if\",[[21,7,[\"laanc_enabled\"]]],null,{\"statements\":[[0,\" Manual \"]],\"parameters\":[]},{\"statements\":[[0,\" No \"]],\"parameters\":[]}],[0,\"\\n\\n                  \"],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[1,[21,7,[\"name\"]],false],[0,\" (\"],[1,[21,7,[\"code\"]],false],[0,\")\"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[7]},null],[4,\"each\",[[22,[\"model\",\"mission\",\"laanc_exemptions\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"Automatic\"],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[1,[21,6,[\"name\"]],false],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[6]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Authorizations\"],[9],[0,\"\\n\\n          \"],[6,\"table\"],[10,\"class\",\"table airspace-info\"],[8],[0,\"\\n            \"],[6,\"thead\"],[8],[0,\"\\n              \"],[6,\"tr\"],[8],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[0,\"Authority\"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"type\"],[8],[0,\"Name\"],[9],[0,\"\\n                \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[0,\"Message\"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"laanc_flights\"]]],null,{\"statements\":[[4,\"each\",[[21,4,[\"authorizations\"]]],null,{\"statements\":[[0,\"                \"],[6,\"tr\"],[8],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"laanc\"],[8],[1,[21,5,[\"authority_id\"]],false],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"type\"],[8],[1,[21,5,[\"authority_name\"]],false],[9],[0,\"\\n                  \"],[6,\"td\"],[10,\"class\",\"description\"],[8],[1,[21,5,[\"message\"]],false],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[5]},null]],\"parameters\":[4]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-5\"],[10,\"id\",\"weather-reqs\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Customer Weather Requirement\"],[9],[0,\"\\n\"],[0,\"          \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"cloudOptions\"]],[22,[\"model\",\"mission\",\"cloud_reqs\"]],\"select please\",\"select-custom\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"],[4,\"unless\",[[22,[\"model\",\"mission\",\"isScheduled\"]]],null,{\"statements\":[[0,\"          \"],[6,\"div\"],[10,\"class\",\"col-xs-4\"],[8],[0,\"\\n            \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Mission Duration\"],[9],[0,\"\\n            \"],[1,[26,\"select-enum\",null,[[\"content\",\"selection\",\"prompt\",\"selectClass\"],[[22,[\"durationOptions\"]],[22,[\"model\",\"mission\",\"duration\"]],\"select\",\"select-custom\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[1,[26,\"mission-schedule\",null,[[\"model\",\"rescheduleFlightModal\",\"showCapacityModal\",\"reloadMission\",\"pilotNotAssigned\",\"saveAction\"],[[22,[\"model\"]],\"toggleRescheduleModal\",\"toggleCapacityModal\",\"reloadMission\",[22,[\"pilotNotAssigned\"]],\"saveSchedule\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"mission-weather\",null,[[\"mission\"],[[22,[\"model\",\"mission\"]]]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Account Rep\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"mission\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Production Rep\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"productionReps\"]],[22,[\"model\",\"mission\",\"productionRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"productionRep\"]]],null]],null],\"Select Production Rep\",\"fullName\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Operations Rep\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n          \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"operationReps\"]],[22,[\"model\",\"mission\",\"operationRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"operationRep\"]]],null]],null],\"Select Operation Rep\",\"fullName\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"salesforce_opportunity_id\"],[8],[0,\"Salesforce Opportunity ID\"],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"salesforce_opportunity_id\",[22,[\"model\",\"mission\",\"salesforce_opportunity_id\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"external_assets_url\"],[8],[0,\"External Asset Url (box, dropbox, etc..)\\n        \"],[9],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"external_assets_url\",[22,[\"model\",\"mission\",\"external_assets_url\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"Internal Notes\"],[8],[0,\"\\n          Client Notes (Visible in Client Dashboard and via Partner API)\\n        \"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"client_notes\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"Internal Notes\"],[8],[0,\"Internal Notes\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"internal_notes\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[10,\"for\",\"Internal Production Notes\"],[8],[0,\"\\n          Internal Production Notes\\n        \"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"internal_production_notes\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"span\"],[10,\"class\",\"header-text\"],[8],[0,\"Onsite Contact Info\"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Call Action\"],[9],[0,\"\\n        \"],[6,\"select\"],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"updateCallAction\"],[[\"value\"],[\"target.value\"]]]],[10,\"class\",\"form-control input-lg\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"call_actions\"]]],null,{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[21,3,[\"id\"]],[22,[\"model\",\"mission\",\"onsite_contact\",\"call_action\"]]],null]],null,{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,3,[\"id\"]]],[10,\"selected\",\"\"],[8],[0,\"\\n                \"],[1,[21,3,[\"name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"              \"],[6,\"option\"],[11,\"value\",[21,3,[\"id\"]]],[8],[0,\"\\n                \"],[1,[21,3,[\"name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]}]],\"parameters\":[3]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"showContactNameAndPhone\"]]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Contact Name\"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"onsite_contact_name\",[22,[\"model\",\"mission\",\"onsite_contact\",\"name\"]],\"form-control input-lg\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n          \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Contact Phone\"],[9],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"name\",\"value\",\"class\"],[\"onsite_contact_phone\",[22,[\"mission\",\"onsite_contact\",\"phone\"]],\"form-control input-lg\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Contact Notes\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"onsite_contact\",\"note\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group  pilot-instructions\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Pilot Instructions\"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-sm-12\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"note\"],[8],[0,\"\\n              Customer Requirement: \"],[1,[22,[\"model\",\"mission\",\"cloud_reqs_verbose\"]],false],[0,\" \"],[6,\"span\"],[10,\"class\",\"turquoise-link\"],[3,\"action\",[[21,0,[]],\"editWeatherReq\"]],[8],[0,\" Edit \"],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"instructions\"]],\"form-control input-lg\"]]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"search-field\"],[8],[0,\"Pilot Script\"],[9],[0,\"\\n        \"],[1,[26,\"textarea\",null,[[\"value\",\"class\"],[[22,[\"model\",\"mission\",\"pilot_script\"]],\"form-control input-lg\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n          \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"mission\",\"disable_notifications\"]]]]],false],[0,\"\\n            Disable Notifications\\n            \"],[6,\"small\"],[8],[0,\"\\n              (Slack and email notifications for admin, client, and pilot.)\\n            \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Save\",\"btn btn-primary\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"show3pfa\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"mission-flight-app\",null,[[\"mission\",\"flightApps\",\"model\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"flightApps\"]],[22,[\"model\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"div\"],[8],[1,[26,\"collaborator-list\",null,[[\"mission\"],[[22,[\"mission\"]]]]],false],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"rescheduleModalVisible\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"reschedule-modal\",null,[[\"model\",\"close\",\"confirmAction\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"toggleRescheduleModal\"],null],\"saveSchedule\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n    \"],[1,[26,\"creative-mission-meta-form\",null,[[\"model\",\"updateCreativeMissionMetaAction\"],[[22,[\"model\"]],\"updateCreativeMissionMeta\"]]],false],[0,\"\\n    \"],[1,[26,\"creative-mission-response\",null,[[\"model\"],[[22,[\"model\",\"mission\"]]]]],false],[0,\"\\n    \"],[1,[26,\"mission-shotlist-assets\",null,[[\"model\",\"onBusy\",\"filterByShot\",\"onfileadd\",\"onstartupload\",\"shareCreateAction\",\"showAssetProcesses\"],[[22,[\"model\"]],[26,\"action\",[[21,0,[]],\"fireBusy\"],null],\"filterMap\",\"addAsset\",\"startUpload\",\"shareShareable\",[22,[\"showAssetProcesses\"]]]]],false],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"assetsClassified\"]]],null,{\"statements\":[[0,\"      \"],[6,\"div\"],[10,\"class\",\"row panel rating-panel\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"mission\",\"pilot_rating\",\"value\"]]],null,{\"statements\":[[0,\"          \"],[6,\"p\"],[8],[0,\"The mission was rated\"],[9],[0,\"\\n\"],[4,\"each\",[[26,\"rating-stars\",[[22,[\"model\",\"mission\",\"pilot_rating\",\"value\"]]],null]],null,{\"statements\":[[0,\"            \"],[6,\"img\"],[10,\"class\",\"small-star\"],[11,\"src\",[27,[\"/assets/images/pilot_rating/\",[21,2,[]]]]],[8],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[6,\"a\"],[10,\"href\",\"\"],[10,\"class\",\"btn-primary btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"toggleRatingModal\"]],[8],[0,\"EDIT\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"p\"],[8],[0,\"Please rate pilot for this mission.\"],[9],[0,\"\\n          \"],[6,\"a\"],[10,\"href\",\"\"],[10,\"class\",\"btn-primary btn-sm pull-right\"],[3,\"action\",[[21,0,[]],\"toggleRatingModal\"]],[8],[0,\"RATE NOW\"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"      \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[6,\"div\"],[10,\"class\",\"pilot-comments\"],[8],[0,\"\\n      Pilot comments for this mission: \"],[1,[22,[\"model\",\"mission\",\"pilot_comment\"]],false],[0,\"\\n    \"],[9],[0,\"\\n\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n    \"],[6,\"div\"],[8],[0,\"Image Mapping:\"],[9],[0,\"\\n    \"],[1,[26,\"mission-asset-map\",null,[[\"mission\",\"mapImageMarkers\"],[[22,[\"model\",\"mission\"]],[22,[\"model\",\"filteredMapImages\"]]]]],false],[0,\"\\n  \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]},{\"statements\":[[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"activityLogs\"],null]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"activity-logs table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Date/Time\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Action\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"User\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Role\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Details\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"mission\",\"activity_logs\"]]],null,{\"statements\":[[0,\"            \"],[6,\"tr\"],[8],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[26,\"moment-format\",[[21,1,[\"created_at\"]],\"MM/DD/YY, h:mm A\"],null],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[26,\"titleize\",[[21,1,[\"action\"]]],null],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[21,1,[\"user_name\"]],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[21,1,[\"role\"]],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[0,\"\\n                \"],[1,[21,1,[\"details\"]],false],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"td\"],[8],[9],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[]}]],\"parameters\":[]},null],[1,[26,\"busy-modal\",null,[[\"busy\"],[[22,[\"model\",\"busy\"]]]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/edit.hbs" } });
 });
 define("admin/templates/missions/index", ["exports"], function (exports) {
   "use strict";
@@ -15178,7 +17182,7 @@ define("admin/templates/missions/index", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "U0XF4CgQ", "block": "{\"symbols\":[\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"status\",\"latitude\",\"longitude\",\"distance\",\"assets_late\",\"reshoot\",\"on_hold\",\"include_client_ids\",\"exclude_client_ids\",\"hideFilter\",\"clientMissions\",\"overFlowScroll\"],[[22,[\"model\",\"missions\"]],[22,[\"status\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"assets_late\"]],[22,[\"reshoot\"]],[22,[\"on_hold\"]],[22,[\"include_client_ids\"]],[22,[\"exclude_client_ids\"]],[22,[\"hideFilter\"]],true,true]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Client Missions\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"missions\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"switch-with-label\"],[8],[0,\"\\n        Map View\\n        \"],[6,\"label\"],[10,\"class\",\"switch\"],[8],[0,\"\\n           \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"showMap\"]],[22,[\"toggleShowMap\"]]]]],false],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"slider round\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showMap\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"mapbox-map\",null,[[\"missions\"],[[22,[\"model\",\"missions\"]]]]],false],[0,\"\\n\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Rep\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"created\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Created\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"scheduled\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Scheduled\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"price\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Price\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package_name\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Package\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"client_email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Client Email\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Company\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Ref. ID\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"missions\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[0,\"\\n\"],[4,\"if\",[[21,1,[\"isOnHold\"]]],null,{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"on-hold-warning\"],[8],[0,\"\\n                  \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\"\\n                  \"],[6,\"span\"],[8],[0,\"On Hold\"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"accountRep\",\"initials\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"scheduled_at_start\"]]],null,{\"statements\":[[0,\"                \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"MM/DD/YY\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n                \"],[6,\"br\"],[8],[9],[0,\"\\n                \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\" -\\n                \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_end\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,1,[\"price\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"fullName\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"company_name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"reference_id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"                Edit / Upload\\n\"]],\"parameters\":[]},null],[0,\"               |\\n\"],[4,\"link-to\",[\"missions.map\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"                Map\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "7GzerAJm", "block": "{\"symbols\":[\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"status\",\"latitude\",\"longitude\",\"distance\",\"assets_late\",\"reshoot\",\"on_hold\",\"include_client_ids\",\"exclude_client_ids\",\"verticals\",\"vertical_id\",\"hideFilter\",\"clientMissions\",\"overFlowScroll\"],[[22,[\"model\",\"missions\"]],[22,[\"status\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"assets_late\"]],[22,[\"reshoot\"]],[22,[\"on_hold\"]],[22,[\"include_client_ids\"]],[22,[\"exclude_client_ids\"]],[22,[\"verticals\"]],[22,[\"vertical_id\"]],[22,[\"hideFilter\"]],true,true]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Client Missions\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n      Total: \"],[1,[20,\"activeCount\"],false],[0,\"/\"],[1,[22,[\"model\",\"missions\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"switch-with-label\"],[8],[0,\"\\n        Map View\\n        \"],[6,\"label\"],[10,\"class\",\"switch\"],[8],[0,\"\\n           \"],[1,[26,\"input\",null,[[\"type\",\"checked\",\"onchange\"],[\"checkbox\",[22,[\"showMap\"]],[22,[\"toggleShowMap\"]]]]],false],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"slider round\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm\"],[10,\"type\",\"button\"],[3,\"action\",[[21,0,[]],\"download\"]],[8],[0,\"Export to CSV\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n    \"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"showMap\"]]],null,{\"statements\":[[0,\"      \"],[1,[26,\"mission-list-map\",null,[[\"missions\"],[[22,[\"model\",\"missions\"]]]]],false],[0,\"\\n\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Rep\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"created\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Created\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"scheduled\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Scheduled\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"price\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Price\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package_name\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Package\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"client_email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Client Email\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Company\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Ref. ID\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"missions\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[0,\"\\n\"],[4,\"if\",[[21,1,[\"isOnHold\"]]],null,{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"on-hold-warning\"],[8],[0,\"\\n                  \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\"\\n                  \"],[6,\"span\"],[8],[0,\"On Hold\"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"accountRep\",\"initials\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"scheduled_at_start\"]]],null,{\"statements\":[[0,\"                \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"MM/DD/YY\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n                \"],[6,\"br\"],[8],[9],[0,\"\\n                \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\" -\\n                \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_end\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"format-dollar\",[[21,1,[\"price\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"fullName\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"company_name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"reference_id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"                Edit / Upload\\n\"]],\"parameters\":[]},null],[0,\"               |\\n\"],[4,\"link-to\",[\"missions.map\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"                Map\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[1,[26,\"busy-modal\",null,[[\"busy\",\"progressText\"],[[22,[\"busy\"]],[22,[\"downloaded\"]]]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/index.hbs" } });
 });
 define("admin/templates/missions/map", ["exports"], function (exports) {
   "use strict";
@@ -15194,7 +17198,7 @@ define("admin/templates/missions/new", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "m1y9tWSc", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"client-details col-md-6 col-md-offset-3\"],[8],[0,\"\\n  \"],[1,[26,\"client-details-view\",null,[[\"client\"],[[22,[\"model\",\"client\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"newMission\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"newMission\"]],[8],[0,\"New Mission\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"importMissions\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"importMissions\"]],[8],[0,\"Import Mission CSV\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"newMission\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-6 col-md-offset-3 top-buffer bottom-buffer\"],[8],[0,\"\\n  \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"package\"]]]]],false],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\"],[[22,[\"model\",\"packagesForSelect\"]],[22,[\"model\",\"mission\",\"package\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"package\"]]],null]],null],\"Select Package\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[0,\"\\n          \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"package\",\"isNew\"]],\"fa-plus\",\"fa-edit\"],null]]]],[8],[9],[0,\"\\n          custom\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"location\"]]]]],false],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"locationsForSelect\"]],[22,[\"model\",\"mission\",\"location\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"location\"]]],null]],null],\"Select Location\",\"formatted_address\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"openModal\",\"clients.client.locations.modal\",[22,[\"model\"]]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" location\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row form-group\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"mission\",\"reference_id\"]],\"Reference ID\",\"form-control input-lg m-b\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"mission\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"mission\",\"disable_notifications\"]]]]],false],[0,\"\\n          Disable Notifications\\n          \"],[6,\"small\"],[8],[0,\"(Slack and email notifications for admin, client, and pilot.)\\n          \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Create\",\"btn btn-success btn-lg\"]]],false],[0,\"\\n      | \"],[6,\"a\"],[11,\"href\",[27,[\"/clients/\",[22,[\"model\",\"client\",\"id\"]]]]],[8],[0,\"Cancel\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"importMissions\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-6 col-md-offset-3 top-buffer bottom-buffer\"],[8],[0,\"\\n\\n  \"],[6,\"h3\"],[8],[1,[20,\"formTitle\"],false],[9],[0,\"\\n\\n  \"],[6,\"form\"],[10,\"class\",\"form\"],[10,\"id\",\"import-csv-form\"],[10,\"enctype\",\"multipart/form-data\"],[3,\"action\",[[21,0,[]],\"uploadCsv\"],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n    \"],[6,\"input\"],[11,\"value\",[22,[\"model\",\"client\",\"id\"]]],[10,\"name\",\"client_id\"],[10,\"type\",\"hidden\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"model\",\"client\",\"id\"]],[22,[\"testUserId\"]]],null]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-lg-9 top-buffer bottom-buffer\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"radio-inline\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"csv_type\"],[10,\"value\",\"standard\"],[11,\"checked\",[26,\"is-checked\",[[22,[\"importMode\"]],\"standard\"],null]],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMode\",\"standard\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\" Standard Mission\\n        \"],[9],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"radio-inline\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"csv_type\"],[10,\"value\",\"training\"],[11,\"checked\",[26,\"is-checked\",[[22,[\"importMode\"]],\"training\"],null]],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMode\",\"training\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\" Training Mission\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"importMode\"]],\"training\"],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"id\",\"training-mission-instructions\"],[10,\"class\",\"mission-instructions\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"warning\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"strong\"],[8],[0,\"NOTE: THIS IS A TRAINING MISSION\"],[9],[9],[0,\"\\n            \"],[6,\"p\"],[8],[0,\"The pilot will be notified as soon as it is created and it\\n                will not have a scheduled date so the pilot will have to schedule\\n                the mission to accept it.\"],[9],[0,\"\\n            \"],[6,\"p\"],[8],[0,\"Make sure the pilot instructions for the selected package tells\\n                the pilot that this is a training mission to\\n            qualify for Client work with Guaranteed Payout\"],[9],[0,\"\\n            \"],[6,\"p\"],[8],[0,\"The pilot also should be informed that they need to fly the\\n                mission on their own home, or a property in a safe location to\\n                fly.\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"id\",\"csv-package-error\"],[10,\"class\",\"col-xs-9 error hidden\"],[8],[0,\"\\n        This field is required.\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"selectName\"],[[22,[\"model\",\"packagesForSelect\"]],[22,[\"model\",\"mission\",\"package\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"package\"]]],null]],null],\"Select Package\",\"mission_package_id\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[0,\"\\n          \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"package\",\"isNew\"]],\"fa-plus\",\"fa-edit\"],null]]]],[8],[9],[0,\"\\n          custom\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"importMode\"]],\"standard\"],null]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"id\",\"csv-rep-error\"],[10,\"class\",\"col-xs-9 error hidden\"],[8],[0,\"\\n        This field is required.\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\",\"selectName\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"mission\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\",\"account_rep_id\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row mission-csv-uploader\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[6,\"h5\"],[8],[0,\"Select location of CSV file\"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"id\",\"csv-file-error\"],[10,\"class\",\"col-xs-9 error hidden\"],[8],[0,\"\\n        This field is required.\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"name\"],[\"file\",\"attachment\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row mission-csv-specs\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[6,\"p\"],[8],[0,\"A csv file with the following columns:\"],[9],[0,\"\\n        \"],[6,\"ul\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"importMode\"]],\"training\"],null]],null,{\"statements\":[[0,\"          \"],[6,\"li\"],[8],[6,\"code\"],[8],[0,\"pilot_email\"],[9],[6,\"br\"],[8],[9],[0,\"\\n          This MUST match up with the email that the pilot signed up for\\n              DroneBase with\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"li\"],[8],[0,\" \"],[6,\"strong\"],[8],[0,\"Required Fields: \"],[9],[0,\"Each row must contain either of the following columns\\n            \"],[6,\"ul\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"code\"],[8],[0,\"address\"],[9],[0,\" and \"],[6,\"code\"],[8],[0,\"postal_code\"],[9],[9],[0,\"\\n              \"],[6,\"li\"],[8],[0,\" and/or \"],[6,\"code\"],[8],[0,\"latitude\"],[9],[0,\" and \"],[6,\"code\"],[8],[0,\"longitude\"],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"strong\"],[8],[0,\"WARNING:\"],[9],[0,\" It's possible for postal code to be auto-formatted as a number in Excel, which could cause leading zeroes to be omitted. Make sure it is formatted as text before exporting.\\n          \"],[9],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"Optional:\"],[9],[0,\"\\n            \"],[6,\"code\"],[8],[0,\"address2, city, state, country, external_id, pilot_instructions, internal_notes, internal_production_notes, client_notes, reference_id\"],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\\n    \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"name\",\"checked\"],[\"checkbox\",\"skip_airspace_check\",[22,[\"skipAirspaceCheck\"]]]]],false],[0,\" Disable airspace check\\n        \"],[6,\"small\"],[8],[0,\"\\n          (use with caution)\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"name\",\"checked\"],[\"checkbox\",\"disable_notifications\",[22,[\"disableNotifications\"]]]]],false],[0,\" Disable Notifications\\n        \"],[6,\"small\"],[8],[0,\"\\n          (Slack and email notifications for admin, client, and pilot.)\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Create\",\"btn btn-success btn-lg\"]]],false],[0,\"\\n      | \"],[6,\"a\"],[11,\"href\",[27,[\"/clients/\",[22,[\"model\",\"client\",\"id\"]]]]],[8],[0,\"Cancel\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/new.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "lZjoERRr", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"client-details col-md-6 col-md-offset-3\"],[8],[0,\"\\n  \"],[1,[26,\"client-details-view\",null,[[\"client\"],[[22,[\"model\",\"client\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"newMission\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"newMission\"]],[8],[0,\"New Mission\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"importMissions\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"importMissions\"]],[8],[0,\"Import Mission CSV\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"newMission\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-6 col-md-offset-3 top-buffer bottom-buffer\"],[8],[0,\"\\n  \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"save\",[22,[\"model\"]]],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"package\"]]]]],false],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\"],[[22,[\"model\",\"packagesForSelect\"]],[22,[\"model\",\"mission\",\"package\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"package\"]]],null]],null],\"Select Package\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[0,\"\\n          \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"package\",\"isNew\"]],\"fa-plus\",\"fa-edit\"],null]]]],[8],[9],[0,\"\\n          custom\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[1,[26,\"errors-for\",null,[[\"errors\"],[[22,[\"model\",\"mission\",\"errors\",\"location\"]]]]],false],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"locationsForSelect\"]],[22,[\"model\",\"mission\",\"location\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"location\"]]],null]],null],\"Select Location\",\"formatted_address\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"openModal\",\"clients.client.locations.modal\",[22,[\"model\"]]]],[8],[6,\"i\"],[10,\"class\",\"fa fa-plus\"],[8],[9],[0,\" location\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row form-group\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"value\",\"placeholder\",\"class\"],[[22,[\"model\",\"mission\",\"reference_id\"]],\"Reference ID\",\"form-control input-lg m-b\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"mission\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"mission\",\"disable_notifications\"]]]]],false],[0,\"\\n          Disable Notifications\\n          \"],[6,\"small\"],[8],[0,\"(Slack and email notifications for admin, client, and pilot.)\\n          \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group buttons-block\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary btn-md\"],[11,\"href\",[27,[\"/clients/\",[22,[\"model\",\"client\",\"id\"]]]]],[8],[0,\"Cancel\"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Create\",\"btn btn-primary btn-md\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"importMissions\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-6 col-md-offset-3 top-buffer bottom-buffer\"],[8],[0,\"\\n\\n  \"],[6,\"h3\"],[8],[1,[20,\"formTitle\"],false],[9],[0,\"\\n\\n  \"],[6,\"form\"],[10,\"class\",\"form\"],[10,\"id\",\"import-csv-form\"],[10,\"enctype\",\"multipart/form-data\"],[3,\"action\",[[21,0,[]],\"uploadCsv\"],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n    \"],[6,\"input\"],[11,\"value\",[22,[\"model\",\"client\",\"id\"]]],[10,\"name\",\"client_id\"],[10,\"type\",\"hidden\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"model\",\"client\",\"id\"]],[22,[\"testUserId\"]]],null]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-lg-9 top-buffer bottom-buffer\"],[8],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"radio-inline\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"csv_type\"],[10,\"value\",\"standard\"],[11,\"checked\",[26,\"is-checked\",[[22,[\"importMode\"]],\"standard\"],null]],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMode\",\"standard\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\" Standard Mission\\n        \"],[9],[0,\"\\n        \"],[6,\"label\"],[10,\"class\",\"radio-inline\"],[8],[0,\"\\n          \"],[6,\"input\"],[10,\"name\",\"csv_type\"],[10,\"value\",\"training\"],[11,\"checked\",[26,\"is-checked\",[[22,[\"importMode\"]],\"training\"],null]],[11,\"onchange\",[26,\"action\",[[21,0,[]],\"setMode\",\"training\"],null]],[10,\"type\",\"radio\"],[8],[9],[0,\" Training Mission\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"importMode\"]],\"training\"],null]],null,{\"statements\":[[0,\"        \"],[6,\"div\"],[10,\"id\",\"training-mission-instructions\"],[10,\"class\",\"mission-instructions\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"warning\"],[8],[0,\"\\n            \"],[6,\"p\"],[8],[6,\"strong\"],[8],[0,\"NOTE: THIS IS A TRAINING MISSION\"],[9],[9],[0,\"\\n            \"],[6,\"p\"],[8],[0,\"The pilot will be notified as soon as it is created and it\\n                will not have a scheduled date so the pilot will have to schedule\\n                the mission to accept it.\"],[9],[0,\"\\n            \"],[6,\"p\"],[8],[0,\"Make sure the pilot instructions for the selected package tells\\n                the pilot that this is a training mission to\\n            qualify for Client work with Guaranteed Payout\"],[9],[0,\"\\n            \"],[6,\"p\"],[8],[0,\"The pilot also should be informed that they need to fly the\\n                mission on their own home, or a property in a safe location to\\n                fly.\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"id\",\"csv-package-error\"],[10,\"class\",\"col-xs-9 error hidden\"],[8],[0,\"\\n        This field is required.\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"selectName\"],[[22,[\"model\",\"packagesForSelect\"]],[22,[\"model\",\"mission\",\"package\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"package\"]]],null]],null],\"Select Package\",\"mission_package_id\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-3\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"class\",\"btn btn-lg\"],[3,\"action\",[[21,0,[]],\"newPackage\",[22,[\"model\"]]]],[8],[0,\"\\n          \"],[6,\"i\"],[11,\"class\",[27,[\"fa \",[26,\"if\",[[22,[\"model\",\"package\",\"isNew\"]],\"fa-plus\",\"fa-edit\"],null]]]],[8],[9],[0,\"\\n          custom\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"importMode\"]],\"standard\"],null]],null,{\"statements\":[[0,\"    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"id\",\"csv-rep-error\"],[10,\"class\",\"col-xs-9 error hidden\"],[8],[0,\"\\n        This field is required.\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"select-custom\",null,[[\"content\",\"selection\",\"action\",\"prompt\",\"optionLabelPath\",\"selectName\"],[[22,[\"model\",\"accountReps\"]],[22,[\"model\",\"mission\",\"accountRep\"]],[26,\"action\",[[21,0,[]],[26,\"mut\",[[22,[\"model\",\"mission\",\"accountRep\"]]],null]],null],\"Select Account Rep\",\"fullName\",\"account_rep_id\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row mission-csv-uploader\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[6,\"h5\"],[8],[0,\"Select location of CSV file\"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"id\",\"csv-file-error\"],[10,\"class\",\"col-xs-9 error hidden\"],[8],[0,\"\\n        This field is required.\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"name\"],[\"file\",\"attachment\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row mission-csv-specs\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-xs-9\"],[8],[0,\"\\n        \"],[6,\"p\"],[8],[0,\"A csv file with the following columns:\"],[9],[0,\"\\n        \"],[6,\"ul\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"importMode\"]],\"training\"],null]],null,{\"statements\":[[0,\"          \"],[6,\"li\"],[8],[6,\"code\"],[8],[0,\"pilot_email\"],[9],[6,\"br\"],[8],[9],[0,\"\\n          This MUST match up with the email that the pilot signed up for\\n              DroneBase with\"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"          \"],[6,\"li\"],[8],[0,\" \"],[6,\"strong\"],[8],[0,\"Required Fields: \"],[9],[0,\"Each row must contain either of the following columns\\n            \"],[6,\"ul\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[6,\"code\"],[8],[0,\"address\"],[9],[0,\" and \"],[6,\"code\"],[8],[0,\"postal_code\"],[9],[9],[0,\"\\n              \"],[6,\"li\"],[8],[0,\" and/or \"],[6,\"code\"],[8],[0,\"latitude\"],[9],[0,\" and \"],[6,\"code\"],[8],[0,\"longitude\"],[9],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"strong\"],[8],[0,\"WARNING:\"],[9],[0,\" It's possible for postal code to be auto-formatted as a number in Excel, which could cause leading zeroes to be omitted. Make sure it is formatted as text before exporting.\\n          \"],[9],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"Optional:\"],[9],[0,\"\\n            \"],[6,\"code\"],[8],[0,\"address2, city, state, country, external_id, pilot_instructions, internal_notes, internal_production_notes, pilot_script, client_notes, reference_id\"],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"strong\"],[8],[0,\"On Site Contact (Optional):\"],[9],[0,\"\\n            \"],[6,\"code\"],[8],[0,\"call_action, contact_name, contact_phone, contact_notes\"],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"li\"],[8],[6,\"strong\"],[8],[6,\"code\"],[8],[0,\"call_action\"],[9],[0,\" possible values:\"],[9],[0,\"\\n            \"],[6,\"code\"],[8],[0,\"in_advance_to_coordinate, when_you_arrive, in_case_of_emergency\"],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n\"]],\"parameters\":[]}],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n\\n    \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"name\",\"checked\"],[\"checkbox\",\"skip_airspace_check\",[22,[\"skipAirspaceCheck\"]]]]],false],[0,\" Disable airspace check\\n        \"],[6,\"small\"],[8],[0,\"\\n          (use with caution)\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"checkbox\"],[8],[0,\"\\n      \"],[6,\"label\"],[10,\"class\",\"input-lg\"],[8],[0,\"\\n        \"],[1,[26,\"input\",null,[[\"type\",\"name\",\"checked\"],[\"checkbox\",\"disable_notifications\",[22,[\"disableNotifications\"]]]]],false],[0,\" Disable Notifications\\n        \"],[6,\"small\"],[8],[0,\"\\n          (Slack and email notifications for admin, client, and pilot.)\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"form-group buttons-block\"],[8],[0,\"\\n      \"],[6,\"a\"],[10,\"class\",\"btn btn-secondary btn-md\"],[11,\"href\",[27,[\"/clients/\",[22,[\"model\",\"client\",\"id\"]]]]],[8],[0,\"Cancel\"],[9],[0,\"\\n      \"],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Create\",\"btn btn-primary btn-md\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/new.hbs" } });
 });
 define("admin/templates/missions/pending-panos", ["exports"], function (exports) {
   "use strict";
@@ -15202,7 +17206,7 @@ define("admin/templates/missions/pending-panos", ["exports"], function (exports)
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "9vy2XtsP", "block": "{\"symbols\":[\"mission\",\"pano\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n  \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Missions\"],[9],[0,\"\\n  \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n      \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"        \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[1,[26,\"mission-status-filter\",null,[[\"class\",\"selectedStatus\"],[\"col-md-12\",[22,[\"status\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"flightCompletedOn\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Flown On\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package.fullName\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Package\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"client.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Client Email\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"pilot.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Pilot Email\"]]],false],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Company\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Accepted\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Rejection Notes\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Promotion\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedMissions\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"flightCompletedOn\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"fullName\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"email\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"pilot\",\"email\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"company_name\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"accepted\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"rejection_notes\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"readyForReview\"]]],null,{\"statements\":[[0,\"          \"],[6,\"a\"],[10,\"href\",\"#\"],[3,\"action\",[[21,0,[]],\"setPanoAccepted\",[21,1,[]],true]],[8],[0,\"Accept\"],[9],[0,\" |\\n          \"],[6,\"a\"],[10,\"href\",\"#\"],[3,\"action\",[[21,0,[]],\"toggleRejectedForm\",[21,1,[\"id\"]]]],[8],[0,\"Reject\"],[9],[0,\"\\n\"],[4,\"each\",[[21,1,[\"completedPanos\"]]],null,{\"statements\":[[0,\"             | \"],[6,\"a\"],[11,\"href\",[21,2,[\"collabLink\"]]],[10,\"target\",\"_new\"],[8],[0,\"Pano\"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[6,\"div\"],[11,\"id\",[27,[\"mission_\",[21,1,[\"id\"]]]]],[10,\"class\",\"mission-reject-form\"],[8],[0,\"\\n            \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"setPanoAccepted\",[21,1,[]],false],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n              \"],[1,[26,\"textarea\",null,[[\"value\",\"cols\",\"rows\"],[[21,1,[\"rejection_notes\"]],\"50\",\"2\"]]],false],[0,\"\\n              \"],[6,\"div\"],[8],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Save\",\"btn btn-success btn-lg\"]]],false],[0,\" |\\n                \"],[6,\"a\"],[10,\"href\",\"#\"],[3,\"action\",[[21,0,[]],\"toggleRejectedForm\",[21,1,[\"id\"]]]],[8],[0,\"Cancel\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"p\"],[8],[0,\"Don't forget to delete the pano asset if you reject it!\"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"            Edit / Upload\"]],\"parameters\":[]},null],[0,\"\\n           |\\n          \"],[4,\"link-to\",[\"missions.map\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Map\"]],\"parameters\":[]},null],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/pending-panos.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "FLGFPcSY", "block": "{\"symbols\":[\"mission\",\"pano\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n  \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Missions\"],[9],[0,\"\\n  \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[20,\"activeCount\"],false],[0,\"/\"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n      \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"        \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[1,[26,\"mission-status-filter\",null,[[\"class\",\"selectedStatus\"],[\"col-md-12\",[22,[\"status\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"flightCompletedOn\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Flown On\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package.fullName\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Package\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"client.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Client Email\"]]],false],[0,\"\\n        \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"pilot.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Pilot Email\"]]],false],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Company\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Accepted\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Rejection Notes\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Promotion\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedMissions\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"flightCompletedOn\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"fullName\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"email\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"pilot\",\"email\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"client\",\"company_name\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"accepted\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"rejection_notes\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"readyForReview\"]]],null,{\"statements\":[[0,\"          \"],[6,\"a\"],[10,\"href\",\"#\"],[3,\"action\",[[21,0,[]],\"setPanoAccepted\",[21,1,[]],true]],[8],[0,\"Accept\"],[9],[0,\" |\\n          \"],[6,\"a\"],[10,\"href\",\"#\"],[3,\"action\",[[21,0,[]],\"toggleRejectedForm\",[21,1,[\"id\"]]]],[8],[0,\"Reject\"],[9],[0,\"\\n\"],[4,\"each\",[[21,1,[\"completedPanos\"]]],null,{\"statements\":[[0,\"             | \"],[6,\"a\"],[11,\"href\",[21,2,[\"collabLink\"]]],[10,\"target\",\"_new\"],[8],[0,\"Pano\"],[9],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"          \"],[6,\"div\"],[11,\"id\",[27,[\"mission_\",[21,1,[\"id\"]]]]],[10,\"class\",\"mission-reject-form\"],[8],[0,\"\\n            \"],[6,\"form\"],[10,\"class\",\"form\"],[3,\"action\",[[21,0,[]],\"setPanoAccepted\",[21,1,[]],false],[[\"on\"],[\"submit\"]]],[8],[0,\"\\n              \"],[1,[26,\"textarea\",null,[[\"value\",\"cols\",\"rows\"],[[21,1,[\"rejection_notes\"]],\"50\",\"2\"]]],false],[0,\"\\n              \"],[6,\"div\"],[8],[1,[26,\"input\",null,[[\"type\",\"value\",\"class\"],[\"submit\",\"Save\",\"btn btn-success btn-lg\"]]],false],[0,\" |\\n                \"],[6,\"a\"],[10,\"href\",\"#\"],[3,\"action\",[[21,0,[]],\"toggleRejectedForm\",[21,1,[\"id\"]]]],[8],[0,\"Cancel\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"p\"],[8],[0,\"Don't forget to delete the pano asset if you reject it!\"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"            Edit / Upload\"]],\"parameters\":[]},null],[0,\"\\n           |\\n          \"],[4,\"link-to\",[\"missions.map\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Map\"]],\"parameters\":[]},null],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/pending-panos.hbs" } });
 });
 define("admin/templates/missions/training-missions", ["exports"], function (exports) {
   "use strict";
@@ -15210,7 +17214,7 @@ define("admin/templates/missions/training-missions", ["exports"], function (expo
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "0GN+JcDI", "block": "{\"symbols\":[\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body training-missions\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"status\",\"latitude\",\"longitude\",\"distance\",\"on_hold\",\"assets_late\",\"hideFilter\",\"hideAssetsLate\"],[[22,[\"model\",\"missions\"]],[22,[\"status\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"on_hold\"]],[22,[\"assets_late\"]],[22,[\"hideFilter\"]],true]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list  \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Training Missions\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"missions\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n      \"],[6,\"a\"],[11,\"href\",[27,[\"/missions/new/client/\",[20,\"testUserId\"],\"?activeTab=importMissions&importMode=training\"]]],[10,\"class\",\"btn btn-primary btn-xs btn-create-training-missions\"],[8],[0,\"Create New\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"created_on\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Uploaded\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package.name\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Package\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"pilot.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Pilot Email\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Review\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedMissions\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"pilot\",\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"city\"]],false],[0,\",\"],[1,[21,1,[\"location\",\"state\"]],false],[0,\",\\n                \"],[1,[21,1,[\"location\",\"country\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Review/Edit\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/training-missions.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "4AxV+V+v", "block": "{\"symbols\":[\"mission\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body training-missions\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"status\",\"latitude\",\"longitude\",\"distance\",\"on_hold\",\"assets_late\",\"hideFilter\",\"hideAssetsLate\"],[[22,[\"model\",\"missions\"]],[22,[\"status\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"on_hold\"]],[22,[\"assets_late\"]],[22,[\"hideFilter\"]],true]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list  \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Training Missions\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[20,\"activeCount\"],false],[0,\"/\"],[1,[22,[\"model\",\"missions\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-11 col-md-offset-1\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n            \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (id, client email, location, company, rep)\",\"form-control\"]]],false],[0,\"\\n\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n            \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[6,\"a\"],[11,\"href\",[27,[\"/missions/new/client/\",[20,\"testUserId\"],\"?activeTab=importMissions&importMode=training\"]]],[10,\"class\",\"btn btn-primary btn-sm btn-create-training-missions\"],[8],[0,\"Create New\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"created_on\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Uploaded\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"package.name\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Package\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"pilot.email\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Pilot Email\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Review\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedMissions\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"name\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"pilot\",\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"city\"]],false],[0,\",\"],[1,[21,1,[\"location\",\"state\"]],false],[0,\",\\n                \"],[1,[21,1,[\"location\",\"country\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Review/Edit\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/missions/training-missions.hbs" } });
 });
 define("admin/templates/partner-integration", ["exports"], function (exports) {
   "use strict";
@@ -15234,7 +17238,7 @@ define("admin/templates/payouts/index", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "aobBjzeB", "block": "{\"symbols\":[\"payout\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n  \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Payouts\"],[9],[0,\" \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total:\\n    \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[0,\" | Amount:\\n    \"],[1,[26,\"format-dollar\",[[22,[\"model\",\"meta\",\"total_amount\"]]],null],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n      \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (mission id, pilot email, pilot name, payment id, payment processor)\",\"form-control\"]]],false],[0,\"\\n\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"        \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Pilot\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Amount\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"\\n          Payout Date\\n        \"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Mission\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"\\n          Notes\\n        \"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Payment Processor\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Payment ID\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"\\n          Status\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedPayouts\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"pilot\",\"id\"]]],null,{\"statements\":[[1,[21,1,[\"pilot\",\"fullName\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"$\"],[1,[21,1,[\"amountInDollars\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[4,\"link-to\",[\"missions.edit\",[21,1,[\"mission\",\"id\"]]],null,{\"statements\":[[1,[21,1,[\"mission\",\"id\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[1,[21,1,[\"notes\"]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"payment_processor\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"payment_id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[1,[21,1,[\"status\"]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Payouts...\",\"All payouts loaded.\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/payouts/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "QYHAebrl", "block": "{\"symbols\":[\"payout\"],\"statements\":[[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n  \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Payouts\"],[9],[0,\" \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[20,\"activeCount\"],false],[0,\"/\"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[0,\" \\n    | Amount:\\n    \"],[1,[26,\"format-dollar\",[[22,[\"model\",\"meta\",\"total_amount\"]]],null],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n      \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"search (mission id, pilot email, pilot name, payment id, payment processor)\",\"form-control\"]]],false],[0,\"\\n\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n      \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"        \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Pilot\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Amount\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"\\n          Payout Date\\n        \"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Mission\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"\\n          Notes\\n        \"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Payment Processor\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Payment ID\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"\\n          Status\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedPayouts\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"pilot\",\"id\"]]],null,{\"statements\":[[1,[21,1,[\"pilot\",\"fullName\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"$\"],[1,[21,1,[\"amountInDollars\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[4,\"link-to\",[\"missions.edit\",[21,1,[\"mission\",\"id\"]]],null,{\"statements\":[[1,[21,1,[\"mission\",\"id\"]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[1,[21,1,[\"notes\"]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"payment_processor\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[1,[21,1,[\"payment_id\"]],false],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[1,[21,1,[\"status\"]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Payouts...\",\"All payouts loaded.\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/payouts/index.hbs" } });
 });
 define("admin/templates/pilots", ["exports"], function (exports) {
   "use strict";
@@ -15250,7 +17254,7 @@ define("admin/templates/pilots/index", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "cpuV1l/p", "block": "{\"symbols\":[\"pilot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"approvedPilots\",\"latitude\",\"longitude\",\"distance\",\"hideFilter\"],[[22,[\"model\"]],[22,[\"approvedPilots\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"hideFilter\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Pilots\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"content\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"location, email and name\",\"form-control\"]]],false],[0,\"\\n\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"fullName\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Name\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Average Rating\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Phone\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Travel Distance\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"System\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"License\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Payout\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Actions\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedPilots\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[11,\"class\",[27,[[26,\"if\",[[21,1,[\"approved\"]],\"notice\"],null]]]],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"average_rating\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,1,[\"average_rating\"]],false],[0,\"\\n                \"],[6,\"img\"],[10,\"class\",\"small-star\"],[10,\"src\",\"/assets/images/pilot_rating/yellow_star.svg\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"phone\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"city\"]],false],[0,\", \"],[1,[21,1,[\"state\"]],false],[0,\", \"],[1,[21,1,[\"postal_code\"]],false],[0,\",\\n              \"],[1,[21,1,[\"country\"]],false],[0,\"\\n              \"],[6,\"b\"],[10,\"class\",\"pull-right\"],[8],[1,[26,\"format-distance\",[[21,1,[\"distance\"]]],null],false],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"travel_distance\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"drone_system\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"pilot_license\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"$\"],[1,[21,1,[\"payoutInDollars\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                   \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                  \"],[6,\"li\"],[8],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"id\"]]],null,{\"statements\":[[0,\"View\"]],\"parameters\":[]},null],[9],[0,\"\\n                  \"],[6,\"li\"],[8],[1,[26,\"pilot-approval-button\",null,[[\"model\",\"tagName\"],[[21,1,[]],\"a\"]]],false],[9],[0,\"\\n                  \"],[6,\"li\"],[8],[1,[26,\"pilot-reject-button\",null,[[\"model\",\"tagName\"],[[21,1,[]],\"a\"]]],false],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Pilots...\",\"All pilots loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/pilots/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "1jKxt9hh", "block": "{\"symbols\":[\"pilot\",\"license\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"    \"],[1,[26,\"filter-missions\",null,[[\"model\",\"approvedPilots\",\"latitude\",\"longitude\",\"distance\",\"hideFilter\"],[[22,[\"model\"]],[22,[\"approvedPilots\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"distance\"]],[22,[\"hideFilter\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Pilots\"],[9],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"content\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8 col-md-offset-2\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"location, email and name\",\"form-control\"]]],false],[0,\"\\n\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"fullName\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Name\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Average Rating\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Phone\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Travel Distance\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"System\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"License\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Payout\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Actions\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedPilots\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[11,\"class\",[27,[[26,\"if\",[[21,1,[\"approved\"]],\"notice\"],null]]]],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"average_rating\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,1,[\"average_rating\"]],false],[0,\"\\n                \"],[6,\"img\"],[10,\"class\",\"small-star\"],[10,\"src\",\"/assets/images/pilot_rating/yellow_star.svg\"],[8],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"email\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"phone\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"city\"]],false],[0,\", \"],[1,[21,1,[\"state\"]],false],[0,\", \"],[1,[21,1,[\"postal_code\"]],false],[0,\",\\n              \"],[1,[21,1,[\"country\"]],false],[0,\"\\n              \"],[6,\"b\"],[10,\"class\",\"pull-right\"],[8],[1,[26,\"format-distance\",[[21,1,[\"distance\"]]],null],false],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"travel_distance\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"drone_system\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"pilot_licenses\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,2,[\"license\",\"name\"]],false],[0,\"\\n\"]],\"parameters\":[2]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"$\"],[1,[21,1,[\"payoutInDollars\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[6,\"div\"],[10,\"class\",\"btn-group\"],[8],[0,\"\\n                \"],[6,\"button\"],[10,\"class\",\"btn btn-default btn-xs dropdown-toggle\"],[10,\"data-toggle\",\"dropdown\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"button\"],[8],[0,\"\\n                   \"],[6,\"span\"],[10,\"class\",\"caret\"],[8],[9],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu pilot-actions\"],[8],[0,\"\\n                  \"],[6,\"li\"],[8],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"id\"]]],[[\"class\"],[\"pilot-action-btn btn-info btn-sm\"]],{\"statements\":[[0,\"View\"]],\"parameters\":[]},null],[9],[0,\"\\n                  \"],[6,\"li\"],[8],[1,[26,\"pilot-approval-button\",null,[[\"model\",\"tagName\"],[[21,1,[]],\"a\"]]],false],[9],[0,\"\\n                  \"],[6,\"li\"],[8],[1,[26,\"pilot-reject-button\",null,[[\"model\",\"tagName\"],[[21,1,[]],\"a\"]]],false],[9],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Pilots...\",\"All pilots loaded.\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/pilots/index.hbs" } });
 });
 define("admin/templates/pilots/modal", ["exports"], function (exports) {
   "use strict";
@@ -15266,7 +17270,7 @@ define("admin/templates/pilots/onboarding", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "i69Ywggu", "block": "{\"symbols\":[\"pilot\",\"pilot_badge\",\"device\",\"license\",\"drone\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showBadgeOnboardingModal\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"onboarding/badge-modal\",null,[[\"badges\",\"selectedPilots\",\"selectedAllPilots\",\"totalCount\",\"distance\",\"lat\",\"lon\",\"droneIds\",\"cameraIds\",\"deviceIds\",\"licenseIds\",\"close\",\"resetPilotSelection\",\"action\"],[[22,[\"badges\"]],[22,[\"selectedPilots\"]],[22,[\"selectedAllPilots\"]],[22,[\"model\",\"meta\",\"total_count\"]],[22,[\"distance\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"droneIds\"]],[22,[\"cameraIds\"]],[22,[\"deviceIds\"]],[22,[\"licenseIds\"]],[26,\"action\",[[21,0,[]],\"toggleBadgeOnboardingModal\"],null],[26,\"action\",[[21,0,[]],\"deselectAll\"],null],\"invitePilots\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"\\n    \"],[1,[26,\"onboarding/filter-pilots\",null,[[\"distance\",\"lat\",\"lon\",\"selectedDrones\",\"selectedCameras\",\"selectedDevices\",\"selectedLicenses\",\"pilotBadgeBadgeIds\",\"selectedBadges\",\"badges\",\"pilotBadgeStatuses\",\"pilotBadgeStatusIds\",\"selectPilotBadgeStatuses\",\"pilotWithoutBadges\",\"pilotBadgeInclude\",\"droneIds\",\"cameraIds\",\"deviceIds\",\"licenseIds\",\"toggleFilter\"],[[22,[\"distance\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"selectedDrones\"]],[22,[\"selectedCameras\"]],[22,[\"selectedDevices\"]],[22,[\"selectedLicenses\"]],[22,[\"pilotBadgeBadgeIds\"]],[22,[\"selectedBadges\"]],[22,[\"badges\"]],[22,[\"pilotBadgeStatuses\"]],[22,[\"pilotBadgeStatusIds\"]],[22,[\"selectPilotBadgeStatuses\"]],[22,[\"pilotWithoutBadges\"]],[22,[\"pilotBadgeInclude\"]],[22,[\"droneIds\"]],[22,[\"cameraIds\"]],[22,[\"deviceIds\"]],[22,[\"licenseIds\"]],[26,\"action\",[[21,0,[]],\"toggleFilter\"],null]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list onboarding-list \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Pilot Onboarding\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n        \"],[6,\"h4\"],[10,\"class\",\"total-count\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"location, email and name\",\"form-control\"]]],false],[0,\"\\n\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4 text-right\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"href\",\"\"],[10,\"class\",\"turquoise-button\"],[3,\"action\",[[21,0,[]],\"toggleBadgeOnboardingModal\"]],[8],[0,\"ASSIGN\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"col\"],[10,\"width\",\"30px\"],[8],[9],[0,\"\\n        \"],[6,\"col\"],[8],[9],[0,\"\\n        \"],[6,\"col\"],[10,\"width\",\"250px\"],[8],[9],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"check-if\",[[22,[\"checkedAllOnPage\"]],\"||\",[22,[\"selectedAllPilots\"]]],null]],null,{\"statements\":[[0,\"                \"],[6,\"input\"],[10,\"checked\",\"\"],[10,\"class\",\"dropdown-toggle\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"checkbox\"],[3,\"action\",[[21,0,[]],\"deselectAll\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n                  \"],[6,\"input\"],[11,\"disabled\",[20,\"deselectAllDisabled\"]],[10,\"class\",\"dropdown-toggle\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"checkbox\"],[3,\"action\",[[21,0,[]],\"deselectAll\"]],[8],[9],[0,\"\\n                  \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                    \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"checkAllOnPage\"]],[8],[0,\"Select all on this page\"],[9],[9],[0,\"\\n                    \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"selectAllPilots\"]],[8],[0,\"Select all \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[0,\" Pilots\"],[9],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"            \"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"fullName\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Name\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"System\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"License\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Device\"],[9],[0,\"\\n            \"],[6,\"th\"],[10,\"class\",\"badge-status\"],[8],[0,\"Badge\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Actions\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedPilots\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[11,\"class\",[27,[[26,\"if\",[[21,1,[\"approved\"]],\"notice\"],null],\" \",[26,\"if\",[[26,\"includes\",[[22,[\"selectedPilots\"]],[21,1,[]]],null],\"selected-row\"],null]]]],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"checkbox-item\",null,[[\"model\",\"selections\",\"byAttribute\",\"allSelected\"],[[21,1,[]],[22,[\"selectedPilots\"]],\"email\",[22,[\"selectedAllPilots\"]]]]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"input\",null,[[\"value\",\"readonly\",\"class\"],[[21,1,[\"email\"]],true,[26,\"if\",[[21,1,[\"approved\"]],\"notice\"],null]]]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"city\"]],false],[0,\", \"],[1,[21,1,[\"state\"]],false],[0,\", \"],[1,[21,1,[\"postal_code\"]],false],[0,\",\\n              \"],[1,[21,1,[\"country\"]],false],[0,\"\\n              \"],[6,\"b\"],[10,\"class\",\"pull-right\"],[8],[1,[26,\"format-distance\",[[21,1,[\"distance\"]]],null],false],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"drones\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,5,[\"drone\",\"name\"]],false],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"pilot_licenses\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,4,[\"license\",\"name\"]],false],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"devices\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,3,[\"name\"]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[10,\"class\",\"badge-status\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"pilot_badges\",\"length\"]]],null,{\"statements\":[[0,\"              \"],[6,\"ul\"],[10,\"class\",\"badge-status\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"pilot_badges\"]]],null,{\"statements\":[[4,\"if\",[[26,\"empty-or-includes\",[[22,[\"selectedBadges\"]],[21,2,[\"badge\"]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[21,2,[\"complete\"]],\"complete\",\"pending\"],null]],[8],[0,\"\\n                      \"],[1,[21,2,[\"badge\",\"name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[2]},null],[0,\"              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"               \\n\"]],\"parameters\":[]}],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"id\"]]],null,{\"statements\":[[0,\"View\"]],\"parameters\":[]},null],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Pilots...\",\"All pilots loaded.\"]]],false],[0,\"\\n\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/pilots/onboarding.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "b2sm2VZ6", "block": "{\"symbols\":[\"pilot\",\"pilot_badge\",\"device\",\"license\",\"drone\"],\"statements\":[[6,\"div\"],[10,\"class\",\"main-body\"],[8],[0,\"\\n\"],[4,\"if\",[[22,[\"showBadgeOnboardingModal\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"onboarding/badge-modal\",null,[[\"badges\",\"selectedPilots\",\"selectedAllPilots\",\"totalCount\",\"distance\",\"lat\",\"lon\",\"droneIds\",\"cameraIds\",\"deviceIds\",\"licenseIds\",\"pilotEquipmentIds\",\"close\",\"resetPilotSelection\",\"action\"],[[22,[\"badges\"]],[22,[\"selectedPilots\"]],[22,[\"selectedAllPilots\"]],[22,[\"model\",\"meta\",\"total_count\"]],[22,[\"distance\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"droneIds\"]],[22,[\"cameraIds\"]],[22,[\"deviceIds\"]],[22,[\"licenseIds\"]],[22,[\"pilotEquipmentIds\"]],[26,\"action\",[[21,0,[]],\"toggleBadgeOnboardingModal\"],null],[26,\"action\",[[21,0,[]],\"deselectAll\"],null],\"invitePilots\"]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[4,\"if\",[[22,[\"hideFilter\"]]],null,{\"statements\":[[0,\"    \"],[6,\"img\"],[10,\"class\",\"filter-hidden-icon\"],[10,\"src\",\"/assets/images/Filter_Icon.svg\"],[3,\"action\",[[21,0,[]],\"toggleFilter\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"\\n    \"],[1,[26,\"onboarding/filter-pilots\",null,[[\"distance\",\"lat\",\"lon\",\"selectedDrones\",\"selectedCameras\",\"selectedDevices\",\"selectedLicenses\",\"selectedPilotEquipment\",\"pilotBadgeBadgeIds\",\"selectedBadges\",\"badges\",\"pilotBadgeStatuses\",\"pilotBadgeStatusIds\",\"selectPilotBadgeStatuses\",\"pilotWithoutBadges\",\"pilotBadgeInclude\",\"droneIds\",\"cameraIds\",\"deviceIds\",\"licenseIds\",\"pilotEquipmentIds\",\"toggleFilter\"],[[22,[\"distance\"]],[22,[\"lat\"]],[22,[\"lon\"]],[22,[\"selectedDrones\"]],[22,[\"selectedCameras\"]],[22,[\"selectedDevices\"]],[22,[\"selectedLicenses\"]],[22,[\"selectedPilotEquipment\"]],[22,[\"pilotBadgeBadgeIds\"]],[22,[\"selectedBadges\"]],[22,[\"badges\"]],[22,[\"pilotBadgeStatuses\"]],[22,[\"pilotBadgeStatusIds\"]],[22,[\"selectPilotBadgeStatuses\"]],[22,[\"pilotWithoutBadges\"]],[22,[\"pilotBadgeInclude\"]],[22,[\"droneIds\"]],[22,[\"cameraIds\"]],[22,[\"deviceIds\"]],[22,[\"licenseIds\"]],[22,[\"pilotEquipmentIds\"]],[26,\"action\",[[21,0,[]],\"toggleFilter\"],null]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"  \"],[6,\"div\"],[11,\"class\",[27,[\"missions-list onboarding-list \",[26,\"if\",[[22,[\"hideFilter\"]],\"no-filter\"],null]]]],[8],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n      \"],[6,\"h2\"],[10,\"class\",\"pull-left\"],[8],[0,\"Pilot Onboarding\"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n        \"],[6,\"h4\"],[10,\"class\",\"total-count\"],[8],[0,\"Total: \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"form-group form-group-iconized\"],[8],[0,\"\\n          \"],[1,[26,\"search-input-delayed\",null,[[\"boundValue\",\"placeholder\",\"class\"],[[22,[\"q\"]],\"location, email and name\",\"form-control\"]]],false],[0,\"\\n\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-spinner fa-pulse loadable loadable-input\"],[8],[9],[0,\"\\n          \"],[6,\"i\"],[10,\"class\",\"fa fa-search loadable-hide\"],[8],[9],[0,\"\\n\\n\"],[4,\"if\",[[22,[\"q\"]]],null,{\"statements\":[[0,\"            \"],[6,\"i\"],[10,\"class\",\"fa fa-times-circle search-clear\"],[3,\"action\",[[21,0,[]],\"clearQuery\"],[[\"on\"],[\"click\"]]],[8],[0,\"\\n            \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4 text-right\"],[8],[0,\"\\n        \"],[6,\"a\"],[10,\"href\",\"\"],[10,\"class\",\"btn-primary\"],[3,\"action\",[[21,0,[]],\"toggleBadgeOnboardingModal\"]],[8],[0,\"ASSIGN\"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n      \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n        \"],[6,\"col\"],[10,\"width\",\"30px\"],[8],[9],[0,\"\\n        \"],[6,\"col\"],[8],[9],[0,\"\\n        \"],[6,\"col\"],[10,\"width\",\"250px\"],[8],[9],[0,\"\\n        \"],[6,\"thead\"],[8],[0,\"\\n          \"],[6,\"tr\"],[8],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"\\n\"],[4,\"if\",[[26,\"check-if\",[[22,[\"checkedAllOnPage\"]],\"||\",[22,[\"selectedAllPilots\"]]],null]],null,{\"statements\":[[0,\"                \"],[6,\"input\"],[10,\"checked\",\"\"],[10,\"class\",\"dropdown-toggle\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"checkbox\"],[3,\"action\",[[21,0,[]],\"deselectAll\"]],[8],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"                \"],[6,\"div\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n                  \"],[6,\"input\"],[11,\"disabled\",[20,\"deselectAllDisabled\"]],[10,\"class\",\"dropdown-toggle\"],[10,\"aria-haspopup\",\"true\"],[10,\"aria-expanded\",\"false\"],[10,\"type\",\"checkbox\"],[3,\"action\",[[21,0,[]],\"deselectAll\"]],[8],[9],[0,\"\\n                  \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                    \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"checkAllOnPage\"]],[8],[0,\"Select all on this page\"],[9],[9],[0,\"\\n                    \"],[6,\"li\"],[8],[6,\"a\"],[3,\"action\",[[21,0,[]],\"selectAllPilots\"]],[8],[0,\"Select all \"],[1,[22,[\"model\",\"meta\",\"total_count\"]],false],[0,\" Pilots\"],[9],[9],[0,\"\\n                  \"],[9],[0,\"\\n                \"],[9],[0,\"\\n\"]],\"parameters\":[]}],[0,\"            \"],[9],[0,\"\\n            \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"fullName\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Name\"]]],false],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Email\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"System\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"License\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Device\"],[9],[0,\"\\n            \"],[6,\"th\"],[10,\"class\",\"badge-status\"],[8],[0,\"Badge\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Payout\"],[9],[0,\"\\n            \"],[6,\"th\"],[8],[0,\"Actions\"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"tbody\"],[10,\"class\",\"loadable\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedPilots\"]]],null,{\"statements\":[[0,\"          \"],[6,\"tr\"],[11,\"class\",[27,[[26,\"if\",[[21,1,[\"approved\"]],\"notice\"],null],\" \",[26,\"if\",[[26,\"includes\",[[22,[\"selectedPilots\"]],[21,1,[]]],null],\"selected-row\"],null]]]],[8],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"checkbox-item\",null,[[\"model\",\"selections\",\"byAttribute\",\"allSelected\"],[[21,1,[]],[22,[\"selectedPilots\"]],\"email\",[22,[\"selectedAllPilots\"]]]]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"fullName\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[26,\"input\",null,[[\"value\",\"readonly\",\"class\"],[[21,1,[\"email\"]],true,[26,\"if\",[[21,1,[\"approved\"]],\"notice\"],null]]]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[1,[21,1,[\"city\"]],false],[0,\", \"],[1,[21,1,[\"state\"]],false],[0,\", \"],[1,[21,1,[\"postal_code\"]],false],[0,\",\\n              \"],[1,[21,1,[\"country\"]],false],[0,\"\\n              \"],[6,\"b\"],[10,\"class\",\"pull-right\"],[8],[1,[26,\"format-distance\",[[21,1,[\"distance\"]]],null],false],[9],[0,\"\\n            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"drones\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,5,[\"drone\",\"name\"]],false],[0,\"\\n\"]],\"parameters\":[5]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"pilot_licenses\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,4,[\"license\",\"name\"]],false],[0,\"\\n\"]],\"parameters\":[4]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"devices\"]]],null,{\"statements\":[[0,\"                \"],[1,[21,3,[\"name\"]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[10,\"class\",\"badge-status\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"pilot_badges\",\"length\"]]],null,{\"statements\":[[0,\"              \"],[6,\"ul\"],[10,\"class\",\"badge-status\"],[8],[0,\"\\n\"],[4,\"each\",[[21,1,[\"pilot_badges\"]]],null,{\"statements\":[[4,\"if\",[[26,\"empty-or-includes\",[[22,[\"selectedBadges\"]],[21,2,[\"badge\"]]],null]],null,{\"statements\":[[0,\"                  \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[21,2,[\"complete\"]],\"complete\",\"pending\"],null]],[8],[0,\"\\n                      \"],[1,[21,2,[\"badge\",\"name\"]],false],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"parameters\":[2]},null],[0,\"              \"],[9],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"               \\n\"]],\"parameters\":[]}],[0,\"            \"],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"$\"],[1,[21,1,[\"payoutInDollars\"]],false],[9],[0,\"\\n            \"],[6,\"td\"],[8],[0,\"\\n              \"],[4,\"link-to\",[\"pilots.pilot\",[21,1,[\"id\"]]],null,{\"statements\":[[0,\"View\"]],\"parameters\":[]},null],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\"]],\"Loading more Pilots...\",\"All pilots loaded.\"]]],false],[0,\"\\n\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/pilots/onboarding.hbs" } });
 });
 define("admin/templates/pilots/pilot", ["exports"], function (exports) {
   "use strict";
@@ -15282,7 +17286,7 @@ define("admin/templates/pilots/pilot/missions/index", ["exports"], function (exp
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "p2SOinZW", "block": "{\"symbols\":[\"mission\",\"image\",\"pb\",\"pilotEquipment\",\"index\",\"device\",\"index\",\"drone\",\"index\",\"license\",\"index\",\"edit_context\",\"image\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 mg-bottom-sm\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"d-inline-block header-pilot-name\"],[8],[1,[22,[\"model\",\"pilot\",\"fullName\"]],false],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"d-inline-block header-pilot-number\"],[8],[0,\"(\"],[1,[22,[\"model\",\"pilot\",\"id\"]],false],[0,\")\"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"pilot\",\"average_rating\"]]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"col-md-12 mg-bottom-sm\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n\"],[4,\"each\",[[26,\"rating-stars\",[[22,[\"model\",\"pilot\",\"average_rating\"]]],null]],null,{\"statements\":[[0,\"        \"],[6,\"img\"],[10,\"class\",\"small-star\"],[11,\"src\",[27,[\"/assets/images/pilot_rating/\",[21,13,[]]]]],[8],[9],[0,\"\\n\"]],\"parameters\":[13]},null],[0,\"    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[1,[26,\"format-float\",[[22,[\"model\",\"pilot\",\"average_rating\"]],1],null],false],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"profile\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"profile\"]],[8],[0,\"Profile\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"badges\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"badges\"]],[8],[0,\"Badges\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"missions\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"missions\"]],[8],[0,\"Missions\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"earnings-panel\"],[8],[0,\"\\n    \"],[6,\"span\"],[8],[0,\"Earnings: \"],[6,\"strong\"],[8],[0,\"$\"],[1,[22,[\"model\",\"pilot\",\"payoutInDollars\"]],false],[9],[9],[0,\"\\n    \"],[6,\"span\"],[8],[0,\"Status:\\n      \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n        \"],[6,\"strong\"],[8],[1,[26,\"titleize\",[[22,[\"model\",\"pilot\",\"status\"]]],null],false],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[1,[26,\"pilot-approval-button\",null,[[\"model\",\"class\"],[[22,[\"model\",\"pilot\"]],\"button-lg\"]]],false],[0,\"\\n    \"],[1,[26,\"pilot-reject-button\",null,[[\"model\",\"class\"],[[22,[\"model\",\"pilot\"]],\"button-lg reject-button\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"profile\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer pilot-profile\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-section\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Contact Information\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"pilot\",\"first_name\"]],[22,[\"model\",\"pilot\"]],\"First Name\",[22,[\"model\",\"pilot\",\"first_name\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"pilot\",\"last_name\"]],[22,[\"model\",\"pilot\"]],\"Last Name\",[22,[\"model\",\"pilot\",\"last_name\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"modelErrors\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"email\"]],[22,[\"model\",\"pilot\"]],[22,[\"model\",\"pilot\",\"email\"]],\"Email\"]]],false],[0,\"\\n    \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"type\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"password\"]],[22,[\"model\",\"pilot\"]],\"password\",\"Reset Password\"]]],false],[0,\"\\n\"],[4,\"input-inplace-edit\",null,[[\"value\",\"model\",\"modelErrors\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"phone\"]],[22,[\"model\",\"pilot\"]],[22,[\"model\",\"pilot\",\"phone\"]],\"Phone\"]],{\"statements\":[[0,\"      \"],[1,[22,[\"model\",\"pilot\",\"phone\"]],false],[0,\"\\n\"]],\"parameters\":[12]},null],[0,\"    \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"birthday\"]],[22,[\"model\",\"pilot\"]],\"Birthday\"]]],false],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"pilot\",\"address\"]],[22,[\"model\",\"pilot\"]],\"Address\",[22,[\"model\",\"pilot\",\"address\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"address2\"]],[22,[\"model\",\"pilot\"]],\"Suite/Apt\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"city\"]],[22,[\"model\",\"pilot\"]],\"City\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"state\"]],[22,[\"model\",\"pilot\"]],\"State\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"postal_code\"]],[22,[\"model\",\"pilot\"]],\"Postal Code\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"country\"]],[22,[\"model\",\"pilot\"]],\"Country\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Certifications\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"pilot_licenses\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-license-view\",null,[[\"license\",\"index\"],[[21,10,[]],[21,11,[]]]]],false],[0,\"\\n\"]],\"parameters\":[10,11]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Drone System\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"drones\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-drone-view\",null,[[\"drone\",\"index\"],[[21,8,[]],[21,9,[]]]]],false],[0,\"\\n\"]],\"parameters\":[8,9]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Devices\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"devices\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-device-view\",null,[[\"device\",\"index\"],[[21,6,[]],[21,7,[]]]]],false],[0,\"\\n\"]],\"parameters\":[6,7]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Other Equipment\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"pilotEquipment\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-equipment-view\",null,[[\"pilotEquipment\",\"index\"],[[21,4,[]],[21,5,[]]]]],false],[0,\"\\n\"]],\"parameters\":[4,5]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Mission Preference\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pilot-section\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pilot-section-col\"],[8],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"normal-field-label\"],[8],[0,\"Miles willing to travel:\"],[9],[0,\"\\n          \"],[1,[22,[\"model\",\"pilot\",\"travel_distance\"]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pilot-section\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pilot-section-col\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block mg-right-sm\"],[8],[0,\"\\n            \"],[6,\"span\"],[10,\"class\",\"normal-field-label\"],[8],[0,\"Availability:\"],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block mg-right-sm\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"pilot\",\"is_available_weekdays\"]]]]],false],[0,\"\\n            Weekdays\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"pilot\",\"is_available_weekends\"]]]]],false],[0,\"\\n            Weekends\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Payment Information\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n          \"],[1,[26,\"input-checkbox-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"enable_autopay\"]],[22,[\"model\",\"pilot\"]],\"Enable Autopay\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"inline-info\"],[8],[0,\"\\n            \"],[6,\"span\"],[8],[0,\"Payment Processor:\"],[9],[0,\" \"],[1,[22,[\"model\",\"pilot\",\"payment_processor\"]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"inline-info\"],[8],[0,\"\\n            \"],[6,\"span\"],[8],[0,\"Payment Processor ID:\"],[9],[0,\"\\n            \"],[1,[22,[\"model\",\"pilot\",\"payment_processor_id\"]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n      \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"typeTextArea\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"notes\"]],[22,[\"model\",\"pilot\"]],true,\"Admin notes (not visible to pilot)\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"badges\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-4 top-buffer\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"pilotBadgeList\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"pilot-badge\",null,[[\"pb\"],[[21,3,[]]]]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"  \"],[6,\"div\"],[10,\"class\",\"top-buffer\"],[8],[0,\"\\n    \"],[1,[26,\"select-custom\",null,[[\"assignSelectedObject\",\"useSendAction\",\"optionLabelPath\",\"content\",\"prompt\",\"action\"],[true,true,\"name\",[22,[\"badgeSelectList\"]],\"Add Badge\",\"addBadge\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"missions\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n    \"],[6,\"h4\"],[10,\"class\",\"pull-left\"],[8],[0,\"Pilot Missions\"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Status\"],[9],[0,\"\\n          \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\",\"sortDirection\"],[\"created\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Created\",\"desc\"]]],false],[0,\"\\n          \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"scheduled\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Scheduled\"]]],false],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Package\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Mission Rating\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Ref. ID\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"missions\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[0,\"\\n\"],[4,\"if\",[[21,1,[\"isOnHold\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"on-hold-warning\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\"\\n                \"],[6,\"span\"],[8],[0,\"On Hold\"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"scheduled_at_start\"]]],null,{\"statements\":[[0,\"              \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"MM/DD/YY\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n              \"],[6,\"br\"],[8],[9],[0,\"\\n              \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\" -\\n              \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_end\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"pilot_rating\"]]],null,{\"statements\":[[4,\"each\",[[26,\"rating-stars\",[[21,1,[\"pilot_rating\",\"value\"]]],null]],null,{\"statements\":[[0,\"                \"],[6,\"img\"],[10,\"class\",\"small-star\"],[11,\"src\",[27,[\"/assets/images/pilot_rating/\",[21,2,[]]]]],[8],[9],[0,\"\\n\"]],\"parameters\":[2]},null]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"reference_id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"              Edit / Upload\\n            \"]],\"parameters\":[]},null],[0,\" |\\n\"],[4,\"link-to\",[\"missions.map\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"              Map\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/pilots/pilot/missions/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "uU/j/lGz", "block": "{\"symbols\":[\"mission\",\"image\",\"pb\",\"pilotEquipment\",\"index\",\"device\",\"index\",\"drone\",\"index\",\"license\",\"index\",\"edit_context\",\"image\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 mg-bottom-sm\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"d-inline-block header-pilot-name\"],[8],[1,[22,[\"model\",\"pilot\",\"fullName\"]],false],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"d-inline-block header-pilot-number\"],[8],[0,\"(\"],[1,[22,[\"model\",\"pilot\",\"id\"]],false],[0,\")\"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[4,\"if\",[[22,[\"model\",\"pilot\",\"average_rating\"]]],null,{\"statements\":[[0,\"  \"],[6,\"div\"],[10,\"class\",\"col-md-12 mg-bottom-sm\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n\"],[4,\"each\",[[26,\"rating-stars\",[[22,[\"model\",\"pilot\",\"average_rating\"]]],null]],null,{\"statements\":[[0,\"        \"],[6,\"img\"],[10,\"class\",\"small-star\"],[11,\"src\",[27,[\"/assets/images/pilot_rating/\",[21,13,[]]]]],[8],[9],[0,\"\\n\"]],\"parameters\":[13]},null],[0,\"    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[1,[26,\"format-float\",[[22,[\"model\",\"pilot\",\"average_rating\"]],1],null],false],[9],[0,\"\\n  \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"ul\"],[10,\"class\",\"nav nav-tabs\"],[8],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"profile\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"profile\"]],[8],[0,\"Profile\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"badges\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"badges\"]],[8],[0,\"Badges\"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"li\"],[11,\"class\",[26,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"missions\"],null],\"active\"],null]],[8],[0,\"\\n      \"],[6,\"a\"],[3,\"action\",[[21,0,[]],\"setTab\",\"missions\"]],[8],[0,\"Missions\"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"earnings-panel\"],[8],[0,\"\\n    \"],[6,\"span\"],[8],[0,\"Earnings: \"],[6,\"strong\"],[8],[0,\"$\"],[1,[22,[\"model\",\"pilot\",\"payoutInDollars\"]],false],[9],[9],[0,\"\\n    \"],[6,\"span\"],[8],[0,\"Status:\\n      \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n        \"],[6,\"strong\"],[8],[1,[26,\"titleize\",[[22,[\"model\",\"pilot\",\"status\"]]],null],false],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[1,[26,\"pilot-approval-button\",null,[[\"model\"],[[22,[\"model\",\"pilot\"]]]]],false],[0,\"\\n    \"],[1,[26,\"pilot-reject-button\",null,[[\"model\"],[[22,[\"model\",\"pilot\"]]]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"profile\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer pilot-profile\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-section\"],[8],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Contact Information\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"pilot\",\"first_name\"]],[22,[\"model\",\"pilot\"]],\"First Name\",[22,[\"model\",\"pilot\",\"first_name\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-md-8\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"pilot\",\"last_name\"]],[22,[\"model\",\"pilot\"]],\"Last Name\",[22,[\"model\",\"pilot\",\"last_name\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"modelErrors\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"email\"]],[22,[\"model\",\"pilot\"]],[22,[\"model\",\"pilot\",\"email\"]],\"Email\"]]],false],[0,\"\\n    \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"type\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"password\"]],[22,[\"model\",\"pilot\"]],\"password\",\"Reset Password\"]]],false],[0,\"\\n\"],[4,\"input-inplace-edit\",null,[[\"value\",\"model\",\"modelErrors\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"phone\"]],[22,[\"model\",\"pilot\"]],[22,[\"model\",\"pilot\",\"phone\"]],\"Phone\"]],{\"statements\":[[0,\"      \"],[1,[22,[\"model\",\"pilot\",\"phone\"]],false],[0,\"\\n\"]],\"parameters\":[12]},null],[0,\"    \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"birthday\"]],[22,[\"model\",\"pilot\"]],\"Birthday\"]]],false],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\",\"modelErrors\"],[[22,[\"model\",\"pilot\",\"address\"]],[22,[\"model\",\"pilot\"]],\"Address\",[22,[\"model\",\"pilot\",\"address\"]]]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"address2\"]],[22,[\"model\",\"pilot\"]],\"Suite/Apt\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"city\"]],[22,[\"model\",\"pilot\"]],\"City\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"state\"]],[22,[\"model\",\"pilot\"]],\"State\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"postal_code\"]],[22,[\"model\",\"pilot\"]],\"Postal Code\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n        \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"country\"]],[22,[\"model\",\"pilot\"]],\"Country\"]]],false],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Certifications\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"pilot_licenses\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-license-view\",null,[[\"license\",\"index\"],[[21,10,[]],[21,11,[]]]]],false],[0,\"\\n\"]],\"parameters\":[10,11]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Drone System\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"drones\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-drone-view\",null,[[\"drone\",\"index\"],[[21,8,[]],[21,9,[]]]]],false],[0,\"\\n\"]],\"parameters\":[8,9]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Devices\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"devices\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-device-view\",null,[[\"device\",\"index\"],[[21,6,[]],[21,7,[]]]]],false],[0,\"\\n\"]],\"parameters\":[6,7]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Other Equipment\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"pilot\",\"pilotEquipment\"]]],null,{\"statements\":[[0,\"        \"],[1,[26,\"pilot-equipment-view\",null,[[\"pilotEquipment\",\"index\"],[[21,4,[]],[21,5,[]]]]],false],[0,\"\\n\"]],\"parameters\":[4,5]},null],[0,\"    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Mission Preference\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pilot-section\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pilot-section-col\"],[8],[0,\"\\n          \"],[6,\"span\"],[10,\"class\",\"normal-field-label\"],[8],[0,\"Miles willing to travel:\"],[9],[0,\"\\n          \"],[1,[22,[\"model\",\"pilot\",\"travel_distance\"]],false],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"pilot-section\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"pilot-section-col\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block mg-right-sm\"],[8],[0,\"\\n            \"],[6,\"span\"],[10,\"class\",\"normal-field-label\"],[8],[0,\"Availability:\"],[9],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block mg-right-sm\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"pilot\",\"is_available_weekdays\"]]]]],false],[0,\"\\n            Weekdays\\n          \"],[9],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"d-inline-block\"],[8],[0,\"\\n            \"],[1,[26,\"input\",null,[[\"type\",\"checked\"],[\"checkbox\",[22,[\"model\",\"pilot\",\"is_available_weekends\"]]]]],false],[0,\"\\n            Weekends\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"section-header\"],[8],[0,\"\\n      Payment Information\\n    \"],[9],[0,\"\\n\\n    \"],[6,\"div\"],[10,\"class\",\"mg-bottom-sm\"],[8],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n          \"],[1,[26,\"input-checkbox-inplace-edit\",null,[[\"value\",\"model\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"enable_autopay\"]],[22,[\"model\",\"pilot\"]],\"Enable Autopay\"]]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"inline-info\"],[8],[0,\"\\n            \"],[6,\"span\"],[8],[0,\"Payment Processor:\"],[9],[0,\" \"],[1,[22,[\"model\",\"pilot\",\"payment_processor\"]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"div\"],[10,\"class\",\"col-sm-4\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"inline-info\"],[8],[0,\"\\n            \"],[6,\"span\"],[8],[0,\"Payment Processor ID:\"],[9],[0,\"\\n            \"],[1,[22,[\"model\",\"pilot\",\"payment_processor_id\"]],false],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\\n\\n      \"],[1,[26,\"input-inplace-edit\",null,[[\"value\",\"model\",\"typeTextArea\",\"placeholder\"],[[22,[\"model\",\"pilot\",\"notes\"]],[22,[\"model\",\"pilot\"]],true,\"Admin notes (not visible to pilot)\"]]],false],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"badges\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-4 top-buffer\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"pilotBadgeList\"]]],null,{\"statements\":[[0,\"    \"],[1,[26,\"pilot-badge\",null,[[\"pb\"],[[21,3,[]]]]],false],[0,\"\\n\"]],\"parameters\":[3]},null],[0,\"  \"],[6,\"div\"],[10,\"class\",\"top-buffer\"],[8],[0,\"\\n    \"],[1,[26,\"select-custom\",null,[[\"assignSelectedObject\",\"useSendAction\",\"optionLabelPath\",\"content\",\"prompt\",\"action\"],[true,true,\"name\",[22,[\"badgeSelectList\"]],\"Add Badge\",\"addBadge\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"\\n\"],[4,\"if\",[[26,\"is-equal\",[[22,[\"activeTab\"]],\"missions\"],null]],null,{\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12 top-buffer\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-header clearfix\"],[8],[0,\"\\n    \"],[6,\"h4\"],[10,\"class\",\"pull-left\"],[8],[0,\"Pilot Missions\"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Id\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Status\"],[9],[0,\"\\n          \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\",\"sortDirection\"],[\"created\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Created\",\"desc\"]]],false],[0,\"\\n          \"],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"scheduled\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"setSort\"],null],\"Scheduled\"]]],false],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Package\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Location\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Mission Rating\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Ref. ID\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"model\",\"missions\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"id\"]],false],[0,\"\\n\"],[4,\"if\",[[21,1,[\"isOnHold\"]]],null,{\"statements\":[[0,\"              \"],[6,\"div\"],[10,\"class\",\"on-hold-warning\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-warning\"],[8],[9],[0,\"\\n                \"],[6,\"span\"],[8],[0,\"On Hold\"],[9],[0,\"\\n              \"],[9],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"created_on\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"scheduled_at_start\"]]],null,{\"statements\":[[0,\"              \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"MM/DD/YY\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n              \"],[6,\"br\"],[8],[9],[0,\"\\n              \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_start\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\" -\\n              \"],[1,[26,\"moment-format\",[[21,1,[\"scheduled_at_end\"]],\"h:mm a\"],[[\"timeZone\"],[[21,1,[\"location\",\"timezone_id\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"package\",\"fullName\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"location\",\"formatted_address\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"if\",[[21,1,[\"pilot_rating\"]]],null,{\"statements\":[[4,\"each\",[[26,\"rating-stars\",[[21,1,[\"pilot_rating\",\"value\"]]],null]],null,{\"statements\":[[0,\"                \"],[6,\"img\"],[10,\"class\",\"small-star\"],[11,\"src\",[27,[\"/assets/images/pilot_rating/\",[21,2,[]]]]],[8],[9],[0,\"\\n\"]],\"parameters\":[2]},null]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"reference_id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n\"],[4,\"link-to\",[\"missions.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"              Edit / Upload\\n            \"]],\"parameters\":[]},null],[0,\" |\\n\"],[4,\"link-to\",[\"missions.map\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"              Map\\n\"]],\"parameters\":[]},null],[0,\"          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\\n  \"],[1,[26,\"infinity-loader\",null,[[\"infinityModel\",\"loadingText\",\"loadedText\"],[[22,[\"model\",\"missions\"]],\"Loading more Missions...\",\"All missions loaded.\"]]],false],[0,\"\\n\"],[9],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/pilots/pilot/missions/index.hbs" } });
 });
 define("admin/templates/templates", ["exports"], function (exports) {
   "use strict";
@@ -15314,7 +17318,7 @@ define("admin/templates/templates/index", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "utHMi81L", "block": "{\"symbols\":[\"template\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n    \"],[6,\"h3\"],[8],[0,\"All Templates\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n    \"],[4,\"link-to\",[\"templates.new\"],[[\"class\"],[\"btn btn-info pull-right header-button\"]],{\"statements\":[[0,\"New Template\"]],\"parameters\":[]},null],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Shots\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedTemplates\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[21,1,[\"name\"]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[21,1,[\"shots\",\"length\"]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n              \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"data-toggle\",\"dropdown\"],[10,\"class\",\"settings-menu\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                \"],[6,\"li\"],[8],[0,\"\\n                  \"],[4,\"link-to\",[\"templates.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"li\"],[8],[0,\"\\n                  \"],[4,\"link-to\",[\"templates.clone\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Clone\"]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "1pVnWL0H", "block": "{\"symbols\":[\"template\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-4\"],[8],[0,\"\\n    \"],[6,\"h3\"],[8],[0,\"All Templates\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n    \"],[4,\"link-to\",[\"templates.new\"],[[\"class\"],[\"btn btn-primary btn-sm pull-right header-button\"]],{\"statements\":[[0,\"New Template\"]],\"parameters\":[]},null],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-6\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n      \"],[6,\"thead\"],[8],[0,\"\\n        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Name\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[0,\"Shots\"],[9],[0,\"\\n          \"],[6,\"th\"],[8],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n      \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedTemplates\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[21,1,[\"name\"]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[1,[21,1,[\"shots\",\"length\"]],false],[0,\"\\n          \"],[9],[0,\"\\n          \"],[6,\"td\"],[8],[0,\"\\n            \"],[6,\"div\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n              \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"data-toggle\",\"dropdown\"],[10,\"class\",\"settings-menu\"],[8],[0,\"\\n                \"],[6,\"i\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[0,\"\\n              \"],[9],[0,\"\\n              \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n                \"],[6,\"li\"],[8],[0,\"\\n                  \"],[4,\"link-to\",[\"templates.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n                \"],[6,\"li\"],[8],[0,\"\\n                  \"],[4,\"link-to\",[\"templates.clone\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Clone\"]],\"parameters\":[]},null],[0,\"\\n                \"],[9],[0,\"\\n              \"],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/index.hbs" } });
 });
 define("admin/templates/templates/new", ["exports"], function (exports) {
   "use strict";
@@ -15338,7 +17342,7 @@ define("admin/templates/templates/shots/edit", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "PuGyZHem", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-7\"],[8],[0,\"\\n    \"],[6,\"h3\"],[8],[0,\"Edit Shot\"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n  \"],[1,[26,\"shot-type-form\",null,[[\"model\",\"savedAction\"],[[22,[\"model\"]],\"saved\"]]],false],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/shots/edit.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "3YHVaMS0", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"shots\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"row\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n      \"],[6,\"h3\"],[8],[0,\"Edit Shot\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n    \"],[1,[26,\"shot-type-form\",null,[[\"model\",\"savedAction\"],[[22,[\"model\"]],\"saved\"]]],false],[0,\"\\n  \"],[9],[0,\"\\n\"],[9]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/shots/edit.hbs" } });
 });
 define("admin/templates/templates/shots/index", ["exports"], function (exports) {
   "use strict";
@@ -15346,7 +17350,7 @@ define("admin/templates/templates/shots/index", ["exports"], function (exports) 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "y3RV/DUG", "block": "{\"symbols\":[\"shot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-7\"],[8],[0,\"\\n    \"],[6,\"h3\"],[8],[0,\"All Shots\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n    \"],[4,\"link-to\",[\"templates.shots.new\"],[[\"class\"],[\"btn btn-info pull-right header-button\"]],{\"statements\":[[0,\"New Shot\"]],\"parameters\":[]},null],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Shot Title\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedShots\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[1,[21,1,[\"name\"]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n            \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"data-toggle\",\"dropdown\"],[10,\"class\",\"settings-menu\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[9],[0,\"\\n            \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"templates.shots.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[9],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"templates.shots.clone\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Clone\"]],\"parameters\":[]},null],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/shots/index.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "F3xj5mnn", "block": "{\"symbols\":[\"shot\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-7\"],[8],[0,\"\\n    \"],[6,\"h3\"],[8],[0,\"All Shots\"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-2\"],[8],[0,\"\\n    \"],[4,\"link-to\",[\"templates.shots.new\"],[[\"class\"],[\"btn btn-primary btn-sm pull-right header-button\"]],{\"statements\":[[0,\"New Shot\"]],\"parameters\":[]},null],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"table-responsive\"],[8],[0,\"\\n  \"],[6,\"table\"],[10,\"class\",\"table\"],[8],[0,\"\\n    \"],[6,\"thead\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Shot Title\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Camera Requirement\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"tbody\"],[8],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedShots\"]]],null,{\"statements\":[[0,\"      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[1,[21,1,[\"name\"]],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[1,[26,\"titleize\",[[21,1,[\"camera_requirement\"]]],null],false],[0,\"\\n        \"],[9],[0,\"\\n        \"],[6,\"td\"],[8],[0,\"\\n          \"],[6,\"div\"],[10,\"class\",\"dropdown\"],[8],[0,\"\\n            \"],[6,\"a\"],[10,\"href\",\"#\"],[10,\"data-toggle\",\"dropdown\"],[10,\"class\",\"settings-menu\"],[8],[6,\"i\"],[10,\"class\",\"fa fa-cog\"],[8],[9],[9],[0,\"\\n            \"],[6,\"ul\"],[10,\"class\",\"dropdown-menu\"],[8],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"templates.shots.edit\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[9],[0,\"\\n              \"],[6,\"li\"],[8],[4,\"link-to\",[\"templates.shots.clone\",[21,1,[\"id\"]]],[[\"bubbles\"],[false]],{\"statements\":[[0,\"Clone\"]],\"parameters\":[]},null],[9],[0,\"\\n            \"],[9],[0,\"\\n          \"],[9],[0,\"\\n        \"],[9],[0,\"\\n      \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/shots/index.hbs" } });
 });
 define("admin/templates/templates/shots/new", ["exports"], function (exports) {
   "use strict";
@@ -15354,7 +17358,31 @@ define("admin/templates/templates/shots/new", ["exports"], function (exports) {
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.default = Ember.HTMLBars.template({ "id": "wTal3h7J", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"col-md-7\"],[8],[0,\"\\n    \"],[6,\"h3\"],[8],[0,\"Create New Shot\"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n  \"],[1,[26,\"shot-type-form\",null,[[\"model\",\"savedAction\"],[[22,[\"model\"]],\"saved\"]]],false],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/shots/new.hbs" } });
+  exports.default = Ember.HTMLBars.template({ "id": "U9Vdhore", "block": "{\"symbols\":[],\"statements\":[[6,\"div\"],[10,\"class\",\"col-md-12\"],[8],[0,\"\\n  \"],[6,\"h3\"],[8],[0,\"Create New Shot\"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[6,\"div\"],[10,\"class\",\"col-md-9\"],[8],[0,\"\\n  \"],[1,[26,\"shot-type-form\",null,[[\"model\",\"savedAction\"],[[22,[\"model\"]],\"saved\"]]],false],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/templates/shots/new.hbs" } });
+});
+define("admin/templates/waivers/edit", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "TD2HgwsX", "block": "{\"symbols\":[],\"statements\":[[1,[26,\"waiver-form\",null,[[\"waiver\",\"saveAction\"],[[22,[\"model\",\"waiver\"]],\"save\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/waivers/edit.hbs" } });
+});
+define("admin/templates/waivers/index", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "eCHyWq5Q", "block": "{\"symbols\":[\"waiver\"],\"statements\":[[6,\"div\"],[10,\"class\",\"col-lg-12\"],[8],[0,\"\\n  \"],[6,\"div\"],[10,\"class\",\"page-header clearfix waivers\"],[8],[0,\"\\n    \"],[6,\"h3\"],[10,\"class\",\"pull-left\"],[8],[0,\"Class B Airport Waivers\"],[9],[0,\"\\n    \"],[6,\"div\"],[10,\"class\",\"pull-right\"],[8],[0,\"\\n      \"],[6,\"h4\"],[10,\"class\",\"pull-right\"],[8],[0,\"Total: \"],[1,[26,\"either\",[[22,[\"model\",\"waivers\",\"length\"]],0],null],false],[9],[0,\"\\n      \"],[6,\"div\"],[10,\"class\",\"new-waiver\"],[8],[0,\"\\n        \"],[6,\"button\"],[10,\"class\",\"btn btn-primary btn-sm new-waiver\"],[8],[4,\"link-to\",[\"waivers.new\"],null,{\"statements\":[[0,\"NEW WAIVER\"]],\"parameters\":[]},null],[9],[0,\"\\n      \"],[9],[0,\"\\n    \"],[9],[0,\"\\n    \"],[6,\"table\"],[10,\"class\",\"pe-table table waiver-list\"],[8],[0,\"\\n      \"],[6,\"tr\"],[8],[0,\"\\n        \"],[6,\"th\"],[8],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"external_airport_id\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Airport Code\"]]],false],[9],[0,\"\\n        \"],[6,\"th\"],[8],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"status\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Status\"]]],false],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Number\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[1,[26,\"sortable-column\",null,[[\"column\",\"currentSelected\",\"action\",\"title\"],[\"updated_at\",[22,[\"sortProperties\"]],[26,\"action\",[[21,0,[]],\"sortBy\"],null],\"Last Updated\"]]],false],[9],[0,\"\\n        \"],[6,\"th\"],[8],[0,\"Expiry Date\"],[9],[0,\"\\n        \"],[6,\"th\"],[8],[9],[0,\"\\n      \"],[9],[0,\"\\n\"],[4,\"each\",[[22,[\"sortedWaivers\"]]],null,{\"statements\":[[0,\"        \"],[6,\"tr\"],[10,\"class\",\"waiver-row\"],[8],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"external_airport_id\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"titleize\",[[21,1,[\"status\"]]],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[21,1,[\"number\"]],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"updated_at\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[1,[26,\"moment-format\",[[21,1,[\"expires_at\"]],\"MM/DD/YY\"],null],false],[9],[0,\"\\n          \"],[6,\"td\"],[8],[4,\"link-to\",[\"waivers.edit\",[21,1,[\"id\"]]],[[\"class\"],[\"action pull-right\"]],{\"statements\":[[0,\"Edit\"]],\"parameters\":[]},null],[9],[0,\"\\n        \"],[9],[0,\"\\n\"]],\"parameters\":[1]},null],[0,\"    \"],[9],[0,\"\\n  \"],[9],[0,\"\\n\"],[9],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/waivers/index.hbs" } });
+});
+define("admin/templates/waivers/new", ["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.default = Ember.HTMLBars.template({ "id": "5w7olGlP", "block": "{\"symbols\":[],\"statements\":[[1,[26,\"waiver-form\",null,[[\"waiver\",\"saveAction\"],[[22,[\"model\",\"waiver\"]],\"save\"]]],false],[0,\"\\n\"]],\"hasEval\":false}", "meta": { "moduleName": "admin/templates/waivers/new.hbs" } });
 });
 define('admin/transforms/array', ['exports', 'ember-data'], function (exports, _emberData) {
   'use strict';
@@ -15883,6 +17911,6 @@ catch(err) {
 });
 
 if (!runningTests) {
-  require("admin/app")["default"].create({"LOG_TRANSITIONS":true,"LOG_TRANSITIONS_INTERNAL":true,"name":"admin","version":"0.2.0+fd176bb8","validatorDefaultLocale":"en"});
+  require("admin/app")["default"].create({"LOG_TRANSITIONS":true,"LOG_TRANSITIONS_INTERNAL":true,"name":"admin","version":"0.2.0+ad21256f","validatorDefaultLocale":"en"});
 }
 //# sourceMappingURL=admin.map
