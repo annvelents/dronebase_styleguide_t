@@ -5,9 +5,7 @@
 		<meta http-equiv="x-ua-compatible" content="ie=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-		<link href="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/css/all.css" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet">
+		<link href="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/css/all.css" rel="stylesheet">
 		<link rel="icon" href="" type="image/x-icon">
 
 		<!-- @todo Replace with custom icomoon/fontello bundle -->
@@ -23,77 +21,32 @@
 				<form class="form">
 					<select class="form-control form-control-lg theme-mobile-nav-select">
 						<option disabled selected>Go to…</option>
-							<optgroup label="Unagi">
+							<optgroup label="Actions">
 									<option value="buttons">Buttons</option>
+							</optgroup>
+							<optgroup label="Forms">
 									<option value="inputs">Inputs</option>
+							</optgroup>
+							<optgroup label="Unagi">
 									<option value="sizes">Sizes</option>
 							</optgroup>
 					</select>
 				</form>
 			</div>
 
-				<div id="category-unagi" class="theme-content-category">
+				<div id="category-actions" class="theme-content-category">
 						<div id="buttons" class="i-library theme-content-element">
 	<h1 class="display-4 theme-content-element-title">Buttons</h1>
 	<span class="theme-content-element-source">
 		<span class="theme-content-element-source-label">Source:</span>
 		<span class="theme-content-element-source-path">stylemark/stylemark_markdown_buttons.md</span>
 	</span>
-	<div class="theme-content-element-description"><p>Buttons can be used with <code>&lt;a&gt;</code>, <code>&lt;button&gt;</code>, and <code>&lt;input&gt;</code> elements.
-Buttons have different sizes:</p>
-<div class="i-example">
-                    <h5 class="i-example__heading">
-                        <a
-                            href="buttons-button-size-types.html"
-                            target="_blank"
-                            class="plain-link"
-                            data-toggle="tooltip"
-                            data-placement="top"
-                            title="Open in a new window"
-                        >
-                            <i class="fa fa-external-link-square fa-fw"></i>
-                            Example
-                        </a>
-                    </h5>
-                    <div class="i-example__body">
-                        <div
-                            class="i-example__iframe"
-                            lazyframe
-                            data-src="buttons-button-size-types.html"
-                            data-initinview="true"
-                            data-title="Loading…"
-
-                        ></div>
-                    </div>
-                </div>
-
-
-<div class="i-code-block">
-	<button type="button" class="i-code-block__lang -collapsible"><i class="fa fa-caret-right fa-fw"></i> html</button>
-	<div class="i-code-block__content hidden">
-		<button type="button" class="btn btn-outline-primary btn-sm i-copy-button" data-clipboard-text="&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
-&lt;style&gt;
-  .btn { margin: 5px 10px;}
-&lt;/style&gt;
-
-&lt;button class=&quot;btn btn-primary btn-lg&quot;&gt;Large&lt;/button&gt;
-&lt;button class=&quot;btn btn-secondary btn-md &quot;&gt;Base With Borders&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary btn-md &quot;&gt;Base&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary btn-sm&quot;&gt;Small&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary btn-xs&quot;&gt;Extra Small&lt;/button&gt;">Copy</button>
-		<pre class="mb-0"><code class="lang-">&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
-&lt;style&gt;
-  .btn { margin: 5px 10px;}
-&lt;/style&gt;
-
-&lt;button class=&quot;btn btn-primary btn-lg&quot;&gt;Large&lt;/button&gt;
-&lt;button class=&quot;btn btn-secondary btn-md &quot;&gt;Base With Borders&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary btn-md &quot;&gt;Base&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary btn-sm&quot;&gt;Small&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary btn-xs&quot;&gt;Extra Small&lt;/button&gt;</code></pre>
-	</div>
-</div><hr>
-<p>And different appearance</p>
+	<div class="theme-content-element-description"><p>Buttons are used to make actions. It should be noticeable and easy to perform with one click or tap. Users can use it to navigate, or take action.</p>
+<div id="button-options" class="i-pad-top-5 i-section"><h1 class="i-pad-top-3 i-position-container"><a href="#button-options" class="icon-link i-section__link -heading"></a>Button options</h1></div><p>* <strong>Primary button:</strong> Used as a main action on the interface. Provides extra visual weight and identifies the primary action in a set of buttons.
+* <strong>Secondary button:</strong> Used as when there are more than one action and as a secondary action on the interface or when the action are not main focus.
+* <strong>Info button:</strong> Contextual button for informational messages and drive users to learn more.
+* <strong>Warning button:</strong> Use to indicates caution should be taken with this action. The action may not be undo.
+* <strong>Danger button:</strong> Use to indicates a dangerous or potentially negative action. The action may not be undo.</p>
 <div class="i-example">
                     <h5 class="i-example__heading">
                         <a
@@ -130,53 +83,149 @@ Buttons have different sizes:</p>
 &lt;/style&gt;
 
 &lt;button class=&quot;btn btn-primary&quot;&gt;Primary&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary disabled&quot;&gt;Primary Disabled&lt;/button&gt;
 &lt;button class=&quot;btn btn-secondary&quot;&gt;Secondary&lt;/button&gt;
-&lt;button class=&quot;btn btn-secondary disabled&quot;&gt;Secondary Disabled&lt;/button&gt;
+&lt;button class=&quot;btn btn-secondary disabled&quot;&gt;Disable&lt;/button&gt;
 &lt;button class=&quot;btn btn-info&quot;&gt;Info&lt;/button&gt;
-&lt;button class=&quot;btn btn-danger&quot;&gt;Danger&lt;/button&gt;
 &lt;button class=&quot;btn btn-warning&quot;&gt;Warning&lt;/button&gt;
-&lt;br&gt;
-&lt;br&gt;
-&lt;p&gt; Next are outdated buttons - they still exist in styles, but they will not be used at design &lt;/p&gt;
-&lt;br&gt;
-&lt;button class=&quot;btn turquoise-button&quot;&gt;Turquoise&lt;/button&gt;
-&lt;button class=&quot;btn turquoise-border-button&quot;&gt;Turquoise Border&lt;/button&gt;
-&lt;button class=&quot;btn turquoise-border-button-white-on-hover&quot;&gt;Turquoise Border White On Hover&lt;/button&gt;
-&lt;button class=&quot;btn red-border-button&quot;&gt;Red Border&lt;/button&gt;
-&lt;button class=&quot;btn gray-button&quot;&gt;Gray&lt;/button&gt;
-&lt;button class=&quot;btn gray-text-button&quot;&gt;Gray Text&lt;/button&gt;
-&lt;button class=&quot;btn disabled-button&quot;&gt;Disabled&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary disabled-button&quot;&gt;Disabled Primary&lt;/button&gt;">Copy</button>
+&lt;button class=&quot;btn btn-danger&quot;&gt;Danger&lt;/button&gt;
+">Copy</button>
 		<pre class="mb-0"><code class="lang-">&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
 &lt;style&gt;
   .btn { margin: 5px 10px;}
 &lt;/style&gt;
 
 &lt;button class=&quot;btn btn-primary&quot;&gt;Primary&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary disabled&quot;&gt;Primary Disabled&lt;/button&gt;
 &lt;button class=&quot;btn btn-secondary&quot;&gt;Secondary&lt;/button&gt;
-&lt;button class=&quot;btn btn-secondary disabled&quot;&gt;Secondary Disabled&lt;/button&gt;
+&lt;button class=&quot;btn btn-secondary disabled&quot;&gt;Disable&lt;/button&gt;
 &lt;button class=&quot;btn btn-info&quot;&gt;Info&lt;/button&gt;
-&lt;button class=&quot;btn btn-danger&quot;&gt;Danger&lt;/button&gt;
 &lt;button class=&quot;btn btn-warning&quot;&gt;Warning&lt;/button&gt;
-&lt;br&gt;
-&lt;br&gt;
-&lt;p&gt; Next are outdated buttons - they still exist in styles, but they will not be used at design &lt;/p&gt;
-&lt;br&gt;
-&lt;button class=&quot;btn turquoise-button&quot;&gt;Turquoise&lt;/button&gt;
-&lt;button class=&quot;btn turquoise-border-button&quot;&gt;Turquoise Border&lt;/button&gt;
-&lt;button class=&quot;btn turquoise-border-button-white-on-hover&quot;&gt;Turquoise Border White On Hover&lt;/button&gt;
-&lt;button class=&quot;btn red-border-button&quot;&gt;Red Border&lt;/button&gt;
-&lt;button class=&quot;btn gray-button&quot;&gt;Gray&lt;/button&gt;
-&lt;button class=&quot;btn gray-text-button&quot;&gt;Gray Text&lt;/button&gt;
-&lt;button class=&quot;btn disabled-button&quot;&gt;Disabled&lt;/button&gt;
-&lt;button class=&quot;btn btn-primary disabled-button&quot;&gt;Disabled Primary&lt;/button&gt;</code></pre>
+&lt;button class=&quot;btn btn-danger&quot;&gt;Danger&lt;/button&gt;
+</code></pre>
 	</div>
-</div><hr>
-</div>
+</div><div id="button-tags" class="i-pad-top-5 i-section"><h1 class="i-pad-top-3 i-position-container"><a href="#button-tags" class="icon-link i-section__link -heading"></a>Button tags</h1></div><p>Buttons can be used with <code>&lt;a&gt;</code>, <code>&lt;button&gt;</code>, <code>&lt;div&gt;</code>  and <code>&lt;input&gt;</code> elements.</p>
+<div class="i-example">
+                    <h5 class="i-example__heading">
+                        <a
+                            href="buttons-button-base-elem-types.html"
+                            target="_blank"
+                            class="plain-link"
+                            data-toggle="tooltip"
+                            data-placement="top"
+                            title="Open in a new window"
+                        >
+                            <i class="fa fa-external-link-square fa-fw"></i>
+                            Example
+                        </a>
+                    </h5>
+                    <div class="i-example__body">
+                        <div
+                            class="i-example__iframe"
+                            lazyframe
+                            data-src="buttons-button-base-elem-types.html"
+                            data-initinview="true"
+                            data-title="Loading…"
+
+                        ></div>
+                    </div>
+                </div>
+
+
+<div class="i-code-block">
+	<button type="button" class="i-code-block__lang -collapsible"><i class="fa fa-caret-right fa-fw"></i> html</button>
+	<div class="i-code-block__content hidden">
+		<button type="button" class="btn btn-outline-primary btn-sm i-copy-button" data-clipboard-text="&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
+&lt;style&gt;
+  .btn { margin: 5px 10px;}
+&lt;/style&gt;
+
+&lt;a class=&quot;btn btn-primary btn-lg&quot;&gt;Link&lt;/a&gt;
+&lt;button class=&quot;btn btn-primary btn-md &quot;&gt;Button&lt;/button&gt;
+&lt;div class=&quot;btn btn-primary btn-md &quot;&gt;Div&lt;/button&gt;
+&lt;input class=&quot;btn btn-primary btn-sm&quot;&gt;Input&lt;/button&gt;">Copy</button>
+		<pre class="mb-0"><code class="lang-">&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
+&lt;style&gt;
+  .btn { margin: 5px 10px;}
+&lt;/style&gt;
+
+&lt;a class=&quot;btn btn-primary btn-lg&quot;&gt;Link&lt;/a&gt;
+&lt;button class=&quot;btn btn-primary btn-md &quot;&gt;Button&lt;/button&gt;
+&lt;div class=&quot;btn btn-primary btn-md &quot;&gt;Div&lt;/button&gt;
+&lt;input class=&quot;btn btn-primary btn-sm&quot;&gt;Input&lt;/button&gt;</code></pre>
+	</div>
+</div><div id="size" class="i-pad-top-5 i-section"><h1 class="i-pad-top-3 i-position-container"><a href="#size" class="icon-link i-section__link -heading"></a>Size</h1></div><p>There are 4 sizes of buttons for appropreate use cases.
+Notice that first goes color, then size</p>
+<div class="i-example">
+                    <h5 class="i-example__heading">
+                        <a
+                            href="buttons-button-sizes-types.html"
+                            target="_blank"
+                            class="plain-link"
+                            data-toggle="tooltip"
+                            data-placement="top"
+                            title="Open in a new window"
+                        >
+                            <i class="fa fa-external-link-square fa-fw"></i>
+                            Example
+                        </a>
+                    </h5>
+                    <div class="i-example__body">
+                        <div
+                            class="i-example__iframe"
+                            lazyframe
+                            data-src="buttons-button-sizes-types.html"
+                            data-initinview="true"
+                            data-title="Loading…"
+
+                        ></div>
+                    </div>
+                </div>
+
+
+<div class="i-code-block">
+	<button type="button" class="i-code-block__lang -collapsible"><i class="fa fa-caret-right fa-fw"></i> html</button>
+	<div class="i-code-block__content hidden">
+		<button type="button" class="btn btn-outline-primary btn-sm i-copy-button" data-clipboard-text="&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
+
+&lt;div class=&#39;row&#39;&gt;
+  &lt;div class=&#39;col-md-12&#39;&gt;
+    &lt;button class=&quot;btn-primary btn-lg&quot;&gt;Large&lt;/button&gt;
+    &lt;button class=&quot;btn-primary btn-md&quot;&gt;Medium&lt;/button&gt;
+    &lt;button class=&quot;btn-primary btn-sm&quot;&gt;Small&lt;/button&gt;
+    &lt;button class=&quot;btn-primary btn-xs&quot;&gt;Extra Small&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;&lt;div class=&#39;row&#39;&gt;
+  &lt;div class=&#39;col-md-12&#39;&gt;
+    &lt;button class=&quot;btn-secondary btn-lg&quot;&gt;Large&lt;/button&gt;
+    &lt;button class=&quot;btn-secondary btn-md&quot;&gt;Medium&lt;/button&gt;
+    &lt;button class=&quot;btn-secondary btn-sm&quot;&gt;Small&lt;/button&gt;
+    &lt;button class=&quot;btn-secondary btn-xs&quot;&gt;Extra Small&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+">Copy</button>
+		<pre class="mb-0"><code class="lang-">&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
+
+&lt;div class=&#39;row&#39;&gt;
+  &lt;div class=&#39;col-md-12&#39;&gt;
+    &lt;button class=&quot;btn-primary btn-lg&quot;&gt;Large&lt;/button&gt;
+    &lt;button class=&quot;btn-primary btn-md&quot;&gt;Medium&lt;/button&gt;
+    &lt;button class=&quot;btn-primary btn-sm&quot;&gt;Small&lt;/button&gt;
+    &lt;button class=&quot;btn-primary btn-xs&quot;&gt;Extra Small&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;&lt;div class=&#39;row&#39;&gt;
+  &lt;div class=&#39;col-md-12&#39;&gt;
+    &lt;button class=&quot;btn-secondary btn-lg&quot;&gt;Large&lt;/button&gt;
+    &lt;button class=&quot;btn-secondary btn-md&quot;&gt;Medium&lt;/button&gt;
+    &lt;button class=&quot;btn-secondary btn-sm&quot;&gt;Small&lt;/button&gt;
+    &lt;button class=&quot;btn-secondary btn-xs&quot;&gt;Extra Small&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</code></pre>
+	</div>
+</div></div>
 </div>
 
+				</div>
+				<div id="category-forms" class="theme-content-category">
 						<div id="inputs" class="i-library theme-content-element">
 	<h1 class="display-4 theme-content-element-title">Inputs</h1>
 	<span class="theme-content-element-source">
@@ -270,6 +319,8 @@ Buttons have different sizes:</p>
 </div>
 </div>
 
+				</div>
+				<div id="category-unagi" class="theme-content-category">
 						<div id="sizes" class="i-library theme-content-element">
 	<h1 class="display-4 theme-content-element-title">Sizes</h1>
 	<span class="theme-content-element-source">
@@ -378,10 +429,10 @@ Buttons have different sizes:</p>
 			
 						<h5
 							class="pt-4 mb-1 theme-sidebar-category-title"
-							data-filter-value=" Buttons  Inputs  Sizes "
+							data-filter-value=" Buttons "
 						>
-							<a href="#category-unagi" class="i-sidebar-list-item">
-								<b>Unagi</b>
+							<a href="#category-actions" class="i-sidebar-list-item">
+								<b>Actions</b>
 							</a>
 						</h5>
 			
@@ -393,6 +444,21 @@ Buttons have different sizes:</p>
 								>
 									<span>Buttons</span>
 								</a>
+						</div>
+			
+					</div>
+					<div class="i-sidebar-list-group theme-sidebar-category">
+			
+						<h5
+							class="pt-4 mb-1 theme-sidebar-category-title"
+							data-filter-value=" Inputs "
+						>
+							<a href="#category-forms" class="i-sidebar-list-item">
+								<b>Forms</b>
+							</a>
+						</h5>
+			
+						<div>
 								<a
 									href="#inputs"
 									class="i-sidebar-list-item theme-sidebar-element"
@@ -400,6 +466,21 @@ Buttons have different sizes:</p>
 								>
 									<span>Inputs</span>
 								</a>
+						</div>
+			
+					</div>
+					<div class="i-sidebar-list-group theme-sidebar-category">
+			
+						<h5
+							class="pt-4 mb-1 theme-sidebar-category-title"
+							data-filter-value=" Sizes "
+						>
+							<a href="#category-unagi" class="i-sidebar-list-item">
+								<b>Unagi</b>
+							</a>
+						</h5>
+			
+						<div>
 								<a
 									href="#sizes"
 									class="i-sidebar-list-item theme-sidebar-element"
@@ -423,16 +504,16 @@ Buttons have different sizes:</p>
 			</div>
 		</div>
 
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/jquery-3.2.1.slim.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/popper.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/tether.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/bootstrap.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/iframeResizer.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/lazyframe.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/highlight.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/clipboard.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/in-view.min.js"></script>
-		<script src="https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/app.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/jquery-3.2.1.slim.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/popper.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/tether.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/bootstrap.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/iframeResizer.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/lazyframe.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/highlight.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/clipboard.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/vendor/in-view.min.js"></script>
+		<script src="https://annvelents.github.io/dronebase_styleguide_t/https://annvelents.github.io/dronebase_styleguide_t/dist/assets/js/app.js"></script>
 
 	</body>
 </html>
