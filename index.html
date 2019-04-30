@@ -43,11 +43,11 @@
 		<span class="theme-content-element-source-path">stylemark/stylemark_markdown_buttons.md</span>
 	</span>
 	<div class="theme-content-element-description"><p>Buttons are used to make actions. It should be noticeable and easy to perform with one click or tap. Users can use it to navigate, or take action.</p>
-<div id="button-options" class="i-pad-top-5 i-section"><h1 class="i-pad-top-3 i-position-container"><a href="#button-options" class="icon-link i-section__link -heading"></a>Button options</h1></div><p>* <strong>Primary button:</strong> Used as a main action on the interface. Provides extra visual weight and identifies the primary action in a set of buttons.
-* <strong>Secondary button:</strong> Used as when there are more than one action and as a secondary action on the interface or when the action are not main focus.
-* <strong>Info button:</strong> Contextual button for informational messages and drive users to learn more.
-* <strong>Warning button:</strong> Use to indicates caution should be taken with this action. The action may not be undo.
-* <strong>Danger button:</strong> Use to indicates a dangerous or potentially negative action. The action may not be undo.</p>
+<div id="button-options" class="i-pad-top-5 i-section"><h1 class="i-pad-top-3 i-position-container"><a href="#button-options" class="icon-link i-section__link -heading"></a>Button options</h1></div><p>* <strong>Primary button:</strong> Used as a main action on the interface. Provides extra visual weight and identifies the primary action in a set of buttons.</p>
+<p>* <strong>Secondary button:</strong> Used as when there are more than one action and as a secondary action on the interface or when the action are not main focus.</p>
+<p>* <strong>Info button:</strong> Contextual button for informational messages and drive users to learn more.</p>
+<p>* <strong>Warning button:</strong> Use to indicates caution should be taken with this action. The action may not be undo.</p>
+<p>* <strong>Danger button:</strong> Use to indicates a dangerous or potentially negative action. The action may not be undo.</p>
 <div class="i-example">
                     <h5 class="i-example__heading">
                         <a
@@ -89,6 +89,7 @@
 &lt;button class=&quot;btn btn-info&quot;&gt;Info&lt;/button&gt;
 &lt;button class=&quot;btn btn-warning&quot;&gt;Warning&lt;/button&gt;
 &lt;button class=&quot;btn btn-danger&quot;&gt;Danger&lt;/button&gt;
+&lt;br&gt;
 ">Copy</button>
 		<pre class="mb-0"><code class="lang-">&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
 &lt;style&gt;
@@ -101,6 +102,7 @@
 &lt;button class=&quot;btn btn-info&quot;&gt;Info&lt;/button&gt;
 &lt;button class=&quot;btn btn-warning&quot;&gt;Warning&lt;/button&gt;
 &lt;button class=&quot;btn btn-danger&quot;&gt;Danger&lt;/button&gt;
+&lt;br&gt;
 </code></pre>
 	</div>
 </div><div id="button-tags" class="i-pad-top-5 i-section"><h1 class="i-pad-top-3 i-position-container"><a href="#button-tags" class="icon-link i-section__link -heading"></a>Button tags</h1></div><p>Buttons can be used with <code>&lt;a&gt;</code>, <code>&lt;button&gt;</code>, <code>&lt;div&gt;</code>  and <code>&lt;input&gt;</code> elements.</p>
@@ -139,19 +141,21 @@
   .btn { margin: 5px 10px;}
 &lt;/style&gt;
 
-&lt;a class=&quot;btn btn-primary btn-lg&quot;&gt;Link&lt;/a&gt;
-&lt;button class=&quot;btn btn-primary btn-lg &quot;&gt;Button&lt;/button&gt;
-&lt;div class=&quot;btn btn-primary btn-lg &quot;&gt;Div&lt;/div&gt;
-&lt;input type=&quot;submit&quot; class=&quot;btn btn-primary btn-lg&quot;&gt;Input&lt;/input&gt;">Copy</button>
+&lt;a class=&quot;btn btn-primary btn-md&quot;&gt;Link&lt;/a&gt;
+&lt;button class=&quot;btn btn-primary btn-md &quot;&gt;Button&lt;/button&gt;
+&lt;div class=&quot;btn btn-primary btn-md &quot;&gt;Div&lt;/div&gt;
+&lt;input type=&quot;submit&quot; class=&quot;btn btn-primary btn-md&quot;&gt;&lt;/input&gt;
+&lt;br&gt;">Copy</button>
 		<pre class="mb-0"><code class="lang-">&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
 &lt;style&gt;
   .btn { margin: 5px 10px;}
 &lt;/style&gt;
 
-&lt;a class=&quot;btn btn-primary btn-lg&quot;&gt;Link&lt;/a&gt;
-&lt;button class=&quot;btn btn-primary btn-lg &quot;&gt;Button&lt;/button&gt;
-&lt;div class=&quot;btn btn-primary btn-lg &quot;&gt;Div&lt;/div&gt;
-&lt;input type=&quot;submit&quot; class=&quot;btn btn-primary btn-lg&quot;&gt;Input&lt;/input&gt;</code></pre>
+&lt;a class=&quot;btn btn-primary btn-md&quot;&gt;Link&lt;/a&gt;
+&lt;button class=&quot;btn btn-primary btn-md &quot;&gt;Button&lt;/button&gt;
+&lt;div class=&quot;btn btn-primary btn-md &quot;&gt;Div&lt;/div&gt;
+&lt;input type=&quot;submit&quot; class=&quot;btn btn-primary btn-md&quot;&gt;&lt;/input&gt;
+&lt;br&gt;</code></pre>
 	</div>
 </div><div id="size" class="i-pad-top-5 i-section"><h1 class="i-pad-top-3 i-position-container"><a href="#size" class="icon-link i-section__link -heading"></a>Size</h1></div><p>There are 4 sizes of buttons for appropreate use cases.
 Notice that first goes color, then size</p>
@@ -186,6 +190,9 @@ Notice that first goes color, then size</p>
 	<button type="button" class="i-code-block__lang -collapsible"><i class="fa fa-caret-right fa-fw"></i> html</button>
 	<div class="i-code-block__content hidden">
 		<button type="button" class="btn btn-outline-primary btn-sm i-copy-button" data-clipboard-text="&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
+&lt;style&gt;
+  button { margin: 5px 10px;}
+&lt;/style&gt;
 
 &lt;div class=&#39;row&#39;&gt;
   &lt;div class=&#39;col-md-12&#39;&gt;
@@ -205,8 +212,12 @@ Notice that first goes color, then size</p>
     &lt;button class=&quot;btn-secondary btn-xs&quot;&gt;Extra Small&lt;/button&gt;
   &lt;/div&gt;
 &lt;/div&gt;
-">Copy</button>
+&lt;br&gt;
+&lt;br&gt;">Copy</button>
 		<pre class="mb-0"><code class="lang-">&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;
+&lt;style&gt;
+  button { margin: 5px 10px;}
+&lt;/style&gt;
 
 &lt;div class=&#39;row&#39;&gt;
   &lt;div class=&#39;col-md-12&#39;&gt;
@@ -226,7 +237,8 @@ Notice that first goes color, then size</p>
     &lt;button class=&quot;btn-secondary btn-xs&quot;&gt;Extra Small&lt;/button&gt;
   &lt;/div&gt;
 &lt;/div&gt;
-</code></pre>
+&lt;br&gt;
+&lt;br&gt;</code></pre>
 	</div>
 </div></div>
 </div>
